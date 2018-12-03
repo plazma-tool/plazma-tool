@@ -6,3 +6,4 @@ TAGS
 **/auto/
 **/target
 **/*.rs.bk
+gui-static

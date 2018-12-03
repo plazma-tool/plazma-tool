@@ -1,0 +1,11 @@
+[package]
+name = "plasma"
+version = "0.1.0"
+authors = ["etd <erethedaybreak@gmail.com>"]
+edition = "2018"
+
+[[bin]]
+name = "server"
+path = "src/main.rs"
+
+[dependencies]

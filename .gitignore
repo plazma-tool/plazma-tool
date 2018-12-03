@@ -1,0 +1,8 @@
+*.swp
+.#*
+TAGS
+.DS_Store
+.rocket-recents.txt
+**/auto/
+**/target
+**/*.rs.bk

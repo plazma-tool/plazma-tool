@@ -72,7 +72,7 @@ fn main() {
                 .resource("/stop_server",
                           |r| r.get().f(stop_server))
             // static files
-                .handler("/static/", fs::StaticFiles::new("./gui-static/").unwrap()
+                .handler("/static/", fs::StaticFiles::new("./gui/src/static/").unwrap()
                          .default_handler(static_index))
         })
             .bind("127.0.0.1:8080")

@@ -6,4 +6,4 @@ TAGS
 **/auto/
 **/target
 **/*.rs.bk
-gui-static
+gui/src/static/assets/vendor/node_modules

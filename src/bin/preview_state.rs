@@ -2,7 +2,7 @@ use std::error::Error;
 use std::time::{Duration, Instant};
 use std::path::PathBuf;
 
-use crate::utils::file_to_string;
+use plasma::utils::file_to_string;
 
 pub struct PreviewState {
     pub time: f32,
@@ -18,6 +18,7 @@ pub struct PreviewState {
 
     pub vertex_shader_src: String,
     pub fragment_shader_src: String,
+    pub should_recompile: bool,
 }
 
 impl PreviewState {
@@ -34,6 +35,7 @@ impl PreviewState {
             window_resolution: [1024.0_f32, 768.0_f32],
             vertex_shader_src: file_to_string(&PathBuf::from("./data/screen_quad.vert")).unwrap(),
             fragment_shader_src: file_to_string(&PathBuf::from("./data/shader.frag")).unwrap(),
+            should_recompile: false,
         };
 
         Ok(state)
@@ -66,6 +68,7 @@ impl PreviewState {
 
     pub fn set_fragment_shader_src(&mut self, src: String) {
         self.fragment_shader_src = src;
+        self.should_recompile = true;
     }
 
 }

@@ -13,40 +13,24 @@ extern crate serde_json;
 extern crate log;
 extern crate env_logger;
 
-mod types;
-mod preview_client;
-mod preview_state;
-mod utils;
+extern crate plasma;
 
-use crate::preview_client::{PreviewClient, PreviewClientCodec, start_opengl_preview};
+use std::sync::{Arc, Mutex};
+use std::thread;
 
-use std::sync::{mpsc, Arc, Mutex};
-use std::thread::{self, sleep};
-use std::time::Duration;
-use std::net;
-use std::str::FromStr;
-
-use hyper::{rt, Client};
+use hyper::rt;
+use hyper::Client as HyperClient;
 use hyper::rt::Future as HyperFuture;
 
 use clap::App as ClApp;
 
 use web_view::Content;
 
-use actix_web::{http, fs, middleware, server, ws, App, HttpRequest, HttpResponse, Json};
+use actix_web::{fs, middleware, server, ws, App, HttpRequest, HttpResponse};
 use actix_web::Error as AxError;
 use actix_web::actix::*;
-use actix_web::middleware::cors::Cors;
 
-use futures::Future; // needed for .and_then()
-use tokio_codec::FramedRead;
-use tokio_io::AsyncRead; // needed for .split()
-use tokio_tcp::TcpStream;
-
-#[macro_use]
-extern crate glium;
-
-use crate::types::*;
+use plasma::types::*;
 
 fn static_index(_req: &HttpRequest<ServerStateWrap>) -> Result<fs::NamedFile, AxError> {
     Ok(fs::NamedFile::open("./gui-static/index.html")?)
@@ -83,12 +67,12 @@ fn main() {
             // logger
                 .middleware(middleware::Logger::default())
             // WebSocket routes (there is no CORS)
-                .resource("/", |r| r.f(|req| ws::start(req, WsActor{ client_id: 0 })))
+                .resource("/ws/", |r| r.f(|req| ws::start(req, WsActor::new())))
             // tell the server to stop
                 .resource("/stop_server",
                           |r| r.get().f(stop_server))
             // static files
-                .handler("/static", fs::StaticFiles::new("./gui-static/").unwrap()
+                .handler("/static/", fs::StaticFiles::new("./gui-static/").unwrap()
                          .default_handler(static_index))
         })
             .bind("127.0.0.1:8080")
@@ -98,65 +82,12 @@ fn main() {
         sys.run();
     });
 
-    // --- OpenGL Preview ---
-
-    let preview_handle = thread::spawn(|| {
-
-        // Start a WebSocket client
-
-        actix_web::actix::System::run(|| {
-
-            // FIXME find out if server is up
-            sleep(Duration::from_millis(1000));
-
-            let (tx, rx) = mpsc::channel();
-
-            let server_addr = net::SocketAddr::from_str("127.0.0.1:8080").unwrap();
-
-            Arbiter::spawn(
-                TcpStream::connect(&server_addr)
-                    .and_then(move |stream| {
-                        let addr = PreviewClient::create(|ctx| {
-                            let (r, w) = stream.split();
-                            ctx.add_stream(FramedRead::new(r, PreviewClientCodec));
-                            PreviewClient {
-                                framed: actix::io::FramedWrite::new(
-                                    w,
-                                    PreviewClientCodec,
-                                    ctx,
-                                ),
-                            }
-                        });
-
-                        thread::spawn(move || {
-                            start_opengl_preview(&addr);
-                            tx.send("stop".to_string()).unwrap();
-                        });
-
-                        let _msg = rx.recv().unwrap();
-                        System::current().stop();
-
-                        futures::future::ok(())
-                    })
-                    .map_err(|e| {
-                        println!("Can not connect to server: {}", e);
-                        // FIXME wait and keep trying to connect in a loop
-                        return;
-                    }),
-            );
-
-        });
-
-        // NOTE blocking here freezes the computer.
-
-    });
-
     // --- WebView ---
 
     {
         web_view::builder()
             .title("Plasma")
-            .content(Content::Url("http://localhost:8080/static"))
+            .content(Content::Url("http://localhost:8080/static/"))
             .size(1366, 768)
             .resizable(true)
             .debug(true)
@@ -173,14 +104,12 @@ fn main() {
 
     server_handle.join().unwrap();
 
-    // Close OpenGL Preview window to exit.
-    preview_handle.join().unwrap();
-
     info!("gg thx!");
 }
 
+// FIXME use actix as HTTP client intead of hyper
 fn fetch_url(url: hyper::Uri) -> impl HyperFuture<Item=(), Error=()> {
-    let client = Client::new();
+    let client = HyperClient::new();
     client.get(url).map(|_| {}).map_err(|_| {})
 }
 

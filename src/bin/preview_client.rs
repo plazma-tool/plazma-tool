@@ -15,6 +15,7 @@ extern crate futures;
 extern crate plasma;
 
 use std::thread::{self, sleep};
+use std::sync::mpsc;
 use std::time::Duration;
 
 use actix::*;
@@ -37,50 +38,68 @@ fn main() {
     std::env::set_var("RUST_LOG", "actix_web=info,preview_client=info");
     env_logger::init();
 
-    let sys = actix::System::new("preview client");
+    // Channel to pass messages from the Websocket client to the OpenGL window.
+    let (tx, rx) = mpsc::channel();
 
-    // Start a WebSocket client and connect to the server.
+    // Start the Websocket client on a separate thread so that it is not blocked
+    // (and is not blocking) the OpenGL window.
 
-    // FIXME check if server is up
+    let client_handle = thread::spawn(|| {
 
-    Arbiter::spawn(
-        ws::Client::new("http://127.0.0.1:8080/ws/")
-            .connect()
-            .map_err(|e| {
-                error!("Can not connect to server: {}", e);
-                // FIXME wait and keep trying to connect in a loop
-                return;
-            })
-            .map(|(reader, writer)| {
-                let addr = PreviewClient::create(|ctx| {
-                    PreviewClient::add_stream(reader, ctx);
-                    PreviewClient{
-                        writer: writer,
-                        state: PreviewState::new().unwrap()
-                    }
-                });
+        let sys = actix::System::new("preview client");
 
-                // FIXME ? maybe don't need the new thread
+        // Start a WebSocket client and connect to the server.
 
-                thread::spawn(move || {
-                    let msg = serde_json::to_string(&Sending{
-                        data_type: MsgDataType::StartOpenGlPreview,
-                        data: "".to_string(),
-                    }).unwrap();
+        // FIXME check if server is up
 
-                    addr.do_send(ClientMessage{ data: msg });
+        Arbiter::spawn(
+            ws::Client::new("http://127.0.0.1:8080/ws/")
+                .connect()
+                .map_err(|e| {
+                    error!("Can not connect to server: {}", e);
+                    // FIXME wait and keep trying to connect in a loop
+                    return;
+                })
+                .map(|(reader, writer)| {
+                    let addr = PreviewClient::create(|ctx| {
+                        PreviewClient::add_stream(reader, ctx);
+                        PreviewClient{
+                            writer: writer,
+                            channel_sender: tx,
+                        }
+                    });
 
-                    // FIXME ? should avoid this loop
-                    loop {
-                        sleep(Duration::from_secs(1));
-                    }
-                });
+                    // FIXME ? maybe don't need the new thread
 
-                // FIXME client is exiting too early, heartbeat fails
+                    thread::spawn(move || {
+                        //let msg = serde_json::to_string(&Sending{
+                        //    data_type: MsgDataType::StartOpenGlPreview,
+                        //    data: "".to_string(),
+                        //}).unwrap();
 
-                ()
-            }),
-    );
+                        //addr.do_send(ClientMessage{ data: msg });
 
-    let _ = sys.run();
+                        // FIXME ? should avoid this loop
+                        loop {
+                            sleep(Duration::from_secs(1));
+                        }
+                    });
+
+                    // FIXME client is exiting too early, heartbeat fails
+
+                    ()
+                }),
+        );
+
+        sys.run();
+    });
+
+    // Start OpenGL window on the main thread.
+
+    let mut state = PreviewState::new().unwrap();
+    state.start_opengl_preview(rx);
+
+    client_handle.join().unwrap();
+
+    info!("gg thx!");
 }

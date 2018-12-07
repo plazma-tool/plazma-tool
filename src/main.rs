@@ -33,7 +33,7 @@ use actix_web::actix::*;
 use plasma::types::*;
 
 fn static_index(_req: &HttpRequest<ServerStateWrap>) -> Result<fs::NamedFile, AxError> {
-    Ok(fs::NamedFile::open("./gui-static/index.html")?)
+    Ok(fs::NamedFile::open("./gui/src/static/index.html")?)
 }
 
 fn stop_server(_req: &HttpRequest<ServerStateWrap>) -> Result<HttpResponse, AxError> {

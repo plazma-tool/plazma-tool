@@ -115,7 +115,7 @@ impl WsActor {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum MsgDataType {
-    StartOpenGlPreview,
+    NoOp,
     FetchGui,
     SetGui,
     SetGuiTime,
@@ -176,17 +176,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for WsActor {
 
                 use self::MsgDataType::*;
                 match message.data_type {
-                    StartOpenGlPreview => {
-                        // Repeat to everyone including the sender.
-                        let state = ctx.state().lock().expect("Can't lock ServerState.");
-                        for (_id, addr) in &state.clients {
-                            let msg = Sending {
-                                data_type: StartOpenGlPreview,
-                                data: message.data.clone(),
-                            };
-                            addr.do_send(msg);
-                        }
-                    },
+                    NoOp => {},
 
                     FetchGui => {
                         // Client is asking for gui data. Serialize ServerState.Gui

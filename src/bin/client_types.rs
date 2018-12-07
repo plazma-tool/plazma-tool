@@ -1,4 +1,5 @@
 use std::thread::{self, sleep};
+use std::sync::mpsc;
 use std::time::Duration;
 
 use actix::*;
@@ -12,7 +13,7 @@ use crate::preview_state::PreviewState;
 
 pub struct PreviewClient {
     pub writer: ClientWriter,
-    pub state: PreviewState,
+    pub channel_sender: mpsc::Sender<String>,
 }
 
 #[derive(Message)]
@@ -48,44 +49,30 @@ impl Handler<ClientMessage> for PreviewClient {
     }
 }
 
+impl PreviewClient {
+    fn hb(&self, ctx: &mut Context<Self>) {
+        ctx.run_later(Duration::new(1, 0), |act, ctx| {
+            act.writer.ping("");
+            act.hb(ctx);
+
+            // TODO client should also check for a timeout here, similar to the
+            // server code
+        });
+    }
+}
+
 /// Handling incoming messages from the server.
 impl StreamHandler<Message, ProtocolError> for PreviewClient {
     fn handle(&mut self, msg: Message, _: &mut Context<Self>) {
 
         match msg {
             Message::Text(text) => {
-
-                let message: Receiving = match serde_json::from_str(&text) {
+                match self.channel_sender.send(text) {
                     Ok(x) => x,
                     Err(e) => {
-                        error!("Can't deserialize message: {:?}", e);
-                        return;
-                    },
-                };
-
-                use plasma::types::MsgDataType::*;
-                match message.data_type {
-
-                    StartOpenGlPreview => {
-                        // FIXME opengl window is blocking the processing of further messages
-                        self.start_opengl_preview();
-                    },
-
-                    FetchGui => {},
-
-                    SetGui => {},
-
-                    SetGuiTime => {},
-
-                    SetFragmentShader => {
-                        println!("Setting frag shader");
-                        self.state.set_fragment_shader_src(message.data);
-                    },
-
-                    ShowErrorMessage =>
-                        error!("Server sending error: {:?}", message.data),
+                        error!("Can't send on channel: {:?}", e);
+                    }
                 }
-
             },
             _ => (),
         }
@@ -109,9 +96,9 @@ struct Vertex {
 
 implement_vertex!(Vertex, pos, tex);
 
-impl PreviewClient {
+impl PreviewState {
 
-    pub fn start_opengl_preview(&mut self) {
+    pub fn start_opengl_preview(&mut self, channel_receiver: mpsc::Receiver<String>) {
 
         //addr.do_send(ClientMessage("hey".to_string()));
 
@@ -133,19 +120,54 @@ impl PreviewClient {
         let indices = glium::index::NoIndices(glium::index::PrimitiveType::TriangleStrip);
 
         let mut program = glium::Program::from_source(&display,
-                                                      &self.state.vertex_shader_src,
-                                                      &self.state.fragment_shader_src,
+                                                      &self.vertex_shader_src,
+                                                      &self.fragment_shader_src,
                                                       None).unwrap();
 
-        self.state.set_is_paused(false);
+        self.set_is_paused(false);
 
-        while self.state.get_is_running() {
+        while self.get_is_running() {
+
+            match channel_receiver.try_recv() {
+                Ok(text) => {
+                    // FIXME return a NOOP otherwise it returns from the function.
+                    let message: Receiving = match serde_json::from_str(&text) {
+                        Ok(x) => x,
+                        Err(e) => {
+                            error!("Can't deserialize message: {:?}", e);
+                            return;
+                        },
+                    };
+
+                    use plasma::types::MsgDataType::*;
+                    match message.data_type {
+
+                        NoOp => {},
+
+                        FetchGui => {},
+
+                        SetGui => {},
+
+                        SetGuiTime => {},
+
+                        SetFragmentShader => {
+                            let frag = message.data.trim_matches('"').replace("\\n", "\n");
+                            self.set_fragment_shader_src(frag);
+                        },
+
+                        ShowErrorMessage =>
+                            error!("Server sending error: {:?}", message.data),
+                    }
+
+                },
+                Err(_) => {},
+            }
 
             // 0. recompile if needed
-            if self.state.should_recompile {
+            if self.should_recompile {
                 match glium::Program::from_source(&display,
-                                                  &self.state.vertex_shader_src,
-                                                  &self.state.fragment_shader_src,
+                                                  &self.vertex_shader_src,
+                                                  &self.fragment_shader_src,
                                                   None) {
                     Ok(p) => {
                         program = p;
@@ -155,18 +177,18 @@ impl PreviewClient {
                         error!("Failed to compile shader: {:?}", e);
                     }
                 }
-                self.state.should_recompile = false;
+                self.should_recompile = false;
             }
 
             // 1. update time
 
-            self.state.update_time();
+            self.update_time();
 
-            self.state.draw_anyway = false;
+            self.draw_anyway = false;
 
             let uniforms = uniform! {
-                iGlobalTime: self.state.time,
-                iResolution: self.state.window_resolution,
+                iGlobalTime: self.time,
+                iResolution: self.window_resolution,
                 bg_color:    [0.9_f32, 0.4_f32, 0.1_f32],
             };
 
@@ -175,18 +197,18 @@ impl PreviewClient {
             events_loop.poll_events(|event| {
                 match event {
                     Event::WindowEvent { event, .. } => match event {
-                        WindowEvent::CloseRequested => self.state.set_is_running(false),
+                        WindowEvent::CloseRequested => self.set_is_running(false),
 
                         WindowEvent::KeyboardInput{ input, .. } => {
                             if let Some(VirtualKeyCode::Escape) = input.virtual_keycode {
-                                self.state.set_is_running(false);
+                                self.set_is_running(false);
                             }
                         },
 
                         WindowEvent::Resized(size) => {
                             let (wx, wy): (f64, f64) = size.into();
-                            self.state.window_resolution = [wx as f32, wy as f32];
-                            self.state.draw_anyway = true;
+                            self.window_resolution = [wx as f32, wy as f32];
+                            self.draw_anyway = true;
                         },
                         _ => (),
                     },
@@ -198,7 +220,7 @@ impl PreviewClient {
 
             let mut target = display.draw();
 
-            if !self.state.get_is_paused() || self.state.draw_anyway {
+            if !self.get_is_paused() || self.draw_anyway {
                 target.clear_color(0.0, 0.0, 0.0, 1.0);
                 target.draw(&vertex_buffer, &indices, &program, &uniforms, &Default::default()).unwrap();
             }
@@ -209,24 +231,14 @@ impl PreviewClient {
 
             // 8. sleep if there is time left
 
-            self.state.t_delta = self.state.t_frame_start.elapsed();
+            self.t_delta = self.t_frame_start.elapsed();
 
-            if self.state.t_delta < self.state.t_frame_target {
-                if let Some(t_sleep) = self.state.t_frame_target.checked_sub(self.state.t_delta)  {
+            if self.t_delta < self.t_frame_target {
+                if let Some(t_sleep) = self.t_frame_target.checked_sub(self.t_delta)  {
                     sleep(t_sleep);
                 }
             }
         }
-    }
-
-    fn hb(&self, ctx: &mut Context<Self>) {
-        ctx.run_later(Duration::new(1, 0), |act, ctx| {
-            act.writer.ping("");
-            act.hb(ctx);
-
-            // TODO client should also check for a timeout here, similar to the
-            // server code
-        });
     }
 
 }

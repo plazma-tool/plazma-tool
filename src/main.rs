@@ -72,8 +72,8 @@ fn main() {
                 .resource("/stop_server",
                           |r| r.get().f(stop_server))
             // static files
-                .handler("/static/", fs::StaticFiles::new("./gui/src/static/").unwrap()
-                         .default_handler(static_index))
+                //.handler("/static/", fs::StaticFiles::new("./gui/src/static/").unwrap()
+                //         .default_handler(static_index))
         })
             .bind("127.0.0.1:8080")
             .unwrap()
@@ -84,6 +84,7 @@ fn main() {
 
     // --- WebView ---
 
+    /*
     {
         web_view::builder()
             .title("Plasma")
@@ -101,6 +102,7 @@ fn main() {
         let url = "http://localhost:8080/stop_server".parse::<hyper::Uri>().unwrap();
         rt::run(fetch_url(url));
     }
+    */
 
     server_handle.join().unwrap();
 

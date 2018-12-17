@@ -1,8 +1,12 @@
 import React, { Component } from 'react';
-//import { render } from 'react-dom';
+//import * as ReactDOM from 'react-dom';
+import { Icon, Button, Container, Box, Menu, MenuLabel, MenuList, MenuLink, Columns, Column  } from 'bloomer';
 import MonacoEditor from 'react-monaco-editor';
-//import logo from './logo.svg';
+import { SketchPicker } from 'react-color';
+import Slider, { Range } from 'rc-slider';
 import './App.css';
+
+//import logo from './logo.svg';
 
 function UndoRedoButton(props) {
     return (
@@ -97,6 +101,7 @@ class PlasmaMonaco extends React.Component {
 
         this.editorDidMount = this.editorDidMount.bind(this);
         this.onChange = this.onChange.bind(this);
+        this.onResize = this.onResize.bind(this);
         this.updateVersions = this.updateVersions.bind(this);
         this.sendSetFragmentShader = this.sendSetFragmentShader.bind(this);
         this.handleSocketOpen = this.handleSocketOpen.bind(this);
@@ -129,6 +134,11 @@ class PlasmaMonaco extends React.Component {
             lastVersion: id,
         };
 
+        // not using automaticLayout on the editor, b/c it adds a 100ms interval listener.
+        // https://github.com/Microsoft/monaco-editor/issues/28
+
+        window.addEventListener('resize', this.onResize);
+
         this.updateTimerId = window.setInterval(this.sendSetFragmentShader, 1000);
 
         const socket = new WebSocket('ws://localhost:8080/ws/');
@@ -149,6 +159,11 @@ class PlasmaMonaco extends React.Component {
     onChange(newValue, e) {
         this.sentUpdateSinceChange = false;
         this.updateVersions();
+    }
+
+    onResize() {
+        this.state.editor.layout({height: 0, width: 0});
+        this.state.editor.layout();
     }
 
     sendSetFragmentShader() {
@@ -230,7 +245,7 @@ class PlasmaMonaco extends React.Component {
               />
 
               <MonacoEditor
-                width="800"
+                //width="800"
                 height="600"
                 language="plaintext"
                 theme="vs-dark"
@@ -248,7 +263,62 @@ class App extends Component {
   render() {
     return (
       <div className="App">
-        <PlasmaMonaco />
+        <Columns>
+          <Column isSize={{default: 1}}>
+            <Menu>
+              <MenuLabel>Textures</MenuLabel>
+              <MenuList>
+                <li><MenuLink>Medium RGBA Noise</MenuLink></li>
+                <li><MenuLink>Rock</MenuLink></li>
+                <li><MenuLink>Street</MenuLink></li>
+              </MenuList>
+              <MenuLabel>Shaders</MenuLabel>
+              <MenuList>
+                <li><MenuLink>background</MenuLink></li>
+                <li><MenuLink>text</MenuLink></li>
+                <li><MenuLink>raymarch</MenuLink></li>
+                <li><MenuLink>bloom</MenuLink></li>
+                <li><MenuLink>compositing</MenuLink></li>
+              </MenuList>
+            </Menu>
+            <div>
+              <Button isActive isColor='primary'>Variables</Button>
+            </div>
+            <div>
+              <Button>Samplers</Button>
+            </div>
+            <div>
+              <Button>
+                <Icon className="fas fa-fast-backward fa-lg" />
+              </Button>
+              <Button isColor='success' isOutlined>
+                <Icon className="fas fa-play fa-lg" />
+              </Button>
+              <Button>
+                <Icon className="fas fa-fast-forward fa-lg" />
+              </Button>
+            </div>
+          </Column>
+          <Column>
+            <Columns>
+              <Column>
+                <PlasmaMonaco />
+              </Column>
+            </Columns>
+            <Columns>
+              <Column>
+                <SketchPicker/>
+              </Column>
+              <Column>
+                <SketchPicker/>
+              </Column>
+              <Column>
+                <Slider />
+                <Range />
+              </Column>
+            </Columns>
+          </Column>
+        </Columns>
       </div>
     );
   }

@@ -4,7 +4,11 @@
   "private": true,
   "dependencies": {
     "@craco/craco": "^3.2.0",
+    "bloomer": "^0.6.5",
+    "bulma": "^0.7.2",
+    "rc-slider": "^8.6.4",
     "react": "^16.6.3",
+    "react-color": "^2.14.1",
     "react-dom": "^16.6.3",
     "react-monaco-editor": "^0.22.0",
     "react-scripts": "2.1.1"
@@ -25,6 +29,7 @@
     "not op_mini all"
   ],
   "devDependencies": {
+    "@fortawesome/fontawesome-free": "^5.6.1",
     "monaco-editor-webpack-plugin": "^1.7.0"
   }
 }

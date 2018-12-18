@@ -8,6 +8,8 @@ import './App.css';
 
 //import logo from './logo.svg';
 
+const PLASMA_SERVER_PORT = 8080;
+
 function UndoRedoButton(props) {
     return (
         <button onClick={props.onClick} disabled={props.disabled}>{props.label}</button>
@@ -141,7 +143,7 @@ class PlasmaMonaco extends React.Component {
 
         this.updateTimerId = window.setInterval(this.sendSetFragmentShader, 1000);
 
-        const socket = new WebSocket('ws://localhost:8080/ws/');
+        const socket = new WebSocket('ws://localhost:' + PLASMA_SERVER_PORT + '/ws/');
 
         socket.addEventListener('open', this.handleSocketOpen);
         socket.addEventListener('message', this.handleSocketMessage);

@@ -1,6 +1,5 @@
 extern crate clap;
 extern crate web_view;
-extern crate hyper;
 extern crate actix;
 extern crate actix_web;
 
@@ -12,28 +11,30 @@ extern crate serde_json;
 #[macro_use]
 extern crate log;
 extern crate env_logger;
+extern crate kankyo;
 
 extern crate plasma;
 
+use std::env;
 use std::sync::{Arc, Mutex};
 use std::thread;
-
-use hyper::rt;
-use hyper::Client as HyperClient;
-use hyper::rt::Future as HyperFuture;
+use std::time::Duration;
+//use std::error::Error;
 
 use clap::App as ClApp;
 
 use web_view::Content;
 
-use actix_web::{fs, middleware, server, ws, App, HttpRequest, HttpResponse};
+use actix_web::{fs, middleware, server, client, http, ws, App, HttpRequest, HttpResponse};
 use actix_web::Error as AxError;
 use actix_web::actix::*;
+
+use futures::Future;
 
 use plasma::types::*;
 
 fn static_index(_req: &HttpRequest<ServerStateWrap>) -> Result<fs::NamedFile, AxError> {
-    Ok(fs::NamedFile::open("./gui/src/static/index.html")?)
+    Ok(fs::NamedFile::open("./gui/build/index.html")?)
 }
 
 fn stop_server(_req: &HttpRequest<ServerStateWrap>) -> Result<HttpResponse, AxError> {
@@ -44,8 +45,23 @@ fn stop_server(_req: &HttpRequest<ServerStateWrap>) -> Result<HttpResponse, AxEr
 }
 
 fn main() {
+    kankyo::load().unwrap();
     std::env::set_var("RUST_LOG", "actix_web=info,plasma=info");
     env_logger::init();
+
+    let plasma_server_port = Arc::new(8080);
+
+    // In development mode, use the React dev server port.
+    let react_server_port: Option<usize> = match env::var("MODE") {
+        Ok(x) => {
+            if x == "development" {
+                Some(3000)
+            } else {
+                None
+            }
+        },
+        Err(_) => None
+    };
 
     // --- CLI options ---
 
@@ -55,7 +71,9 @@ fn main() {
 
     // --- HTTP and WebSocket server ---
 
-    let server_handle = thread::spawn(|| {
+    let plasma_server_port_a = Arc::clone(&plasma_server_port);
+
+    let server_handle = thread::spawn(move || {
 
         let sys = actix::System::new("plasma server");
 
@@ -72,10 +90,10 @@ fn main() {
                 .resource("/stop_server",
                           |r| r.get().f(stop_server))
             // static files
-                //.handler("/static/", fs::StaticFiles::new("./gui/src/static/").unwrap()
-                //         .default_handler(static_index))
+                .handler("/static/", fs::StaticFiles::new("./gui/build/").unwrap()
+                         .default_handler(static_index))
         })
-            .bind("127.0.0.1:8080")
+            .bind(format!{"127.0.0.1:{}", plasma_server_port_a})
             .unwrap()
             .start();
 
@@ -84,11 +102,18 @@ fn main() {
 
     // --- WebView ---
 
-    /*
+    // If the React dev server is running, load content from there. If not, load
+    // our static files route which is serving the React build directory.
+    let content_url = if let Some(port) = react_server_port {
+        format!{"http://localhost:{}/static/", port}
+    } else {
+        format!{"http://localhost:{}/static/", plasma_server_port}
+    };
+
     {
         web_view::builder()
             .title("Plasma")
-            .content(Content::Url("http://localhost:8080/static/"))
+            .content(Content::Url(content_url))
             .size(1366, 768)
             .resizable(true)
             .debug(true)
@@ -99,19 +124,25 @@ fn main() {
 
         // Blocked until gui exits. Then it hits the /stop_server url.
 
-        let url = "http://localhost:8080/stop_server".parse::<hyper::Uri>().unwrap();
-        rt::run(fetch_url(url));
+        let url = format!{"http://localhost:{}/stop_server", plasma_server_port};
+
+        actix::run(|| {
+            client::get(url)
+                .finish().unwrap()
+                .send()
+                .map_err(|err| {
+                    error!("Error: {:?}", err);
+                    ()
+                })
+                .and_then(|response| {
+                    info!("Response: {:?}", response);
+                    Ok(())
+                })
+        });
     }
-    */
 
     server_handle.join().unwrap();
 
     info!("gg thx!");
-}
-
-// FIXME use actix as HTTP client intead of hyper
-fn fetch_url(url: hyper::Uri) -> impl HyperFuture<Item=(), Error=()> {
-    let client = HyperClient::new();
-    client.get(url).map(|_| {}).map_err(|_| {})
 }
 

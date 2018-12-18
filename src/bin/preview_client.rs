@@ -38,6 +38,8 @@ fn main() {
     std::env::set_var("RUST_LOG", "actix_web=info,preview_client=info");
     env_logger::init();
 
+    let plasma_server_port = 8080;
+
     // Channel to pass messages from the Websocket client to the OpenGL window.
     let (tx, rx) = mpsc::channel();
 
@@ -53,7 +55,7 @@ fn main() {
         // FIXME check if server is up
 
         Arbiter::spawn(
-            ws::Client::new("http://127.0.0.1:8080/ws/")
+            ws::Client::new(format!{"http://127.0.0.1:{}/ws/", plasma_server_port})
                 .connect()
                 .map_err(|e| {
                     error!("Can not connect to server: {}", e);

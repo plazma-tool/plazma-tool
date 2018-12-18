@@ -12,6 +12,7 @@ futures = "0.1"
 log = "0.4"
 env_logger = "0.6"
 clap = "2.32"
+kankyo = "0.2"
 
 gl = "0.11"
 glutin = "0.19"
@@ -25,5 +26,4 @@ web-view = "0.4"
 
 actix = "0.7.7"
 actix-web = "0.7.14"
-hyper = "0.12"
 

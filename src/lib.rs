@@ -11,6 +11,6 @@ extern crate serde_json;
 extern crate log;
 extern crate env_logger;
 
-pub mod types;
+pub mod server_types;
 pub mod utils;
 

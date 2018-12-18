@@ -18,20 +18,20 @@ extern crate plasma;
 use std::env;
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
+//use std::time::Duration;
 //use std::error::Error;
 
 use clap::App as ClApp;
 
 use web_view::Content;
 
-use actix_web::{fs, middleware, server, client, http, ws, App, HttpRequest, HttpResponse};
+use actix_web::{fs, middleware, server, client, ws, App, HttpRequest, HttpResponse};
 use actix_web::Error as AxError;
 use actix_web::actix::*;
 
 use futures::Future;
 
-use plasma::types::*;
+use plasma::server_types::*;
 
 fn static_index(_req: &HttpRequest<ServerStateWrap>) -> Result<fs::NamedFile, AxError> {
     Ok(fs::NamedFile::open("./gui/build/index.html")?)

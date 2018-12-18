@@ -15,6 +15,7 @@ extern crate futures;
 extern crate plasma;
 
 use std::thread::{self, sleep};
+use std::sync::Arc;
 use std::sync::mpsc;
 use std::time::Duration;
 
@@ -26,7 +27,7 @@ use futures::Future;
 #[macro_use]
 extern crate glium;
 
-use plasma::types::*;
+use plasma::server_types::*;
 
 pub mod client_types;
 pub mod preview_state;
@@ -38,7 +39,7 @@ fn main() {
     std::env::set_var("RUST_LOG", "actix_web=info,preview_client=info");
     env_logger::init();
 
-    let plasma_server_port = 8080;
+    let plasma_server_port = Arc::new(8080);
 
     // Channel to pass messages from the Websocket client to the OpenGL window.
     let (tx, rx) = mpsc::channel();
@@ -46,7 +47,9 @@ fn main() {
     // Start the Websocket client on a separate thread so that it is not blocked
     // (and is not blocking) the OpenGL window.
 
-    let client_handle = thread::spawn(|| {
+    let plasma_server_port_a = Arc::clone(&plasma_server_port);
+
+    let client_handle = thread::spawn(move || {
 
         let sys = actix::System::new("preview client");
 
@@ -55,7 +58,7 @@ fn main() {
         // FIXME check if server is up
 
         Arbiter::spawn(
-            ws::Client::new(format!{"http://127.0.0.1:{}/ws/", plasma_server_port})
+            ws::Client::new(format!{"http://127.0.0.1:{}/ws/", plasma_server_port_a})
                 .connect()
                 .map_err(|e| {
                     error!("Can not connect to server: {}", e);

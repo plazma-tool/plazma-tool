@@ -8,7 +8,7 @@ use actix_web::ws::{ClientWriter, Message, ProtocolError};
 use glium::{self, glutin, Surface};
 use glium::glutin::{Event, VirtualKeyCode, WindowEvent};
 
-use plasma::types::*;
+use plasma::server_types::*;
 use crate::preview_state::PreviewState;
 
 pub struct PreviewClient {
@@ -139,7 +139,7 @@ impl PreviewState {
                         },
                     };
 
-                    use plasma::types::MsgDataType::*;
+                    use plasma::server_types::MsgDataType::*;
                     match message.data_type {
 
                         NoOp => {},

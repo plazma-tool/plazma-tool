@@ -8,6 +8,7 @@ use rand::Rng;
 use actix_web::ws;
 use actix_web::actix::*;
 
+use crate::project_data::ProjectData;
 use crate::utils::file_to_string;
 
 /// How often heartbeat pings are sent
@@ -16,25 +17,25 @@ const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
 /// How long before lack of client response causes a timeout
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Gui {
-    pub time: f32,
-    pub vertex_shader_src: String,
-    pub fragment_shader_src: String,
-}
-
-impl Default for Gui {
-    fn default() -> Gui {
-        Gui {
-            time: 0.0,
-            vertex_shader_src: file_to_string(&PathBuf::from("./data/screen_quad.vert")).unwrap(),
-            fragment_shader_src: file_to_string(&PathBuf::from("./data/shader.frag")).unwrap(),
-        }
-    }
-}
-
+/// PreviewClient is running the render loop. On start, it builds a Dmo using a
+/// json blob from the Server. `Dmo.timeline.draw_ops_at_time(x)` returns a
+/// `Vec<DrawOp>` which is used to draw the current frame.
+///
+/// PreviewClient has paused or playing state. When playing, it updates the
+/// time and sends it to Server.
+///
+/// PreviewClient can receive a time value from server, and it will jump
+/// there.
+///
+/// React Gui renders the time scrub from time value in DmoBlob. When
+/// playing, it receives the time value from Server.
+///
+/// Server sends the React Gui a DmoBlob as a JSON string. React
+/// deserializes that and renders the Gui components. Value changes are
+/// passed back to the server as messages. Server passes messages on to the
+/// PreviewClient, which rebuilds OpenGL objects if necessary.
 pub struct ServerState {
-    pub gui: Gui,
+    pub project_data: ProjectData,
     pub clients: HashMap<usize, Addr<WsActor>>,
 }
 
@@ -43,7 +44,7 @@ pub type ServerStateWrap = Arc<Mutex<ServerState>>;
 impl ServerState {
     pub fn new() -> ServerState {
         ServerState {
-            gui: Gui::default(),
+            project_data: ProjectData::default(),
             clients: HashMap::new(),
         }
     }
@@ -115,10 +116,10 @@ impl WsActor {
 #[derive(Serialize, Deserialize, Debug)]
 pub enum MsgDataType {
     NoOp,
-    FetchGui,
-    SetGui,
-    SetGuiTime,
-    SetFragmentShader,
+    FetchDmo,
+    SetDmo,
+    SetDmoTime,
+    //SetFragmentShader,
     ShowErrorMessage,
 }
 
@@ -177,30 +178,30 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for WsActor {
                 match message.data_type {
                     NoOp => {},
 
-                    FetchGui => {
-                        // Client is asking for gui data. Serialize ServerState.Gui
+                    FetchDmo => {
+                        // Client is asking for Dmo data. Serialize ServerState.dmo
                         // and send it back.
                         let resp;
                         {
                             let state = ctx.state().lock().expect("Can't lock ServerState.");
                             resp = Sending {
-                                data_type: SetGui,
-                                data: serde_json::to_string(&state.gui).unwrap(),
+                                data_type: SetDmo,
+                                data: serde_json::to_string(&state.project_data.dmo).unwrap(),
                             };
                         }
                         let body = serde_json::to_string(&resp).unwrap();
                         ctx.text(body);
                     },
 
-                    SetGui => {
-                        // Client is sending gui data. Deserialize and replace the
-                        // ServerState.Gui. Serialize and send all other clients the
-                        // new Gui data.
+                    SetDmo => {
+                        // Client is sending Dmo data. Deserialize and replace the
+                        // ServerState.dmo. Serialize and send all other clients the
+                        // new Dmo data.
                         match serde_json::from_str(&message.data) {
 
-                            Ok(gui) => {
+                            Ok(dmo) => {
                                 let mut state = ctx.state().lock().expect("Can't lock ServerState.");
-                                state.gui = gui;
+                                state.project_data.dmo = dmo;
 
                                 for (id, addr) in &state.clients {
                                     if *id == self.client_id {
@@ -208,8 +209,8 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for WsActor {
                                     }
 
                                     let resp = Sending {
-                                        data_type: SetGui,
-                                        data: serde_json::to_string(&state.gui).unwrap(),
+                                        data_type: SetDmo,
+                                        data: serde_json::to_string(&state.project_data.dmo).unwrap(),
                                     };
                                     addr.do_send(resp);
                                 }
@@ -228,13 +229,14 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for WsActor {
                         }
                     }
 
-                    SetGuiTime => {
+                    SetDmoTime => {
                         // Client is setting time. Deserialize, update
                         // ServerState and send to other clients.
 
                         // TODO
                     },
 
+                    /*
                     SetFragmentShader => {
                         // Client is setting fragment shader. Update ServerState
                         // and send to other clients.
@@ -254,7 +256,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for WsActor {
                             addr.do_send(resp);
                         }
                     },
-
+                    */
 
                     ShowErrorMessage => {
                         // Client is sending error message to server.

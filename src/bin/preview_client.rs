@@ -29,11 +29,8 @@ extern crate glium;
 
 use plasma::server_types::*;
 
-pub mod client_types;
-pub mod preview_state;
-
-use self::client_types::{PreviewClient, ClientMessage};
-use self::preview_state::PreviewState;
+use plasma::preview_client::client_types::{PreviewClient, ClientMessage};
+use plasma::preview_client::preview_state::PreviewState;
 
 fn main() {
     std::env::set_var("RUST_LOG", "actix_web=info,preview_client=info");
@@ -102,7 +99,7 @@ fn main() {
     // Start OpenGL window on the main thread.
 
     let mut state = PreviewState::new().unwrap();
-    state.start_opengl_preview(rx);
+    state.start_render_loop(rx);
 
     client_handle.join().unwrap();
 

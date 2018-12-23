@@ -1,3 +1,5 @@
+#![allow(non_camel_case_types)]
+
 extern crate rand;
 
 extern crate actix_web;
@@ -11,6 +13,12 @@ extern crate serde_json;
 extern crate log;
 extern crate env_logger;
 
+#[macro_use]
+extern crate glium;
+
 pub mod server_types;
+pub mod preview_client;
+pub mod project_data;
+pub mod dmo;
 pub mod utils;
 

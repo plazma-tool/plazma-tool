@@ -19,6 +19,6 @@ extern crate glium;
 pub mod server_types;
 pub mod preview_client;
 pub mod project_data;
-pub mod dmo;
+pub mod dmo_data;
 pub mod utils;
 

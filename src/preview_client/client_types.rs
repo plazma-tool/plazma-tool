@@ -9,7 +9,8 @@ use glium::{self, glutin, Surface};
 use glium::glutin::{Event, VirtualKeyCode, WindowEvent};
 
 use crate::server_types::*;
-use crate::dmo::Dmo as DmoData;
+use crate::dmo_data::DmoData;
+use crate::preview_client::dmo_gfx::{DmoGfx, QuadSceneGfx, Vertex};
 use crate::preview_client::preview_state::PreviewState;
 
 pub struct PreviewClient {
@@ -87,25 +88,6 @@ impl StreamHandler<Message, ProtocolError> for PreviewClient {
         println!("Server disconnected");
         ctx.stop()
     }
-}
-
-#[derive(Copy, Clone)]
-struct Vertex {
-    pos: [f32; 2],
-    tex: [f32; 2],
-}
-
-implement_vertex!(Vertex, pos, tex);
-
-pub struct DmoGfx {
-    quad_scenes: Vec<QuadSceneGfx>,
-}
-
-pub struct QuadSceneGfx {
-    name: String,
-    vbo: glium::VertexBuffer<Vertex>,
-    indices: glium::index::NoIndices,
-    program: glium::Program,
 }
 
 impl PreviewState {

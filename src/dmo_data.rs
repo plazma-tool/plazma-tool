@@ -6,7 +6,7 @@ use serde_yaml;
 use crate::utils::file_to_string;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Dmo {
+pub struct DmoData {
     /// User preferences and playback options.
     pub settings: Settings,
 
@@ -21,9 +21,9 @@ pub struct Dmo {
     pub timeline: Timeline,
 }
 
-impl Default for Dmo {
-    fn default() -> Dmo {
-        Dmo {
+impl Default for DmoData {
+    fn default() -> DmoData {
+        DmoData {
             settings: Settings::default(),
             context_data: ContextData::default(),
             timeline: Timeline::default(),
@@ -88,7 +88,7 @@ pub struct SyncTrack {
 
 impl Default for SyncVars {
     fn default() -> SyncVars {
-        let text = file_to_string(&PathBuf::from("./data/default_sync_tracks.yml")).unwrap();
+        let text = include_str!("../data/default_sync_tracks.yml");
         let tracks: Vec<SyncTrack> = serde_yaml::from_str(&text).unwrap();
 
         SyncVars {
@@ -213,14 +213,14 @@ pub struct QuadScene {
 
 impl Default for QuadScene {
     fn default() -> QuadScene {
-        let vert_src_path = "./data/screen_quad.vert".to_string();
-        let frag_src_path = "./data/shader.frag".to_string();
+        let vert_src_path = include_str!("../data/screen_quad.vert");
+        let frag_src_path = include_str!("../data/shader.frag");
 
         QuadScene {
             name: "default".to_string(),
-            vert_src_path: vert_src_path.clone(),
+            vert_src_path: vert_src_path.to_string(),
             vert_src: file_to_string(&PathBuf::from(vert_src_path)).expect("vert_src not found"),
-            frag_src_path: frag_src_path.clone(),
+            frag_src_path: frag_src_path.to_string(),
             frag_src: file_to_string(&PathBuf::from(frag_src_path)).expect("frag_src not found"),
             layout_to_vars: vec![
                 UniformMapping::Float(0,

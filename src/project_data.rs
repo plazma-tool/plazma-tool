@@ -1,11 +1,11 @@
 use std::path::PathBuf;
 
-use crate::dmo::Dmo;
+use crate::dmo_data::DmoData;
 
 pub struct ProjectData {
     pub project_path: PathBuf,
     pub project_root: PathBuf,
-    pub dmo: Dmo,
+    pub dmo: DmoData,
 }
 
 impl Default for ProjectData {
@@ -13,7 +13,7 @@ impl Default for ProjectData {
         ProjectData {
             project_path: PathBuf::from(""),
             project_root: PathBuf::from(""),
-            dmo: Dmo::default(),
+            dmo: DmoData::default(),
         }
     }
 }

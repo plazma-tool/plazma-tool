@@ -165,7 +165,15 @@ impl PreviewState {
 
                         FetchDmo => {},
 
-                        SetDmo => {},
+                        SetDmo => {
+                            match serde_json::from_str(&message.data) {
+                                Ok(d) => {
+                                    dmo_data = d;
+                                    self.should_recompile = true;
+                                },
+                                Err(e) => error!("Can't deserialize Dmo: {:?}", e),
+                            };
+                        },
 
                         SetDmoTime => {},
 

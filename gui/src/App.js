@@ -84,50 +84,28 @@ const default_shader = [
     '}',
 ].join('\n');
 
-
+// Requires props:
+// - editorContent
+// - onChangeLift
 class PlasmaMonaco extends React.Component {
     constructor(props) {
         super(props);
 
         this.state = {
             editor: null,
-            socket: null,
             modelVersions: null,
             undoDisabled: true,
             redoDisabled: true,
         };
 
-        this.initialCode = default_shader;
-        this.sentUpdateSinceChange = false;
-        this.updateTimerId = null;
-
         this.editorDidMount = this.editorDidMount.bind(this);
-        this.onChange = this.onChange.bind(this);
         this.onResize = this.onResize.bind(this);
+        this.onChangeLocal = this.onChangeLocal.bind(this);
         this.updateVersions = this.updateVersions.bind(this);
-        this.sendSetFragmentShader = this.sendSetFragmentShader.bind(this);
-        this.handleSocketOpen = this.handleSocketOpen.bind(this);
-        this.handleSocketMessage = this.handleSocketMessage.bind(this);
-    }
-
-    handleSocketOpen(event) {
-        var msg = {
-            data_type: 'SetFragmentShader',
-            data: this.initialCode,
-        };
-        this.state.socket.send(JSON.stringify(msg));
-    }
-
-    handleSocketMessage(event) {
-        var msg = JSON.parse(event.data);
-        if (msg.data_type === 'SetFragmentShader') {
-            this.state.editor.getModel().setValue(JSON.parse(msg.data));
-            this.sentUpdateSinceChange = true;
-        }
     }
 
     editorDidMount(editor, monaco) {
-        editor.getModel().setValue(this.initialCode);
+        editor.getModel().setValue(this.props.editorContent);
 
         let id = editor.getModel().getAlternativeVersionId();
         let modelVersions = {
@@ -141,16 +119,8 @@ class PlasmaMonaco extends React.Component {
 
         window.addEventListener('resize', this.onResize);
 
-        this.updateTimerId = window.setInterval(this.sendSetFragmentShader, 1000);
-
-        const socket = new WebSocket('ws://localhost:' + PLASMA_SERVER_PORT + '/ws/');
-
-        socket.addEventListener('open', this.handleSocketOpen);
-        socket.addEventListener('message', this.handleSocketMessage);
-
         this.setState({
             editor: editor,
-            socket: socket,
             modelVersions: modelVersions,
         });
 
@@ -158,31 +128,14 @@ class PlasmaMonaco extends React.Component {
         editor.setPosition({ lineNumber: 1, column: 1 });
     }
 
-    onChange(newValue, e) {
-        this.sentUpdateSinceChange = false;
+    onChangeLocal(newValue, e) {
+        this.props.onChangeLift(newValue, e);
         this.updateVersions();
     }
 
     onResize() {
         this.state.editor.layout({height: 0, width: 0});
         this.state.editor.layout();
-    }
-
-    sendSetFragmentShader() {
-        if (this.sentUpdateSinceChange) {
-            return;
-        } else {
-            var msg = {
-                data_type: 'SetFragmentShader',
-                data: this.state.editor.getModel().getValue(),
-            };
-            this.state.socket.send(JSON.stringify(msg));
-            this.sentUpdateSinceChange = true;
-        }
-    }
-
-    componentWillUnmount() {
-        window.clearInterval(this.updateTimerId);
     }
 
     // FIXME: redo is disabled before the last action is restored (last edit
@@ -251,9 +204,9 @@ class PlasmaMonaco extends React.Component {
                 height="600"
                 language="plaintext"
                 theme="vs-dark"
-                //value={code}
+                value={this.props.editorContent}
                 options={options}
-                onChange={this.onChange}
+                onChange={this.onChangeLocal}
                 editorDidMount={this.editorDidMount}
               />
             </div>
@@ -262,68 +215,164 @@ class PlasmaMonaco extends React.Component {
 }
 
 class App extends Component {
-  render() {
-    return (
-      <div className="App">
-        <Columns>
-          <Column isSize={{default: 1}}>
-            <Menu>
-              <MenuLabel>Textures</MenuLabel>
-              <MenuList>
-                <li><MenuLink>Medium RGBA Noise</MenuLink></li>
-                <li><MenuLink>Rock</MenuLink></li>
-                <li><MenuLink>Street</MenuLink></li>
-              </MenuList>
-              <MenuLabel>Shaders</MenuLabel>
-              <MenuList>
-                <li><MenuLink>background</MenuLink></li>
-                <li><MenuLink>text</MenuLink></li>
-                <li><MenuLink>raymarch</MenuLink></li>
-                <li><MenuLink>bloom</MenuLink></li>
-                <li><MenuLink>compositing</MenuLink></li>
-              </MenuList>
-            </Menu>
-            <div>
-              <Button isActive isColor='primary'>Variables</Button>
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            socket: null,
+            dmo_data: null,
+            editor_content: null,
+            sentUpdateSinceChange: false,
+        };
+
+        this.updateTimerId = null;
+
+        this.onEditorChange = this.onEditorChange.bind(this);
+        this.handleSocketOpen = this.handleSocketOpen.bind(this);
+        this.handleSocketMessage = this.handleSocketMessage.bind(this);
+        this.sendDmoData = this.sendDmoData.bind(this);
+    }
+
+    componentDidMount() {
+        const socket = new WebSocket('ws://localhost:' + PLASMA_SERVER_PORT + '/ws/');
+
+        socket.addEventListener('open', this.handleSocketOpen);
+        socket.addEventListener('message', this.handleSocketMessage);
+
+        this.updateTimerId = window.setInterval(this.sendDmoData, 1000);
+
+        this.setState({
+            socket: socket,
+        });
+    }
+
+    componentWillUnmount() {
+        window.clearInterval(this.updateTimerId);
+    }
+
+
+    handleSocketOpen(event) {
+        // Request DmoData from server.
+        let msg = {
+            data_type: 'FetchDmo',
+            data: '',
+        };
+        this.state.socket.send(JSON.stringify(msg));
+        this.setState({
+            sentUpdateSinceChange: true,
+        });
+    }
+
+    handleSocketMessage(event) {
+        var msg = JSON.parse(event.data);
+        if (msg.data_type === 'SetDmo') {
+            let d = JSON.parse(msg.data);
+            let frag_src = d.context_data.quad_scenes[0].frag_src;
+            this.setState({
+                dmo_data: d,
+                editor_content: frag_src,
+            });
+            this.setState({
+                sentUpdateSinceChange: true,
+            });
+        }
+    }
+
+    onEditorChange(newValue, e) {
+        if (this.state.dmo_data) {
+            let d = this.state.dmo_data;
+            d.context_data.quad_scenes[0].frag_src = newValue;
+
+            this.setState({
+                dmo_data: d,
+                editor_content: newValue,
+            });
+        }
+        this.setState({
+            sentUpdateSinceChange: false,
+        });
+    }
+
+    sendDmoData() {
+        if (this.state.sentUpdateSinceChange) {
+            return;
+        } else if (this.state.socket) {
+            let msg = {
+                data_type: 'SetDmo',
+                data: JSON.stringify(this.state.dmo_data),
+            };
+            this.state.socket.send(JSON.stringify(msg));
+            this.setState({
+                sentUpdateSinceChange: true,
+            });
+        }
+    }
+
+    render() {
+        return (
+            <div className="App">
+              <Columns>
+                <Column isSize={{default: 1}}>
+                  <Menu>
+                    <MenuLabel>Textures</MenuLabel>
+                    <MenuList>
+                      <li><MenuLink>Medium RGBA Noise</MenuLink></li>
+                      <li><MenuLink>Rock</MenuLink></li>
+                      <li><MenuLink>Street</MenuLink></li>
+                    </MenuList>
+                    <MenuLabel>Shaders</MenuLabel>
+                    <MenuList>
+                      <li><MenuLink>background</MenuLink></li>
+                      <li><MenuLink>text</MenuLink></li>
+                      <li><MenuLink>raymarch</MenuLink></li>
+                      <li><MenuLink>bloom</MenuLink></li>
+                      <li><MenuLink>compositing</MenuLink></li>
+                    </MenuList>
+                  </Menu>
+                  <div>
+                    <Button isActive isColor='primary'>Variables</Button>
+                  </div>
+                  <div>
+                    <Button>Samplers</Button>
+                  </div>
+                  <div>
+                    <Button>
+                      <Icon className="fas fa-fast-backward fa-lg" />
+                    </Button>
+                    <Button isColor='success' isOutlined>
+                      <Icon className="fas fa-play fa-lg" />
+                    </Button>
+                    <Button>
+                      <Icon className="fas fa-fast-forward fa-lg" />
+                    </Button>
+                  </div>
+                </Column>
+                <Column>
+                  <Columns>
+                    <Column>
+                      <PlasmaMonaco
+                        editorContent={this.state.editor_content}
+                        onChangeLift={this.onEditorChange}
+                      />
+                    </Column>
+                  </Columns>
+                  <Columns>
+                    <Column>
+                      <SketchPicker/>
+                    </Column>
+                    <Column>
+                      <SketchPicker/>
+                    </Column>
+                    <Column>
+                      <Slider />
+                      <Range />
+                    </Column>
+                  </Columns>
+                </Column>
+              </Columns>
             </div>
-            <div>
-              <Button>Samplers</Button>
-            </div>
-            <div>
-              <Button>
-                <Icon className="fas fa-fast-backward fa-lg" />
-              </Button>
-              <Button isColor='success' isOutlined>
-                <Icon className="fas fa-play fa-lg" />
-              </Button>
-              <Button>
-                <Icon className="fas fa-fast-forward fa-lg" />
-              </Button>
-            </div>
-          </Column>
-          <Column>
-            <Columns>
-              <Column>
-                <PlasmaMonaco />
-              </Column>
-            </Columns>
-            <Columns>
-              <Column>
-                <SketchPicker/>
-              </Column>
-              <Column>
-                <SketchPicker/>
-              </Column>
-              <Column>
-                <Slider />
-                <Range />
-              </Column>
-            </Columns>
-          </Column>
-        </Columns>
-      </div>
-    );
-  }
+        );
+    }
 }
 
 export default App;

@@ -213,15 +213,18 @@ pub struct QuadScene {
 
 impl Default for QuadScene {
     fn default() -> QuadScene {
-        let vert_src_path = include_str!("../data/screen_quad.vert");
-        let frag_src_path = include_str!("../data/shader.frag");
+        // FIXME these will have to be relative to project root stored in ProjectData
+        let vert_src_path = "../data/screen_quad.vert".to_string();
+        let vert_src = include_str!("../data/screen_quad.vert").to_string();
+        let frag_src_path = "../data/shader.frag".to_string();
+        let frag_src = include_str!("../data/shader.frag").to_string();
 
         QuadScene {
             name: "default".to_string(),
-            vert_src_path: vert_src_path.to_string(),
-            vert_src: file_to_string(&PathBuf::from(vert_src_path)).expect("vert_src not found"),
-            frag_src_path: frag_src_path.to_string(),
-            frag_src: file_to_string(&PathBuf::from(frag_src_path)).expect("frag_src not found"),
+            vert_src_path: vert_src_path,
+            vert_src: vert_src,
+            frag_src_path: frag_src_path,
+            frag_src: frag_src,
             layout_to_vars: vec![
                 UniformMapping::Float(0,
                                       "time".to_string()),

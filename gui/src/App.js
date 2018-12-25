@@ -8,7 +8,7 @@ import './App.css';
 
 //import logo from './logo.svg';
 
-const PLASMA_SERVER_PORT = 8080;
+const PLAZMA_SERVER_PORT = 8080;
 
 function UndoRedoButton(props) {
     return (
@@ -16,7 +16,7 @@ function UndoRedoButton(props) {
     );
 }
 
-class PlasmaMonacoToolbar extends React.Component {
+class PlazmaMonacoToolbar extends React.Component {
 
     undoAction(editor) {
         if (editor) {
@@ -87,7 +87,7 @@ const default_shader = [
 // Requires props:
 // - editorContent
 // - onChangeLift
-class PlasmaMonaco extends React.Component {
+class PlazmaMonaco extends React.Component {
     constructor(props) {
         super(props);
 
@@ -193,7 +193,7 @@ class PlasmaMonaco extends React.Component {
 
         return (
             <div>
-              <PlasmaMonacoToolbar
+              <PlazmaMonacoToolbar
                 editor={this.state.editor}
                 undoDisabled={this.state.undoDisabled}
                 redoDisabled={this.state.redoDisabled}
@@ -234,7 +234,7 @@ class App extends Component {
     }
 
     componentDidMount() {
-        const socket = new WebSocket('ws://localhost:' + PLASMA_SERVER_PORT + '/ws/');
+        const socket = new WebSocket('ws://localhost:' + PLAZMA_SERVER_PORT + '/ws/');
 
         socket.addEventListener('open', this.handleSocketOpen);
         socket.addEventListener('message', this.handleSocketMessage);
@@ -350,7 +350,7 @@ class App extends Component {
                 <Column>
                   <Columns>
                     <Column>
-                      <PlasmaMonaco
+                      <PlazmaMonaco
                         editorContent={this.state.editor_content}
                         onChangeLift={this.onEditorChange}
                       />

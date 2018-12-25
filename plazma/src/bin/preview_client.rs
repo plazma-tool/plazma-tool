@@ -15,7 +15,7 @@ extern crate futures;
 #[macro_use]
 extern crate glium;
 
-extern crate plasma;
+extern crate plazma;
 
 use std::thread::{self, sleep};
 use std::sync::Arc;
@@ -30,18 +30,18 @@ use futures::Future;
 use glium::{glutin, Surface};
 use glium::glutin::{Event, VirtualKeyCode, WindowEvent};
 
-use plasma::dmo_data::DmoData;
-use plasma::preview_client::dmo_gfx::{DmoGfx, QuadSceneGfx, Vertex};
+use plazma::dmo_data::DmoData;
+use plazma::preview_client::dmo_gfx::{DmoGfx, QuadSceneGfx, Vertex};
 
-use plasma::server_actor::Receiving;
-use plasma::preview_client::client_actor::ClientActor;
-use plasma::preview_client::preview_state::PreviewState;
+use plazma::server_actor::Receiving;
+use plazma::preview_client::client_actor::ClientActor;
+use plazma::preview_client::preview_state::PreviewState;
 
 fn main() {
     std::env::set_var("RUST_LOG", "actix_web=info,preview_client=info");
     env_logger::init();
 
-    let plasma_server_port = Arc::new(8080);
+    let plazma_server_port = Arc::new(8080);
 
     // Channel to pass messages from the Websocket client to the OpenGL window.
     let (tx, rx) = mpsc::channel();
@@ -49,7 +49,7 @@ fn main() {
     // Start the Websocket client on a separate thread so that it is not blocked
     // (and is not blocking) the OpenGL window.
 
-    let plasma_server_port_a = Arc::clone(&plasma_server_port);
+    let plazma_server_port_a = Arc::clone(&plazma_server_port);
 
     let client_handle = thread::spawn(move || {
 
@@ -60,7 +60,7 @@ fn main() {
         // FIXME check if server is up
 
         Arbiter::spawn(
-            ws::Client::new(format!{"http://127.0.0.1:{}/ws/", plasma_server_port_a})
+            ws::Client::new(format!{"http://127.0.0.1:{}/ws/", plazma_server_port_a})
                 .connect()
                 .map_err(|e| {
                     error!("Can not connect to server: {}", e);
@@ -178,7 +178,7 @@ fn render_loop(state: &mut PreviewState,
                     },
                 };
 
-                use plasma::server_actor::MsgDataType::*;
+                use plazma::server_actor::MsgDataType::*;
                 match message.data_type {
 
                     NoOp => {},

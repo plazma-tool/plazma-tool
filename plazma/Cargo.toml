@@ -1,5 +1,5 @@
 [package]
-name = "plasma"
+name = "plazma"
 version = "0.1.0"
 authors = ["etd <erethedaybreak@gmail.com>"]
 edition = "2018"

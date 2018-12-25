@@ -13,7 +13,7 @@ extern crate log;
 extern crate env_logger;
 extern crate kankyo;
 
-extern crate plasma;
+extern crate plazma;
 
 use std::env;
 use std::sync::{Arc, Mutex};
@@ -31,7 +31,7 @@ use actix_web::actix::*;
 
 use futures::Future;
 
-use plasma::server_actor::{ServerActor, ServerState, ServerStateWrap};
+use plazma::server_actor::{ServerActor, ServerState, ServerStateWrap};
 
 fn static_index(_req: &HttpRequest<ServerStateWrap>) -> Result<fs::NamedFile, AxError> {
     Ok(fs::NamedFile::open("../gui/build/index.html")?)
@@ -46,10 +46,10 @@ fn stop_server(_req: &HttpRequest<ServerStateWrap>) -> Result<HttpResponse, AxEr
 
 fn main() {
     kankyo::load().unwrap();
-    std::env::set_var("RUST_LOG", "actix_web=info,plasma=info");
+    std::env::set_var("RUST_LOG", "actix_web=info,plazma=info");
     env_logger::init();
 
-    let plasma_server_port = Arc::new(8080);
+    let plazma_server_port = Arc::new(8080);
 
     // In development mode, use the React dev server port.
     let react_server_port: Option<usize> = match env::var("MODE") {
@@ -65,17 +65,17 @@ fn main() {
 
     // --- CLI options ---
 
-    let _matches = ClApp::new("Plasma")
+    let _matches = ClApp::new("Plazma")
         .version("0.1.0")
         .get_matches();
 
     // --- HTTP and WebSocket server ---
 
-    let plasma_server_port_a = Arc::clone(&plasma_server_port);
+    let plazma_server_port_a = Arc::clone(&plazma_server_port);
 
     let server_handle = thread::spawn(move || {
 
-        let sys = actix::System::new("plasma server");
+        let sys = actix::System::new("plazma server");
 
         let server_state = Arc::new(Mutex::new(ServerState::new()));
 
@@ -93,7 +93,7 @@ fn main() {
                 .handler("/static/", fs::StaticFiles::new("../gui/build/").unwrap()
                          .default_handler(static_index))
         })
-            .bind(format!{"127.0.0.1:{}", plasma_server_port_a})
+            .bind(format!{"127.0.0.1:{}", plazma_server_port_a})
             .unwrap()
             .start();
 
@@ -107,12 +107,12 @@ fn main() {
     let content_url = if let Some(port) = react_server_port {
         format!{"http://localhost:{}/static/", port}
     } else {
-        format!{"http://localhost:{}/static/", plasma_server_port}
+        format!{"http://localhost:{}/static/", plazma_server_port}
     };
 
     {
         web_view::builder()
-            .title("Plasma")
+            .title("Plazma")
             .content(Content::Url(content_url))
             .size(1366, 768)
             .resizable(true)
@@ -124,7 +124,7 @@ fn main() {
 
         // Blocked until gui exits. Then it hits the /stop_server url.
 
-        let url = format!{"http://localhost:{}/stop_server", plasma_server_port};
+        let url = format!{"http://localhost:{}/stop_server", plazma_server_port};
 
         actix::run(|| {
             client::get(url)

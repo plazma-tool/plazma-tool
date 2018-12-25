@@ -16,7 +16,7 @@ extern crate env_logger;
 #[macro_use]
 extern crate glium;
 
-pub mod server_types;
+pub mod server_actor;
 pub mod preview_client;
 pub mod project_data;
 pub mod dmo_data;

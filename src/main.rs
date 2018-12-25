@@ -31,7 +31,7 @@ use actix_web::actix::*;
 
 use futures::Future;
 
-use plasma::server_types::*;
+use plasma::server_actor::{ServerActor, ServerState, ServerStateWrap};
 
 fn static_index(_req: &HttpRequest<ServerStateWrap>) -> Result<fs::NamedFile, AxError> {
     Ok(fs::NamedFile::open("./gui/build/index.html")?)
@@ -85,7 +85,7 @@ fn main() {
             // logger
                 .middleware(middleware::Logger::default())
             // WebSocket routes (there is no CORS)
-                .resource("/ws/", |r| r.f(|req| ws::start(req, WsActor::new())))
+                .resource("/ws/", |r| r.f(|req| ws::start(req, ServerActor::new())))
             // tell the server to stop
                 .resource("/stop_server",
                           |r| r.get().f(stop_server))

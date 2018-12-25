@@ -17,14 +17,14 @@ const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
 /// How long before lack of client response causes a timeout
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
 
-/// PreviewClient is running the render loop. On start, it builds a Dmo using a
+/// `preview_client` is running the render loop. On start, it builds a Dmo using a
 /// json blob from the Server. `Dmo.timeline.draw_ops_at_time(x)` returns a
 /// `Vec<DrawOp>` which is used to draw the current frame.
 ///
-/// PreviewClient has paused or playing state. When playing, it updates the
+/// `preview_client` has paused or playing state. When playing, it updates the
 /// time and sends it to Server.
 ///
-/// PreviewClient can receive a time value from server, and it will jump
+/// `preview_client` can receive a time value from server, and it will jump
 /// there.
 ///
 /// React Gui renders the time scrub from time value in DmoBlob. When
@@ -36,7 +36,7 @@ const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
 /// PreviewClient, which rebuilds OpenGL objects if necessary.
 pub struct ServerState {
     pub project_data: ProjectData,
-    pub clients: HashMap<usize, Addr<WsActor>>,
+    pub clients: HashMap<usize, Addr<ServerActor>>,
 }
 
 pub type ServerStateWrap = Arc<Mutex<ServerState>>;
@@ -51,14 +51,14 @@ impl ServerState {
 }
 
 /// Actor for websocket connection.
-pub struct WsActor {
+pub struct ServerActor {
     pub client_id: usize,
     /// Client must send ping at least once per 10 seconds (CLIENT_TIMEOUT),
     /// otherwise we drop connection.
     hb: Instant,
 }
 
-impl Actor for WsActor {
+impl Actor for ServerActor {
     type Context = ws::WebsocketContext<Self, ServerStateWrap>;
 
     /// Method is called on actor start. Store the client in ServerState and
@@ -83,7 +83,7 @@ impl Actor for WsActor {
     }
 }
 
-impl WsActor {
+impl ServerActor {
     pub fn new() -> Self {
         Self {
             client_id: rand::thread_rng().gen::<usize>(),
@@ -119,7 +119,6 @@ pub enum MsgDataType {
     FetchDmo,
     SetDmo,
     SetDmoTime,
-    //SetFragmentShader,
     ShowErrorMessage,
 }
 
@@ -140,7 +139,7 @@ pub struct Receiving {
 }
 
 /// Sending a message to a client.
-impl Handler<Sending> for WsActor {
+impl Handler<Sending> for ServerActor {
     type Result = ();
 
     fn handle(&mut self, msg: Sending, ctx: &mut Self::Context) {
@@ -150,7 +149,7 @@ impl Handler<Sending> for WsActor {
 }
 
 /// Handling incoming messages from a client.
-impl StreamHandler<ws::Message, ws::ProtocolError> for WsActor {
+impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
 
     fn handle(&mut self, msg: ws::Message, ctx: &mut Self::Context) {
 
@@ -235,28 +234,6 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for WsActor {
 
                         // TODO
                     },
-
-                    /*
-                    SetFragmentShader => {
-                        // Client is setting fragment shader. Update ServerState
-                        // and send to other clients.
-
-                        let mut state = ctx.state().lock().expect("Can't lock ServerState.");
-                        state.gui.fragment_shader_src = message.data;
-
-                        for (id, addr) in &state.clients {
-                            if *id == self.client_id {
-                                continue;
-                            }
-
-                            let resp = Sending {
-                                data_type: SetFragmentShader,
-                                data: serde_json::to_string(&state.gui.fragment_shader_src).unwrap(),
-                            };
-                            addr.do_send(resp);
-                        }
-                    },
-                    */
 
                     ShowErrorMessage => {
                         // Client is sending error message to server.

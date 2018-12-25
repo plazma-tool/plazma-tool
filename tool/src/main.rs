@@ -34,7 +34,7 @@ use futures::Future;
 use plasma::server_actor::{ServerActor, ServerState, ServerStateWrap};
 
 fn static_index(_req: &HttpRequest<ServerStateWrap>) -> Result<fs::NamedFile, AxError> {
-    Ok(fs::NamedFile::open("./gui/build/index.html")?)
+    Ok(fs::NamedFile::open("../gui/build/index.html")?)
 }
 
 fn stop_server(_req: &HttpRequest<ServerStateWrap>) -> Result<HttpResponse, AxError> {
@@ -90,7 +90,7 @@ fn main() {
                 .resource("/stop_server",
                           |r| r.get().f(stop_server))
             // static files
-                .handler("/static/", fs::StaticFiles::new("./gui/build/").unwrap()
+                .handler("/static/", fs::StaticFiles::new("../gui/build/").unwrap()
                          .default_handler(static_index))
         })
             .bind(format!{"127.0.0.1:{}", plasma_server_port_a})

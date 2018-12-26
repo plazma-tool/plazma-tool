@@ -1,0 +1,6 @@
+[package]
+name = "intro_3d"
+version = "0.1.0"
+authors = ["etd <erethedaybreak@gmail.com>"]
+
+[dependencies]

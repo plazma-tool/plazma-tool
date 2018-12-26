@@ -1,0 +1,44 @@
+# Default sync tracks and vars:
+
+- { name: "time",                    value: 0.0 }
+
+- { name: "screen_resolution.x",     value: 1366.0 }
+- { name: "screen_resolution.y",     value: 768.0 }
+
+- { name: "window_resolution.x",     value: 1366.0 }
+- { name: "window_resolution.y",     value: 768.0 }
+
+- { name: "camera.pos.x",            value: 0.0 }
+- { name: "camera.pos.y",            value: 0.0 }
+- { name: "camera.pos.z",            value: 0.0 }
+
+- { name: "camera.front.x",          value: 0.0 }
+- { name: "camera.front.y",          value: 0.0 }
+- { name: "camera.front.z",          value: -1.0 }
+
+- { name: "camera.up.x",             value: 0.0 }
+- { name: "camera.up.y",             value: 1.0 }
+- { name: "camera.up.z",             value: 0.0 }
+
+- { name: "camera.lookat.x",         value: 0.0 }
+- { name: "camera.lookat.y",         value: 0.0 }
+- { name: "camera.lookat.z",         value: 0.0 }
+
+- { name: "camera.fovy",             value: 0.0 }
+- { name: "camera.znear",            value: 0.0 }
+- { name: "camera.zfar",             value: 0.0 }
+
+- { name: "light.pos.x",             value: 0.0 }
+- { name: "light.pos.y",             value: 0.0 }
+- { name: "light.pos.z",             value: 0.0 }
+
+- { name: "light.dir.x",             value: 0.0 }
+- { name: "light.dir.y",             value: 0.0 }
+- { name: "light.dir.z",             value: 0.0 }
+
+- { name: "light.strength",          value: 0.0 }
+- { name: "light.constant_falloff",  value: 0.0 }
+- { name: "light.linear_falloff",    value: 0.0 }
+- { name: "light.quadratic_falloff", value: 0.0 }
+- { name: "light.cutoff_angle",      value: 0.0 }
+

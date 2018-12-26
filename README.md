@@ -1,2 +1,2 @@
-Plasma Shader Tool
+Plazma Shader Tool
 

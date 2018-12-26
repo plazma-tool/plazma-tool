@@ -1,0 +1,33 @@
+[package]
+name = "plazma"
+version = "0.1.0"
+authors = ["etd <erethedaybreak@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+libc = "0.2"
+rand = "0.6"
+futures = "0.1"
+
+log = "0.4"
+env_logger = "0.6"
+clap = "2.32"
+kankyo = "0.2"
+
+gl = "0.11"
+glutin = "0.19"
+glium = "0.22"
+
+serde = "1.0"
+serde_derive = "1.0"
+serde_json = "1.0"
+serde_yaml = "0.8"
+
+web-view = "0.4"
+
+actix = "0.7.7"
+actix-web = "0.7.14"
+
+intro_3d = { path = "../libs/intro_3d" }
+#intro_runtime = { path = "../libs/intro_runtime" }
+

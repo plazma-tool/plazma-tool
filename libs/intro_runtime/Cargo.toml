@@ -5,3 +5,14 @@ authors = ["etd <erethedaybreak@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+gl = "0.11"
+smallvec = "0.6"
+#smallvec = { version = "0.6", default-features = false }
+intro_3d = { path = "../intro_3d" }
+
+[target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies]
+libc = { version = "0.2", default-features = false }
+
+#[target.'cfg(target_os = "windows")'.dependencies]
+#winapi = "0.3"
+#kernel32-sys = "0.2"

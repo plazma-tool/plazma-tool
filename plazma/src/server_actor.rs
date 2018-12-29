@@ -1,6 +1,5 @@
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use rand::Rng;
@@ -9,7 +8,6 @@ use actix_web::ws;
 use actix_web::actix::*;
 
 use crate::project_data::ProjectData;
-use crate::utils::file_to_string;
 
 /// How often heartbeat pings are sent
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);

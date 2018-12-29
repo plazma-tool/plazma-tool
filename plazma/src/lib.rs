@@ -13,8 +13,12 @@ extern crate serde_json;
 extern crate log;
 extern crate env_logger;
 
-#[macro_use]
-extern crate glium;
+extern crate gl;
+extern crate glutin;
+
+extern crate smallvec;
+extern crate intro_runtime;
+extern crate intro_3d;
 
 pub mod server_actor;
 pub mod preview_client;

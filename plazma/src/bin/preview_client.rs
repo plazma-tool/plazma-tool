@@ -122,7 +122,7 @@ fn main() {
     gl::load_with(|ptr| window.context().get_proc_address(ptr) as *const _);
 
     // NOTE for cube
-    //unsafe { gl::Enable(gl::DEPTH_TEST); }
+    unsafe { gl::Enable(gl::DEPTH_TEST); }
 
     // set the clear color at least once
     unsafe { gl::ClearColor(0.1, 0.2, 0.3, 1.0); }
@@ -143,6 +143,8 @@ fn main() {
     state.set_is_paused(false);
 
     render_loop(&window, &mut events_loop, &mut state, rx);
+
+    //add.do_send(ClientMessage("stop the client".to_string()));
 
     client_handle.join().unwrap();
 

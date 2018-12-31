@@ -51,39 +51,6 @@ class PlazmaMonacoToolbar extends React.Component {
     }
 }
 
-const default_shader = [
-    '#version 430',
-    '',
-    'in vec2 texCoord;',
-    'out vec4 out_color;',
-    '',
-    'layout(location = 0) uniform float iTime;',
-    'layout(location = 1) uniform vec2 iResolution;',
-    'layout(location = 3) uniform vec2 screenResolution;',
-    '',
-    '// --- tool ---',
-    '',
-    'void mainImage( out vec4 fragColor, in vec2 fragCoord )',
-    '{',
-    '  // Normalized pixel coordinates (from 0 to 1)',
-    '  vec2 uv = fragCoord/iResolution.xy;',
-    '',
-    '  // Time varying pixel color',
-    '  vec3 col = 0.5 + 0.5*cos(iTime+uv.xyx+vec3(0,2,4));',
-    '',
-    '  // Output to screen',
-    '  fragColor = vec4(col,1.0);',
-    '}',
-    '',
-    '// --- tool ---',
-    '',
-    'void main() {',
-    '  vec4 col = vec4(0.0, 0.0, 0.0, 1.0);',
-    '  mainImage(col, gl_FragCoord.xy);',
-    '  out_color = col;',
-    '}',
-].join('\n');
-
 // Requires props:
 // - editorContent
 // - onChangeLift
@@ -267,7 +234,7 @@ class App extends Component {
         var msg = JSON.parse(event.data);
         if (msg.data_type === 'SetDmo') {
             let d = JSON.parse(msg.data);
-            let frag_src = d.context_data.quad_scenes[0].frag_src;
+            let frag_src = d.context.quad_scenes[0].frag_src;
             this.setState({
                 dmo_data: d,
                 editor_content: frag_src,
@@ -281,7 +248,7 @@ class App extends Component {
     onEditorChange(newValue, e) {
         if (this.state.dmo_data) {
             let d = this.state.dmo_data;
-            d.context_data.quad_scenes[0].frag_src = newValue;
+            d.context.quad_scenes[0].frag_src = newValue;
 
             this.setState({
                 dmo_data: d,

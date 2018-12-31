@@ -1,26 +1,30 @@
 #version 430
 
+in vec2 texCoord;
 out vec4 out_color;
 
-uniform float iGlobalTime;
-//uniform vec2 iResolution;
+layout(location = 0) uniform float iTime;
+layout(location = 1) uniform vec2 iResolution;
+layout(location = 3) uniform vec2 screenResolution;
 
-//uniform vec3 bg_color;
-vec3 bg_color = vec3(0.1, 0.2, 0.3);
+// --- tool ---
 
-void mainImage( out vec4 fragColor, in vec2 fragCoord ) {
-  //vec2 uv = -1.0 + 2.0 * fragCoord.xy / iResolution.xy;
-  //uv.x *= iResolution.x / iResolution.y;
+void mainImage( out vec4 fragColor, in vec2 fragCoord )
+{
+  // Normalized pixel coordinates (from 0 to 1)
+  vec2 uv = fragCoord/iResolution.xy;
 
-  // background
-  vec3 col = bg_color * sin(iGlobalTime * 0.001);
+  // Time varying pixel color
+  vec3 col = 0.5 + 0.5*cos(iTime+uv.xyx+vec3(0,2,4));
 
-  fragColor = vec4(col, 1.0);
+  // Output to screen
+  fragColor = vec4(col,1.0);
 }
+
+// --- tool ---
 
 void main() {
   vec4 col = vec4(0.0, 0.0, 0.0, 1.0);
   mainImage(col, gl_FragCoord.xy);
   out_color = col;
 }
-

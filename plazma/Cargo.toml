@@ -13,10 +13,10 @@ log = "0.4"
 env_logger = "0.6"
 clap = "2.32"
 kankyo = "0.2"
+smallvec = "0.6"
 
 gl = "0.11"
 glutin = "0.19"
-glium = "0.22"
 
 serde = "1.0"
 serde_derive = "1.0"
@@ -29,5 +29,5 @@ actix = "0.7.7"
 actix-web = "0.7.14"
 
 intro_3d = { path = "../libs/intro_3d" }
-#intro_runtime = { path = "../libs/intro_runtime" }
+intro_runtime = { path = "../libs/intro_runtime" }
 

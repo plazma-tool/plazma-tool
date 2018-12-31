@@ -1,9 +1,6 @@
 use std::default::Default;
-use std::path::PathBuf;
 
 use serde_yaml;
-
-use crate::utils::file_to_string;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DmoData {
@@ -12,7 +9,7 @@ pub struct DmoData {
 
     /// Holds assets indexed by the Timeline and DrawOps, such as images, shader
     /// sources, sync tracks.
-    pub context_data: ContextData,
+    pub context: ContextData,
 
     /// Holds SceneBlocks on TimeTracks. Sampling the Timeline at time x
     /// produces a Vec<DrawOp> to draw the current frame by taking a
@@ -25,7 +22,7 @@ impl Default for DmoData {
     fn default() -> DmoData {
         DmoData {
             settings: Settings::default(),
-            context_data: ContextData::default(),
+            context: ContextData::default(),
             timeline: Timeline::default(),
         }
     }

@@ -3,6 +3,7 @@
 TAGS
 .DS_Store
 .rocket-recents.txt
+.tern-port
 **/auto/
 **/target
 **/*.rs.bk

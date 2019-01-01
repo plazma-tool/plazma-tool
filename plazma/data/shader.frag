@@ -15,7 +15,8 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
   vec2 uv = fragCoord/iResolution.xy;
 
   vec3 base = vec3(0.0, 2.0, 4.0); // !! color
-  vec3 col = 0.5 + 0.5*cos(iTime+uv.xyx + base);
+  float x = 0.5; // !! slider
+  vec3 col = 0.5 + x*cos(iTime+uv.xyx + base);
 
   // Output to screen
   fragColor = vec4(col,1.0);

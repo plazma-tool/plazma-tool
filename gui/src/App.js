@@ -51,6 +51,136 @@ class PlazmaMonacoToolbar extends React.Component {
     }
 }
 
+function getValuesFromCode(code) {
+    let values = [];
+    if (code === null) {
+        return values;
+    }
+
+    let re_color = /vec3 +([^ ]+) *= *vec3\(([^\)]+)\); *\/\/ *!! color *$/gm;
+
+    let m = null;
+    while ((m = re_color.exec(code)) !== null) {
+        let name = m[1].trim();
+        let rgb = m[2].trim();
+        let vec = [];
+
+        let mm = rgb.match(/([0-9\.]+)/g);
+        if (mm !== null) {
+            mm.forEach((i) => {
+                let n = Number(i);
+                if (!isNaN(n)) {
+                    let nn = Math.floor(n * 255);
+                    vec.push(nn);
+                }
+            });
+            if (vec.length === 3) {
+                values.push({
+                    name: name,
+                    rgba: {
+                        r: vec[0],
+                        g: vec[1],
+                        b: vec[2],
+                        a: 1.0,
+                    },
+                });
+            }
+        }
+    }
+
+    return values;
+}
+
+function numToStrPad(x) {
+    let s = x.toFixed(3).toString();
+    if (s.indexOf('.') === -1) {
+        return s + '.000';
+    } else {
+        return s.padEnd(5, '0');
+    }
+}
+
+function rgbaToVec3(rgba) {
+    let vec = [ rgba.r, rgba.g, rgba.b ].map((i) => {
+        return numToStrPad(Number((i / 255)));
+    });
+    return 'vec3(' + vec[0] + ', ' + vec[1] + ', ' + vec[2] + ')';
+}
+
+function replaceValueInCode(newColorValue, code) {
+    const c = newColorValue;
+    let re_color = new RegExp('(vec3 +' + c.name + ' *= *)vec3\\([^\\)]+\\)(; *\\/\\/ *!! color *$)', 'gm');
+    let newCodeValue = code.replace(re_color, '$1' + rgbaToVec3(c.rgba) + '$2');
+    return newCodeValue;
+}
+
+// Requires props:
+// - color: { name: "name", rgba: { r: 0, g: 0, b: 0, a: 0 } }
+// - onChangeLift
+class PlazmaColorPicker extends React.Component {
+    constructor(props) {
+        super(props);
+        this.onChangeLocal = this.onChangeLocal.bind(this);
+    }
+
+    onChangeLocal(color, event) {
+        let c = this.props.color;
+        let newColorValue = {
+            name: c.name,
+            rgba: color.rgb,
+        };
+        this.props.onChangeLift(newColorValue);
+    }
+
+    render() {
+        let c = this.props.color;
+        return (
+            <div className="is-one-quarter">
+              <span>{c.name}</span>
+              <SketchPicker
+                color={c.rgba}
+                onChange={this.onChangeLocal}
+              />
+            </div>
+        );
+    }
+}
+
+// Requires props:
+// - code
+// - onChangeLift
+class ColorPickerColumns extends React.Component {
+    constructor(props) {
+        super(props);
+        this.onChangeLocal = this.onChangeLocal.bind(this);
+    }
+
+    onChangeLocal(newColorValue) {
+        let newCodeValue = replaceValueInCode(newColorValue, this.props.code);
+        this.props.onChangeLift(newCodeValue);
+    }
+
+    render() {
+        let values = getValuesFromCode(this.props.code);
+        let pickers = values.map((color, idx) => {
+            return (
+                <PlazmaColorPicker
+                  key={color.name + idx}
+                  color={color}
+                  onChangeLift={this.onChangeLocal}
+                />
+            );
+        });
+        return (
+            <Column>
+              <Columns>
+                {pickers}
+              </Columns>
+            </Column>
+        );
+    }
+}
+
 // Requires props:
 // - editorContent
 // - onChangeLift
@@ -150,9 +280,27 @@ class PlazmaMonaco extends React.Component {
         });
     }
 
+    editorWillMount(monaco) {
+        monaco.languages.register({ id: 'glsl' });
+        monaco.languages.setMonarchTokensProvider('glsl', {
+            comments: {
+                "lineComment": "//",
+                "blockComment": [ "/*", "*/" ]
+            },
+            brackets: [
+                ["{", "}", "delimiter.curly"],
+                //["[", "]", "delimiter.bracket"],
+                //["(", ")", "delimiter.round"],
+            ],
+            tokenizer: {
+                root: [],
+            },
+        });
+    }
+
     render() {
         const options = {
-            //language: "glsl",
+            language: "glsl",
             lineNumbers: "on",
             roundedSelection: false,
             scrollBeyondLastLine: true,
@@ -169,11 +317,12 @@ class PlazmaMonaco extends React.Component {
               <MonacoEditor
                 //width="800"
                 height="600"
-                language="plaintext"
+                language="glsl"
                 theme="vs-dark"
                 value={this.props.editorContent}
                 options={options}
                 onChange={this.onChangeLocal}
+                editorWillMount={this.editorWillMount}
                 editorDidMount={this.editorDidMount}
               />
             </div>
@@ -194,7 +343,9 @@ class App extends Component {
 
         this.updateTimerId = null;
 
+        this.sendUpdatedContent = this.sendUpdatedContent.bind(this);
         this.onEditorChange = this.onEditorChange.bind(this);
+        this.onColorPickerChange = this.onColorPickerChange.bind(this);
         this.handleSocketOpen = this.handleSocketOpen.bind(this);
         this.handleSocketMessage = this.handleSocketMessage.bind(this);
         this.sendDmoData = this.sendDmoData.bind(this);
@@ -216,7 +367,6 @@ class App extends Component {
     componentWillUnmount() {
         window.clearInterval(this.updateTimerId);
     }
-
 
     handleSocketOpen(event) {
         // Request DmoData from server.
@@ -245,7 +395,7 @@ class App extends Component {
         }
     }
 
-    onEditorChange(newValue, e) {
+    sendUpdatedContent(newValue) {
         if (this.state.dmo_data) {
             let d = this.state.dmo_data;
             d.context.quad_scenes[0].frag_src = newValue;
@@ -258,6 +408,14 @@ class App extends Component {
         this.setState({
             sentUpdateSinceChange: false,
         });
+    }
+
+    onEditorChange(newValue, e) {
+        this.sendUpdatedContent(newValue);
+    }
+
+    onColorPickerChange(newValue) {
+        this.sendUpdatedContent(newValue);
     }
 
     sendDmoData() {
@@ -324,12 +482,12 @@ class App extends Component {
                     </Column>
                   </Columns>
                   <Columns>
-                    <Column>
-                      <SketchPicker/>
-                    </Column>
-                    <Column>
-                      <SketchPicker/>
-                    </Column>
+
+                    <ColorPickerColumns
+                      code={this.state.editor_content}
+                      onChangeLift={this.onColorPickerChange}
+                    />
+
                     <Column>
                       <Slider />
                       <Range />

@@ -1,9 +1,9 @@
 import React, { Component } from 'react';
 //import * as ReactDOM from 'react-dom';
-import { Icon, Button, Container, Box, Menu, MenuLabel, MenuList, MenuLink, Columns, Column  } from 'bloomer';
+import { Icon, Button, Menu, MenuLabel, MenuList, MenuLink, Columns, Column  } from 'bloomer';
 import MonacoEditor from 'react-monaco-editor';
 import { SketchPicker } from 'react-color';
-import Slider, { Range } from 'rc-slider';
+import Slider from 'rc-slider';
 import './App.css';
 
 //import logo from './logo.svg';
@@ -51,7 +51,7 @@ class PlazmaMonacoToolbar extends React.Component {
     }
 }
 
-function getValuesFromCode(code) {
+function getColorValuesFromCode(code) {
     let values = [];
     if (code === null) {
         return values;
@@ -91,6 +91,25 @@ function getValuesFromCode(code) {
     return values;
 }
 
+function getSliderValuesFromCode(code) {
+    let values = [];
+    if (code === null) {
+        return values;
+    }
+
+    let re_slider = /float +([^ ]+) *= *([0-9\.]+); *\/\/ *!! slider *$/gm;
+
+    let m = null;
+    while ((m = re_slider.exec(code)) !== null) {
+        values.push({
+            name: m[1].trim(),
+            value: Math.floor(Number(m[2].trim()) * 1000),
+        });
+    }
+
+    return values;
+}
+
 function numToStrPad(x) {
     let s = x.toFixed(3).toString();
     if (s.indexOf('.') === -1) {
@@ -107,10 +126,17 @@ function rgbaToVec3(rgba) {
     return 'vec3(' + vec[0] + ', ' + vec[1] + ', ' + vec[2] + ')';
 }
 
-function replaceValueInCode(newColorValue, code) {
+function replaceColorValueInCode(newColorValue, code) {
     const c = newColorValue;
     let re_color = new RegExp('(vec3 +' + c.name + ' *= *)vec3\\([^\\)]+\\)(; *\\/\\/ *!! color *$)', 'gm');
     let newCodeValue = code.replace(re_color, '$1' + rgbaToVec3(c.rgba) + '$2');
+    return newCodeValue;
+}
+
+function replaceSliderValueInCode(newSliderValue, code) {
+    const x = newSliderValue;
+    let re_slider = new RegExp('(float ' + x.name + ' *= *)[0-9\\.]+(; *\\/\\/ *!! slider *$)', 'gm');
+    let newCodeValue = code.replace(re_slider, '$1' + numToStrPad(x.value / 1000) + '$2');
     return newCodeValue;
 }
 
@@ -147,6 +173,39 @@ class PlazmaColorPicker extends React.Component {
 }
 
 // Requires props:
+// - sliderValue: { name: "name", value: 0.0 }
+// - onChangeLift
+class PlazmaSlider extends React.Component {
+    constructor(props) {
+        super(props);
+        this.onChangeLocal = this.onChangeLocal.bind(this);
+    }
+
+    onChangeLocal(x) {
+        let newValue = {
+            name: this.props.sliderValue.name,
+            value: x,
+        };
+        this.props.onChangeLift(newValue);
+    }
+
+    render() {
+        return (
+            <div className="is-half">
+              <span>{this.props.sliderValue.name}</span>
+              <Slider
+                value={this.props.sliderValue.value}
+                step={1}
+                min={0}
+                max={1000}
+                onChange={this.onChangeLocal}
+              />
+            </div>
+        );
+    }
+}
+
+// Requires props:
 // - code
 // - onChangeLift
 class ColorPickerColumns extends React.Component {
@@ -156,12 +215,12 @@ class ColorPickerColumns extends React.Component {
     }
 
     onChangeLocal(newColorValue) {
-        let newCodeValue = replaceValueInCode(newColorValue, this.props.code);
+        let newCodeValue = replaceColorValueInCode(newColorValue, this.props.code);
         this.props.onChangeLift(newCodeValue);
     }
 
     render() {
-        let values = getValuesFromCode(this.props.code);
+        let values = getColorValuesFromCode(this.props.code);
         let pickers = values.map((color, idx) => {
             return (
                 <PlazmaColorPicker
@@ -176,6 +235,39 @@ class ColorPickerColumns extends React.Component {
               <Columns>
                 {pickers}
               </Columns>
+            </Column>
+        );
+    }
+}
+
+// Requires props:
+// - code
+// - onChangeLift
+class SliderColumns extends React.Component {
+    constructor(props) {
+        super(props);
+        this.onChangeLocal = this.onChangeLocal.bind(this);
+    }
+
+    onChangeLocal(newValue) {
+        let newCodeValue = replaceSliderValueInCode(newValue, this.props.code);
+        this.props.onChangeLift(newCodeValue);
+    }
+
+    render() {
+        let values = getSliderValuesFromCode(this.props.code);
+        let sliders = values.map((value, idx) => {
+            return (
+                <PlazmaSlider
+                  key={value.name + idx}
+                  sliderValue={value}
+                  onChangeLift={this.onChangeLocal}
+                />
+            );
+        });
+        return (
+            <Column>
+              {sliders}
             </Column>
         );
     }
@@ -488,10 +580,11 @@ class App extends Component {
                       onChangeLift={this.onColorPickerChange}
                     />
 
-                    <Column>
-                      <Slider />
-                      <Range />
-                    </Column>
+                    <SliderColumns
+                      code={this.state.editor_content}
+                      onChangeLift={this.onColorPickerChange}
+                    />
+
                   </Columns>
                 </Column>
               </Columns>

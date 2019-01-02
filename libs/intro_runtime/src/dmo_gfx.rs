@@ -35,6 +35,89 @@ impl DmoGfx {
         self.context.impl_draw_quad_scene(0);
     }
 
+    pub fn create_quads(&mut self,
+                        err_msg_buf: &mut [u8; ERR_MSG_LEN])
+                        -> Result<(), RuntimeError>
+    {
+        for mut scene in self.context.quad_scenes.iter_mut() {
+
+            let vert_src = match self.context.shader_sources.get(scene.vert_src_idx) {
+                Some(a) => str::from_utf8(&a).unwrap(),
+                None => return Err(FailedToCreateNoSuchVertSrcIdx),
+            };
+
+            let frag_src = match self.context.shader_sources.get(scene.frag_src_idx) {
+                Some(a) => str::from_utf8(&a).unwrap(),
+                None => return Err(FailedToCreateNoSuchFragSrcIdx),
+            };
+
+            scene.create_quad(vert_src, frag_src, err_msg_buf)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn compile_quad_scene(&mut self,
+                              scene_idx: usize,
+                              err_msg_buf: &mut [u8; ERR_MSG_LEN])
+                              -> Result<(), RuntimeError>
+    {
+        if scene_idx >= self.context.quad_scenes.len() {
+            return Err(SceneIdxIsOutOfBounds);
+        }
+
+        let vert_src_idx = self.context.quad_scenes[scene_idx].vert_src_idx;
+        let frag_src_idx = self.context.quad_scenes[scene_idx].frag_src_idx;
+
+        if let Some(ref mut quad) = self.context.quad_scenes[scene_idx].quad {
+            let ref s = self.context.shader_sources[vert_src_idx];
+            let vert_src = str::from_utf8(s).unwrap();
+            let ref s = self.context.shader_sources[frag_src_idx];
+            let frag_src = str::from_utf8(s).unwrap();
+
+            quad.compile_program(vert_src, frag_src, err_msg_buf)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn create_frame_buffers(&mut self) -> Result<(), RuntimeError> {
+        let (wx, wy) = self.context.get_window_resolution();
+
+        for mut buffer in self.context.frame_buffers.iter_mut() {
+            if let Some(idx) = buffer.image_data_idx {
+                let image = match self.context.images.get(idx) {
+                    Some(x) => x,
+                    None => return Err(ImageIndexIsOutOfBounds),
+                };
+                buffer.create_buffer(wx as i32, wy as i32, Some(&image))?;
+            } else {
+                buffer.create_buffer(wx as i32, wy as i32, None)?;
+            }
+        }
+        Ok(())
+    }
+
+    // FIXME there are two cases: re-creating framebuffers which are window-sized
+    // (need new dimensions) and buffers which are fixed size (image texture).
+
+    pub fn recreate_framebuffers(&mut self) -> Result<(), RuntimeError> {
+        let (wx, wy) = self.context.get_window_resolution();
+        for mut buffer in self.context.frame_buffers.iter_mut() {
+            buffer.gl_cleanup();
+            if let Some(idx) = buffer.image_data_idx {
+                let image = match self.context.images.get(idx) {
+                    Some(x) => x,
+                    None => return Err(ImageIndexIsOutOfBounds),
+                };
+                buffer.create_buffer(wx as i32, wy as i32, Some(&image))?;
+            } else {
+                buffer.create_buffer(wx as i32, wy as i32, None)?;
+            }
+        }
+        Ok(())
+    }
+
     pub fn update_vars(&mut self) -> Result<(), RuntimeError> {
         self.sync.update_vars(&mut self.context)
     }
@@ -64,30 +147,6 @@ impl DmoGfx {
         } else {
             self.context.profile_frame_idx = 0;
         }
-    }
-
-    pub fn compile_quad_scene(&mut self,
-                              scene_idx: usize,
-                              err_msg_buf: &mut [u8; ERR_MSG_LEN])
-                              -> Result<(), RuntimeError>
-    {
-        if scene_idx >= self.context.quad_scenes.len() {
-            return Err(SceneIdxIsOutOfBounds);
-        }
-
-        let vert_src_idx = self.context.quad_scenes[scene_idx].vert_src_idx;
-        let frag_src_idx = self.context.quad_scenes[scene_idx].frag_src_idx;
-
-        if let Some(ref mut quad) = self.context.quad_scenes[scene_idx].quad {
-            let ref s = self.context.shader_sources[vert_src_idx];
-            let vert_src = str::from_utf8(s).unwrap();
-            let ref s = self.context.shader_sources[frag_src_idx];
-            let frag_src = str::from_utf8(s).unwrap();
-
-            quad.compile_program(vert_src, frag_src, err_msg_buf)?;
-        }
-
-        Ok(())
     }
 
 }

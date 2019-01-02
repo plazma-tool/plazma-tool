@@ -1,3 +1,5 @@
+use smallvec::SmallVec;
+
 use gl::types::*;
 
 /// Order of attributes is significant, we want this to translate to a specific
@@ -10,6 +12,21 @@ pub struct Vertex {
     pub texcoords: [GLfloat; 2],
     //pub tangent:   [GLfloat; 3],
     //pub bitangent: [GLfloat; 3],
+}
+
+pub struct Image {
+    pub width: u32,
+    pub height: u32,
+    pub format: PixelFormat,
+    pub raw_pixels: SmallVec<[u8; 1024]>,
+}
+
+#[derive(Copy, Clone)]
+pub enum PixelFormat {
+    NOOP,
+    RED_u8,
+    RGB_u8,
+    RGBA_u8,
 }
 
 /// Value for a `vec3` type uniform. Either sync `.xyz` from tracks, or set a

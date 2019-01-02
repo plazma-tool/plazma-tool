@@ -25,10 +25,17 @@ pub const ERR_MSG_LEN: usize = 1024;
 
 pub mod dmo_gfx;
 pub mod context_gfx;
-pub mod quad_scene_gfx;
+
 pub mod dmo_sync;
 pub mod sync_vars;
+
+pub mod quad_scene_gfx;
+
+pub mod frame_buffer;
+pub mod texture;
+
 pub mod shapes;
+
 pub mod shader;
 pub mod types;
 pub mod error;

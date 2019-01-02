@@ -1,16 +1,17 @@
 use core::str;
 
 // TODO std::time is not very no_std
-use std::time::Instant;
+use std::time::{Instant, Duration};
 
 use smallvec::SmallVec;
 
 use gl;
 
+use crate::ERR_MSG_LEN;
+use crate::types::{UniformMapping, Image};
 use crate::sync_vars::SyncVars;
 use crate::quad_scene_gfx::QuadSceneGfx;
-use crate::ERR_MSG_LEN;
-use crate::types::UniformMapping;
+use crate::frame_buffer::FrameBuffer;
 use crate::sync_vars::builtin_to_idx;
 use crate::sync_vars::BuiltIn::*;
 
@@ -23,7 +24,9 @@ pub struct ContextGfx {
 
     /// 1kb x 64 shaders on the stack, larger shaders or more of them on the heap.
     pub shader_sources: SmallVec<[SmallVec<[u8; 1024]>; 64]>,
+    pub images: SmallVec<[Image; 4]>,
     pub quad_scenes: SmallVec<[QuadSceneGfx; 64]>,
+    pub frame_buffers: SmallVec<[FrameBuffer; 64]>,
 
     /// Profile events for 60 frames, max 100 events per frame.
     pub profile_times: [[f32; PROFILE_EVENTS]; PROFILE_FRAMES],
@@ -46,7 +49,9 @@ impl Default for ContextGfx {
                         1024.0, 768.0,// window width and height
                         1024.0, 768.0,// screen width and height
                         SmallVec::new(),// shader sources
+                        SmallVec::new(),// images
                         SmallVec::new(),// quad scenes
+                        SmallVec::new()// frame buffers
         )
     }
 }
@@ -58,7 +63,9 @@ impl ContextGfx {
                screen_width: f64,
                screen_height: f64,
                shader_sources: SmallVec<[SmallVec<[u8; 1024]>; 64]>,
-               quad_scenes: SmallVec<[QuadSceneGfx; 64]>)
+               images: SmallVec<[Image; 4]>,
+               quad_scenes: SmallVec<[QuadSceneGfx; 64]>,
+               frame_buffers: SmallVec<[FrameBuffer; 64]>)
                -> ContextGfx
     {
         let mut sync_vars = SyncVars::default();
@@ -75,7 +82,10 @@ impl ContextGfx {
             sync_vars: sync_vars,
 
             shader_sources: shader_sources,
+            images: images,
             quad_scenes: quad_scenes,
+
+            frame_buffers: frame_buffers,
 
             profile_times: empty_profile,
             profile_frame_idx: 0,
@@ -90,9 +100,20 @@ impl ContextGfx {
     }
 
     pub fn gl_cleanup(&mut self) {
-        for scene in self.quad_scenes.iter_mut() {
+        for mut scene in self.quad_scenes.iter_mut() {
             scene.gl_cleanup();
         }
+        for mut buffer in self.frame_buffers.iter_mut() {
+            buffer.gl_cleanup();
+        }
+    }
+
+    pub fn set_time(&mut self, time: f64) {
+        self.sync_vars.set_builtin(Time, time);
+    }
+
+    pub fn get_time(&self) -> f64 {
+        self.sync_vars.get_builtin(Time)
     }
 
     pub fn set_window_resolution(&mut self, width: f64, height: f64) {
@@ -113,6 +134,11 @@ impl ContextGfx {
     pub fn get_screen_resolution(&self) -> (f64, f64) {
         (self.sync_vars.get_builtin(Screen_Width),
          self.sync_vars.get_builtin(Screen_Height))
+    }
+
+    pub fn get_last_work_buffer(&self) -> &FrameBuffer {
+        let n = self.frame_buffers.len();
+        &self.frame_buffers[n - 1]
     }
 
     pub fn add_quad_scene(&mut self, vert_src: &str, frag_src: &str) {
@@ -144,11 +170,29 @@ impl ContextGfx {
         self.quad_scenes.push(quad_scene);
     }
 
+    pub fn impl_exit(&mut self, limit: f64) {
+        if self.get_time() > limit {
+            self.is_running = false;
+        }
+    }
+
     pub fn impl_draw_quad_scene(&self, scene_idx: usize) {
         if let Some(ref scene) = self.quad_scenes.get(scene_idx) {
             scene.draw(&self).unwrap();
         } else {
             panic!("Quad scene index doesn't exist: {}", scene_idx);
+        }
+    }
+
+    pub fn impl_target_buffer(&self, buffer_idx: usize) {
+        if let Some(buffer) = self.frame_buffers.get(buffer_idx) {
+            if let Some(fbo) = buffer.fbo {
+                unsafe { gl::BindFramebuffer(gl::FRAMEBUFFER, fbo); }
+            } else {
+                panic!("This buffer hasn't been created: {}", buffer_idx);
+            }
+        } else {
+            panic!("Buffer index doesn't exist: {}", buffer_idx);
         }
     }
 
@@ -165,6 +209,23 @@ impl ContextGfx {
 
     pub fn impl_target_buffer_default(&self) {
         unsafe { gl::BindFramebuffer(gl::FRAMEBUFFER, 0); }
+    }
+
+    pub fn impl_profile_event(&mut self, label_idx: usize) {
+        if self.profile_frame_idx < PROFILE_FRAMES && self.profile_event_idx < PROFILE_EVENTS {
+            let t_delta: Duration = self.t_frame_start.elapsed();
+            // t_delta as nanosec
+            let nanos: u64 = (t_delta.as_secs() * 1_000_000_000) + (t_delta.subsec_nanos() as u64);
+            // as millisec
+            let millis: f32 = (nanos as f32) / (1_000_000 as f32);
+
+            self.profile_times[self.profile_frame_idx][self.profile_event_idx] = millis;
+            self.profile_event_idx += 1;
+
+            if self.max_profile_event_idx < self.profile_event_idx {
+                self.max_profile_event_idx = self.profile_event_idx;
+            }
+        }
     }
 }
 

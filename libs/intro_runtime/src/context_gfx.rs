@@ -100,10 +100,10 @@ impl ContextGfx {
     }
 
     pub fn gl_cleanup(&mut self) {
-        for mut scene in self.quad_scenes.iter_mut() {
+        for scene in self.quad_scenes.iter_mut() {
             scene.gl_cleanup();
         }
-        for mut buffer in self.frame_buffers.iter_mut() {
+        for buffer in self.frame_buffers.iter_mut() {
             buffer.gl_cleanup();
         }
     }
@@ -165,7 +165,7 @@ impl ContextGfx {
         let mut err_msg_buf = [32 as u8; ERR_MSG_LEN];
         match quad_scene.create_quad(vert_src, frag_src, &mut err_msg_buf) {
             Ok(_) => {},
-            Err(e) => println!("Error! Message:\n{}", str::from_utf8(&err_msg_buf).unwrap()),
+            Err(_) => println!("Error! Message:\n{}", str::from_utf8(&err_msg_buf).unwrap()),
         };
         self.quad_scenes.push(quad_scene);
     }

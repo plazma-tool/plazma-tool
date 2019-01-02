@@ -39,7 +39,7 @@ impl DmoGfx {
                         err_msg_buf: &mut [u8; ERR_MSG_LEN])
                         -> Result<(), RuntimeError>
     {
-        for mut scene in self.context.quad_scenes.iter_mut() {
+        for scene in self.context.quad_scenes.iter_mut() {
 
             let vert_src = match self.context.shader_sources.get(scene.vert_src_idx) {
                 Some(a) => str::from_utf8(&a).unwrap(),
@@ -84,7 +84,7 @@ impl DmoGfx {
     pub fn create_frame_buffers(&mut self) -> Result<(), RuntimeError> {
         let (wx, wy) = self.context.get_window_resolution();
 
-        for mut buffer in self.context.frame_buffers.iter_mut() {
+        for buffer in self.context.frame_buffers.iter_mut() {
             if let Some(idx) = buffer.image_data_idx {
                 let image = match self.context.images.get(idx) {
                     Some(x) => x,
@@ -103,7 +103,7 @@ impl DmoGfx {
 
     pub fn recreate_framebuffers(&mut self) -> Result<(), RuntimeError> {
         let (wx, wy) = self.context.get_window_resolution();
-        for mut buffer in self.context.frame_buffers.iter_mut() {
+        for buffer in self.context.frame_buffers.iter_mut() {
             buffer.gl_cleanup();
             if let Some(idx) = buffer.image_data_idx {
                 let image = match self.context.images.get(idx) {

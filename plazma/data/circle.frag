@@ -4,7 +4,7 @@ out vec4 out_color;
 
 layout(location = 0) uniform float iTime;
 layout(location = 1) uniform vec2 iResolution;
-layout(location = 3) uniform vec2 screenResolution;
+layout(location = 2) uniform vec2 screenResolution;
 
 // --- tool ---
 

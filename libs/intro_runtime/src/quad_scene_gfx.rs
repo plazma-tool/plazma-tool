@@ -15,6 +15,7 @@ use crate::error::RuntimeError::*;
 
 pub struct QuadSceneGfx {
     /// an ID number to use with the `Draw_Quad_Scene(u8)` operator
+    // FIXME rename to idx, used as arrax index
     pub id: u8,
     /// Load the vertex shader using this index from `Context.shader_sources[]`
     pub vert_src_idx: usize,
@@ -97,7 +98,29 @@ impl QuadSceneGfx {
                 }
 
                 // Bind a buffer as texture
-                // TODO
+                for item in self.binding_to_buffers.iter() {
+                    use crate::types::BufferMapping::*;
+                    match *item {
+                        NOOP => {},
+
+                        Sampler2D(binding_idx, buffer_idx) => {
+                            if (buffer_idx as usize) < context.frame_buffers.len() {
+                                if binding_idx <= gl::MAX_COMBINED_TEXTURE_IMAGE_UNITS as u8 {
+                                    if let Some(fbo) = context.frame_buffers[buffer_idx as usize].fbo {
+                                        gl::ActiveTexture(gl::TEXTURE0 + (binding_idx as GLuint));
+                                        gl::BindTexture(gl::TEXTURE_2D, fbo);
+                                    } else {
+                                        return Err(NoFbo);
+                                    }
+                                } else {
+                                    return Err(TextureBindingIdxIsOverTheHardwareLimit);
+                                }
+                            } else {
+                                return Err(TextureBindingIdxDoesntExist);
+                            }
+                        },
+                    }
+                }
 
                 gl::BindVertexArray(quad.vao);
                 gl::DrawArrays(gl::TRIANGLE_STRIP, 0, 4);

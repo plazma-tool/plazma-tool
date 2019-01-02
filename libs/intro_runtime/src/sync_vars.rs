@@ -63,6 +63,7 @@ impl SyncVars {
         self.tracks[idx].value
     }
 
+    /*
     pub fn set_custom(&mut self, name: &str, value: f64) {
         // TODO
     }
@@ -71,6 +72,7 @@ impl SyncVars {
         // TODO
         0.0
     }
+    */
 }
 
 pub fn builtin_to_idx(name: BuiltIn) -> usize {

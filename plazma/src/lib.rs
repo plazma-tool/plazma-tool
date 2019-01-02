@@ -25,4 +25,4 @@ pub mod preview_client;
 pub mod project_data;
 pub mod dmo_data;
 pub mod utils;
-
+pub mod error;

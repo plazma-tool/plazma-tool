@@ -270,6 +270,8 @@ fn render_loop(window: &GlWindow,
 
         // 5. draw if we are not paused or should draw anyway (e.g. assets changed)
 
+        state.dmo_gfx.update_polygon_context();
+
         if !state.get_is_paused() || state.draw_anyway {
             state.draw();
         }

@@ -8,7 +8,7 @@ use smallvec::SmallVec;
 use gl;
 
 use crate::ERR_MSG_LEN;
-use crate::types::{UniformMapping, Image};
+use crate::types::{Image, BufferMapping, UniformMapping};
 use crate::sync_vars::SyncVars;
 use crate::quad_scene_gfx::QuadSceneGfx;
 use crate::frame_buffer::FrameBuffer;
@@ -141,7 +141,12 @@ impl ContextGfx {
         &self.frame_buffers[n - 1]
     }
 
-    pub fn add_quad_scene(&mut self, vert_src: &str, frag_src: &str) {
+    pub fn add_quad_scene(&mut self,
+                          vert_src: &str,
+                          frag_src: &str,
+                          layout_to_vars: SmallVec<[UniformMapping; 64]>,
+                          binding_to_buffers: SmallVec<[BufferMapping; 64]>)
+    {
         self.shader_sources.push(SmallVec::from_slice(vert_src.as_bytes()));
         let vert_src_idx = self.shader_sources.len() - 1;
         self.shader_sources.push(SmallVec::from_slice(frag_src.as_bytes()));
@@ -151,22 +156,9 @@ impl ContextGfx {
 
         let mut quad_scene = QuadSceneGfx::new(quad_scene_id as u8, vert_src_idx, frag_src_idx);
 
-        quad_scene.layout_to_vars.push(UniformMapping::Float(0,
-                                                             builtin_to_idx(Time) as u8));
+        quad_scene.layout_to_vars = layout_to_vars;
+        quad_scene.binding_to_buffers = binding_to_buffers;
 
-        quad_scene.layout_to_vars.push(UniformMapping::Vec2(1,
-                                                            builtin_to_idx(Window_Width) as u8,
-                                                            builtin_to_idx(Window_Height) as u8));
-
-        quad_scene.layout_to_vars.push(UniformMapping::Vec2(3,
-                                                            builtin_to_idx(Screen_Width) as u8,
-                                                            builtin_to_idx(Screen_Height) as u8));
-
-        let mut err_msg_buf = [32 as u8; ERR_MSG_LEN];
-        match quad_scene.create_quad(vert_src, frag_src, &mut err_msg_buf) {
-            Ok(_) => {},
-            Err(_) => println!("Error! Message:\n{}", str::from_utf8(&err_msg_buf).unwrap()),
-        };
         self.quad_scenes.push(quad_scene);
     }
 

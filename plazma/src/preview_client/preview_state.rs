@@ -1,11 +1,20 @@
 use std::error::Error;
 use std::time::{Duration, Instant};
 
-use crate::dmo_data::DmoData;
+use smallvec::SmallVec;
+
 use intro_runtime::ERR_MSG_LEN;
 use intro_runtime::dmo_gfx::DmoGfx;
 use intro_runtime::dmo_sync::SyncDevice;
+use intro_runtime::sync_vars::builtin_to_idx;
+use intro_runtime::sync_vars::BuiltIn::*;
+use intro_runtime::frame_buffer::{FrameBuffer, BufferKind};
+use intro_runtime::types::PixelFormat;
 use intro_runtime::error::RuntimeError;
+use intro_runtime::types::{BufferMapping, UniformMapping};
+
+use crate::dmo_data::DmoData;
+use crate::error::ToolError;
 
 pub struct PreviewState {
     pub t_frame_start: Instant,
@@ -43,13 +52,84 @@ impl PreviewState {
 
     pub fn build(&mut self, dmo_data: &DmoData) -> Result<(), Box<Error>> {
 
-        // Add a QuadScenes manually for now.
+        // Manually for now. First add objects, then create OpenGL objects.
+
+        // Add frame buffers
+
+        self.dmo_gfx.context.frame_buffers.push(
+            FrameBuffer::new(BufferKind::Empty_Texture,
+                             PixelFormat::RGBA_u8,
+                             None)
+        );
+
+        // Add quad scenes
 
         for quad_scene_data in dmo_data.context.quad_scenes.iter() {
-            self.dmo_gfx
-                .context
-                .add_quad_scene(&quad_scene_data.vert_src,
-                                &quad_scene_data.frag_src);
+            if quad_scene_data.frag_src_path.ends_with("circle.frag") {
+                let mut layout_to_vars: SmallVec<[UniformMapping; 64]> = SmallVec::new();
+
+                layout_to_vars.push(UniformMapping::Float(0,
+                                                          builtin_to_idx(Time) as u8));
+
+                layout_to_vars.push(UniformMapping::Vec2(1,
+                                                         builtin_to_idx(Window_Width) as u8,
+                                                         builtin_to_idx(Window_Height) as u8));
+
+                layout_to_vars.push(UniformMapping::Vec2(2,
+                                                         builtin_to_idx(Screen_Width) as u8,
+                                                         builtin_to_idx(Screen_Height) as u8));
+
+                self.dmo_gfx
+                    .context
+                    .add_quad_scene(&quad_scene_data.vert_src,
+                                    &quad_scene_data.frag_src,
+                                    layout_to_vars,
+                                    SmallVec::new());
+            }
+            else if quad_scene_data.frag_src_path.ends_with("cross.frag") {
+                let mut layout_to_vars: SmallVec<[UniformMapping; 64]> = SmallVec::new();
+
+                layout_to_vars.push(UniformMapping::Float(0,
+                                                          builtin_to_idx(Time) as u8));
+
+                layout_to_vars.push(UniformMapping::Vec2(1,
+                                                         builtin_to_idx(Window_Width) as u8,
+                                                         builtin_to_idx(Window_Height) as u8));
+
+                layout_to_vars.push(UniformMapping::Vec2(2,
+                                                         builtin_to_idx(Screen_Width) as u8,
+                                                         builtin_to_idx(Screen_Height) as u8));
+
+                let mut binding_to_buffers: SmallVec<[BufferMapping; 64]> = SmallVec::new();
+
+                binding_to_buffers.push(BufferMapping::Sampler2D(0, 0));
+
+                self.dmo_gfx
+                    .context
+                    .add_quad_scene(&quad_scene_data.vert_src,
+                                    &quad_scene_data.frag_src,
+                                    layout_to_vars,
+                                    binding_to_buffers);
+            }
+        }
+
+        // Create quads
+
+        let mut err_msg_buf = [32 as u8; ERR_MSG_LEN];
+
+        match self.dmo_gfx.create_quads(&mut err_msg_buf) {
+            Ok(_) => {},
+            Err(e) => {
+                let msg = String::from_utf8(err_msg_buf.to_vec())?;
+                return Err(Box::new(ToolError::Runtime(e, msg)));
+            }
+        }
+
+        // Create framebuffers
+
+        match self.dmo_gfx.create_frame_buffers() {
+            Ok(_) => {},
+            Err(e) => return Err(Box::new(ToolError::Runtime(e, "".to_owned())))
         }
 
         Ok(())

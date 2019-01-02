@@ -30,9 +30,16 @@ impl Default for DmoGfx {
 
 impl DmoGfx {
     pub fn draw(&self) {
+        // draw the circle
+        self.context.impl_target_buffer(0);
+        self.context.impl_clear(0, 0, 255, 0);
+        self.context.impl_draw_quad_scene(0);
+
         self.context.impl_target_buffer_default();
         self.context.impl_clear(0, 255, 0, 0);
-        self.context.impl_draw_quad_scene(0);
+
+        // draw the cross
+        self.context.impl_draw_quad_scene(1);
     }
 
     pub fn create_quads(&mut self,

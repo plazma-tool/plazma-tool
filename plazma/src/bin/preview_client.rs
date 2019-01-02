@@ -234,11 +234,17 @@ fn render_loop(window: &GlWindow,
         events_loop.poll_events(|event| {
             match event {
                 Event::WindowEvent { event, .. } => match event {
-                    WindowEvent::CloseRequested => state.set_is_running(false),
+                    WindowEvent::CloseRequested => {
+                        state.set_is_running(false);
+                    },
 
                     WindowEvent::HiDpiFactorChanged(dpi) => {
                         dpi_factor = dpi;
                     }
+
+                    WindowEvent::Refresh => {
+                        state.draw_anyway = true;
+                    },
 
                     WindowEvent::Resized(logical_size) => {
                         let physical_size = logical_size.to_physical(dpi_factor);

@@ -128,8 +128,10 @@ fn main() {
     unsafe { gl::ClearColor(0.1, 0.2, 0.3, 1.0); }
 
     let logical_size = window.window().get_inner_size().unwrap();
+    let dpi_factor = window.window().get_hidpi_factor();
+    let physical_size = logical_size.to_physical(dpi_factor);
     // NOTE should we use LogicalSize instead, keep in mind the u32 truncates later
-    let (wx, wy) = (logical_size.width, logical_size.height);
+    let (wx, wy) = (physical_size.width, physical_size.height);
 
     // Window size = screen size because we start fullscreen.
     let mut state =
@@ -155,6 +157,8 @@ fn render_loop(window: &GlWindow,
                events_loop: &mut EventsLoop,
                state: &mut PreviewState,
                channel_receiver: mpsc::Receiver<String>) {
+
+    let mut dpi_factor = window.window().get_hidpi_factor();
 
     while state.get_is_running() {
 
@@ -232,9 +236,13 @@ fn render_loop(window: &GlWindow,
                 Event::WindowEvent { event, .. } => match event {
                     WindowEvent::CloseRequested => state.set_is_running(false),
 
+                    WindowEvent::HiDpiFactorChanged(dpi) => {
+                        dpi_factor = dpi;
+                    }
+
                     WindowEvent::Resized(logical_size) => {
-                        // NOTE should we use LogicalSize instead, keep in mind the u32 truncates later
-                        let (wx, wy) = (logical_size.width, logical_size.height);
+                        let physical_size = logical_size.to_physical(dpi_factor);
+                        let (wx, wy) = (physical_size.width, physical_size.height);
                         match state.callback_window_resized(wx as f64, wy as f64) {
                             Ok(_) => {},
                             Err(e) => error!("{:?}", e),

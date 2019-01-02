@@ -7,12 +7,12 @@ use smallvec::SmallVec;
 
 use gl;
 
-use crate::ERR_MSG_LEN;
+use crate::polygon_context::PolygonContext;
+use crate::polygon_scene::PolygonScene;
 use crate::types::{Image, BufferMapping, UniformMapping};
 use crate::sync_vars::SyncVars;
 use crate::quad_scene_gfx::QuadSceneGfx;
 use crate::frame_buffer::FrameBuffer;
-use crate::sync_vars::builtin_to_idx;
 use crate::sync_vars::BuiltIn::*;
 
 pub const PROFILE_FRAMES: usize = 60;
@@ -25,8 +25,12 @@ pub struct ContextGfx {
     /// 1kb x 64 shaders on the stack, larger shaders or more of them on the heap.
     pub shader_sources: SmallVec<[SmallVec<[u8; 1024]>; 64]>,
     pub images: SmallVec<[Image; 4]>,
-    pub quad_scenes: SmallVec<[QuadSceneGfx; 64]>,
     pub frame_buffers: SmallVec<[FrameBuffer; 64]>,
+
+    pub quad_scenes: SmallVec<[QuadSceneGfx; 64]>,
+
+    pub polygon_scenes: SmallVec<[PolygonScene; 64]>,
+    pub polygon_context: PolygonContext,
 
     /// Profile events for 60 frames, max 100 events per frame.
     pub profile_times: [[f32; PROFILE_EVENTS]; PROFILE_FRAMES],
@@ -51,6 +55,8 @@ impl Default for ContextGfx {
                         SmallVec::new(),// shader sources
                         SmallVec::new(),// images
                         SmallVec::new(),// quad scenes
+                        SmallVec::new(),// polygon scenes
+                        PolygonContext::default(),// polygon context
                         SmallVec::new()// frame buffers
         )
     }
@@ -65,6 +71,8 @@ impl ContextGfx {
                shader_sources: SmallVec<[SmallVec<[u8; 1024]>; 64]>,
                images: SmallVec<[Image; 4]>,
                quad_scenes: SmallVec<[QuadSceneGfx; 64]>,
+               polygon_scenes: SmallVec<[PolygonScene; 64]>,
+               polygon_context: PolygonContext,
                frame_buffers: SmallVec<[FrameBuffer; 64]>)
                -> ContextGfx
     {
@@ -86,6 +94,9 @@ impl ContextGfx {
             quad_scenes: quad_scenes,
 
             frame_buffers: frame_buffers,
+
+            polygon_scenes: polygon_scenes,
+            polygon_context: polygon_context,
 
             profile_times: empty_profile,
             profile_frame_idx: 0,
@@ -219,6 +230,28 @@ impl ContextGfx {
             }
         }
     }
+
+    pub fn impl_draw_polygon_scene(&self, scene_idx: usize) {
+        if let Some(ref scene) = self.polygon_scenes.get(scene_idx) {
+            scene.draw(&self).unwrap();
+        } else {
+            panic!("Polygon scene index doesn't exist: {}", scene_idx);
+        }
+    }
+
+    /*
+    pub fn impl_if_var_equal_draw_quad(&self, var_idx: usize, value: f64, scene_idx: usize) {
+        if self.vars[var_idx] == value {
+            self.impl_draw_quad_scene(scene_idx);
+        }
+    }
+
+    pub fn impl_if_var_equal_draw_polygon(&self, var_idx: usize, value: f64, scene_idx: usize) {
+        if self.vars[var_idx] == value {
+            self.impl_draw_polygon_scene(scene_idx);
+        }
+    }
+    */
 }
 
 impl Drop for ContextGfx {

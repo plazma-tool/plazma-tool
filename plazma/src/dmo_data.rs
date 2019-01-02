@@ -213,8 +213,8 @@ impl Default for QuadScene {
         // FIXME these will have to be relative to project root stored in ProjectData
         let vert_src_path = "../data/screen_quad.vert".to_string();
         let vert_src = include_str!("../data/screen_quad.vert").to_string();
-        let frag_src_path = "../data/shader.frag".to_string();
-        let frag_src = include_str!("../data/shader.frag").to_string();
+        let frag_src_path = "../data/circle.frag".to_string();
+        let frag_src = include_str!("../data/circle.frag").to_string();
 
         QuadScene {
             name: "default".to_string(),

@@ -54,7 +54,6 @@ impl SyncVars {
     }
 
     pub fn set_builtin(&mut self, name: BuiltIn, value: f64) {
-        use self::BuiltIn::*;
         let idx = builtin_to_idx(name);
         self.tracks[idx].value = value;
     }
@@ -75,6 +74,7 @@ impl SyncVars {
 }
 
 pub fn builtin_to_idx(name: BuiltIn) -> usize {
+    use self::BuiltIn::*;
     match name {
         Time          => 0,
         Window_Width  => 1,

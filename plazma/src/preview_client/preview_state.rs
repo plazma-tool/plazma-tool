@@ -189,10 +189,10 @@ impl PreviewState {
 
     pub fn callback_window_resized(&mut self, wx: f64, wy: f64) -> Result<(), Box<Error>> {
         self.dmo_gfx.context.set_window_resolution(wx, wy);
-        // match self.dmo_gfx.recreate_framebuffers() {
-        //     Ok(_) => {},
-        //     Err(e) => return Err(From::from(format!("{:?}", e))),
-        // };
+        match self.dmo_gfx.recreate_framebuffers() {
+            Ok(_) => {},
+            Err(e) => return Err(From::from(format!("{:?}", e))),
+        };
         self.draw_anyway = true;
 
         let window_aspect = wx as f32 / wy as f32;

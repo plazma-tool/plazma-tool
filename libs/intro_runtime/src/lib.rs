@@ -37,8 +37,10 @@ pub mod model;
 pub mod mesh;
 
 pub mod frame_buffer;
+pub mod uniform_buffer;
 pub mod texture;
 
+pub mod data_blob;
 pub mod shapes;
 pub mod shader;
 pub mod types;

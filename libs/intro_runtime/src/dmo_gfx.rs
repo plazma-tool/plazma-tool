@@ -4,7 +4,12 @@ use std::time::Instant;
 
 use smallvec::SmallVec;
 
+use intro_3d::{Vector3, to_radians};
+
 use crate::context_gfx::ContextGfx;
+use crate::mesh::Mesh;
+use crate::model::ModelType;
+use crate::types::{ValueFloat, ValueVec3};
 use crate::dmo_sync::DmoSync;
 use crate::error::RuntimeError;
 use crate::ERR_MSG_LEN;
@@ -30,6 +35,16 @@ impl Default for DmoGfx {
 
 impl DmoGfx {
     pub fn draw(&self) {
+        self.draw_poly();
+    }
+
+    pub fn draw_poly(&self) {
+        self.context.impl_target_buffer_default();
+        self.context.impl_clear(55, 136, 182, 0); // #3788B6
+        self.context.impl_draw_polygon_scene(0);
+    }
+
+    pub fn draw_circle_and_cross(&self) {
         // draw the circle
         self.context.impl_target_buffer(0);
         self.context.impl_clear(0, 0, 255, 0);
@@ -156,4 +171,139 @@ impl DmoGfx {
         }
     }
 
+    pub fn create_models(&mut self,
+                         err_msg_buf: &mut [u8; ERR_MSG_LEN])
+                         -> Result<(), RuntimeError>
+    {
+        for mut model in self.context.polygon_context.models.iter_mut() {
+
+            let mut new_meshes: SmallVec<[Mesh; 2]> = SmallVec::new();
+
+            for mut mesh in model.meshes.iter_mut() {
+                let vert_src = match self.context.shader_sources.get(mesh.vert_src_idx) {
+                    Some(a) => str::from_utf8(&a).unwrap(),
+                    None => return Err(FailedToCreateNoSuchVertSrcIdx),
+                };
+
+                let frag_src = match self.context.shader_sources.get(mesh.frag_src_idx) {
+                    Some(a) => str::from_utf8(&a).unwrap(),
+                    None => return Err(FailedToCreateNoSuchFragSrcIdx),
+                };
+
+                let model_type = &model.model_type;
+                match model_type {
+                    &ModelType::NOOP => {},
+
+                    &ModelType::Cube => {
+                        let mut m = Mesh::new_cube(&vert_src, &frag_src, err_msg_buf)?;
+                        // Keep the idx values so that the asset manager can
+                        // find the mesh that belongs to a path when the shader
+                        // file changes.
+                        m.vert_src_idx = mesh.vert_src_idx;
+                        m.frag_src_idx = mesh.frag_src_idx;
+                        new_meshes.push(m);
+                    },
+
+                    &ModelType::Obj => {
+                        let mut m = Mesh::new(&mesh.vertices,
+                                              &mesh.indices,
+                                              &mesh.textures,
+                                              &vert_src,
+                                              &frag_src,
+                                              err_msg_buf)?;
+                        // Keep the idx
+                        m.vert_src_idx = mesh.vert_src_idx;
+                        m.frag_src_idx = mesh.frag_src_idx;
+                        new_meshes.push(m);
+                    },
+                }
+            }
+
+            model.meshes = new_meshes;
+        }
+        Ok(())
+    }
+
+    pub fn compile_model_shaders(&mut self, model_idx: usize, err_msg_buf: &mut [u8; ERR_MSG_LEN])
+        -> Result<(), RuntimeError>
+    {
+        for mut mesh in self.context.polygon_context.models[model_idx].meshes.iter_mut() {
+            let ref s = self.context.shader_sources[mesh.vert_src_idx];
+            let vert_src = str::from_utf8(s).unwrap();
+            let ref s = self.context.shader_sources[mesh.frag_src_idx];
+            let frag_src = str::from_utf8(s).unwrap();
+            mesh.compile_shaders(vert_src, frag_src, err_msg_buf)?;
+        }
+        Ok(())
+    }
+
+    pub fn update_polygon_context_projection(&mut self, aspect: f32) {
+        self.context.polygon_context.update_projection_matrix(aspect);
+    }
+
+    /// Update global view and projection matrix of the PolygonContext, and
+    /// update individual model matrices.
+    pub fn update_polygon_context(&mut self) {
+        use crate::sync_vars::BuiltIn::*;
+
+        self.context.polygon_context.view_position =
+            Vector3::new(self.context.sync_vars.get_builtin(Camera_Pos_X) as f32,
+                         self.context.sync_vars.get_builtin(Camera_Pos_Y) as f32,
+                         self.context.sync_vars.get_builtin(Camera_Pos_Z) as f32);
+
+        self.context.polygon_context.view_front =
+            Vector3::new(self.context.sync_vars.get_builtin(Camera_Front_X) as f32,
+                         self.context.sync_vars.get_builtin(Camera_Front_Y) as f32,
+                         self.context.sync_vars.get_builtin(Camera_Front_Z) as f32);
+
+        self.context.polygon_context.fovy = self.context.sync_vars.get_builtin(Fovy) as f32;
+        self.context.polygon_context.znear = self.context.sync_vars.get_builtin(Znear) as f32;
+        self.context.polygon_context.zfar = self.context.sync_vars.get_builtin(Zfar) as f32;
+
+        self.context.polygon_context.update_view_matrix();
+
+        for mut scene in self.context.polygon_scenes.iter_mut() {
+            for mut scene_object in scene.scene_objects.iter_mut() {
+                match scene_object.position_var {
+                    ValueVec3::NOOP => {},
+                    ValueVec3::Sync(x, y, z) => {
+                        scene_object.position =
+                            Vector3::new(self.context.sync_vars.get_index(x as usize) as f32,
+                                         self.context.sync_vars.get_index(y as usize) as f32,
+                                         self.context.sync_vars.get_index(z as usize) as f32);
+                    },
+                    ValueVec3::Fixed(x, y, z) => {
+                        scene_object.position = Vector3::new(x, y, z);
+                    },
+                }
+
+                match scene_object.euler_rotation_var {
+                    ValueVec3::NOOP => {},
+                    ValueVec3::Sync(x, y, z) => {
+                        scene_object.euler_rotation =
+                            Vector3::new(to_radians(self.context.sync_vars.get_index(x as usize) as f32),
+                                         to_radians(self.context.sync_vars.get_index(y as usize) as f32),
+                                         to_radians(self.context.sync_vars.get_index(z as usize) as f32));
+                    },
+                    ValueVec3::Fixed(x, y, z) => {
+                        scene_object.euler_rotation = Vector3::new(to_radians(x),
+                                                                   to_radians(y),
+                                                                   to_radians(z));
+                    },
+                }
+
+                match scene_object.scale_var {
+                    ValueFloat::NOOP => {},
+                    ValueFloat::Sync(x) => {
+                        scene_object.scale = self.context.sync_vars.get_index(x as usize) as f32;
+                    },
+                    ValueFloat::Fixed(x) => {
+                        scene_object.scale = x;
+                    },
+                }
+
+                scene_object.update_model_matrix();
+            }
+        }
+    }
 }

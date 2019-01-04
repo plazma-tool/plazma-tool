@@ -28,6 +28,9 @@ web-view = "0.4"
 actix = "0.7.7"
 actix-web = "0.7.14"
 
+image = "0.20"
+tobj = "0.1"
+
 intro_3d = { path = "../libs/intro_3d" }
 intro_runtime = { path = "../libs/intro_runtime" }
 

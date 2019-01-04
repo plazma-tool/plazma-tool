@@ -31,11 +31,15 @@ pub mod sync_vars;
 
 pub mod quad_scene_gfx;
 
+pub mod polygon_context;
+pub mod polygon_scene;
+pub mod model;
+pub mod mesh;
+
 pub mod frame_buffer;
 pub mod texture;
 
 pub mod shapes;
-
 pub mod shader;
 pub mod types;
 pub mod error;

@@ -1,20 +1,27 @@
 use std::error::Error;
 use std::time::{Duration, Instant};
+use std::path::PathBuf;
 
 use smallvec::SmallVec;
 
+use tobj;
+use intro_3d::Vector3;
 use intro_runtime::ERR_MSG_LEN;
 use intro_runtime::dmo_gfx::DmoGfx;
 use intro_runtime::dmo_sync::SyncDevice;
 use intro_runtime::sync_vars::builtin_to_idx;
 use intro_runtime::sync_vars::BuiltIn::*;
 use intro_runtime::frame_buffer::{FrameBuffer, BufferKind};
-use intro_runtime::types::PixelFormat;
+use intro_runtime::mesh::Mesh;
+use intro_runtime::polygon_scene::{PolygonScene, SceneObject};
+use intro_runtime::model::{Model, ModelType};
+use intro_runtime::types::{PixelFormat, Vertex, ValueVec3, ValueFloat};
 use intro_runtime::error::RuntimeError;
 use intro_runtime::types::{BufferMapping, UniformMapping};
 
 use crate::dmo_data::DmoData;
 use crate::error::ToolError;
+use crate::utils::file_to_string;
 
 pub struct PreviewState {
     pub t_frame_start: Instant,
@@ -131,6 +138,187 @@ impl PreviewState {
             Ok(_) => {},
             Err(e) => return Err(Box::new(ToolError::Runtime(e, "".to_owned())))
         }
+
+        // === Polygon scene: Cube, Suzanne, Skull, Dragon ===
+
+        // read in object shaders and store indexes
+        let scene_object_vert_src_idx =
+            self.add_shader_src(&PathBuf::from("./data/shaders/scene_object.vert"));
+        let cube_frag_src_idx =
+            self.add_shader_src(&PathBuf::from("./data/shaders/cube_one.frag"));
+        let suzanne_frag_src_idx =
+            self.add_shader_src(&PathBuf::from("./data/shaders/suzanne.frag"));
+        let skull_frag_src_idx =
+            self.add_shader_src(&PathBuf::from("./data/shaders/skull.frag"));
+        let dragon_vert_src_idx =
+            self.add_shader_src(&PathBuf::from("./data/shaders/dragon.vert"));
+        let dragon_frag_src_idx =
+            self.add_shader_src(&PathBuf::from("./data/shaders/dragon.frag"));
+
+        // Set PolygonContext sync vars.
+
+        self.dmo_gfx.context.sync_vars.set_builtin(Camera_Pos_X, -5.0);
+        self.dmo_gfx.context.sync_vars.set_builtin(Camera_Pos_Y, 4.0);
+        self.dmo_gfx.context.sync_vars.set_builtin(Camera_Pos_Z, 10.0);
+
+        self.dmo_gfx.context.sync_vars.set_builtin(Camera_Front_X, 0.5);
+        self.dmo_gfx.context.sync_vars.set_builtin(Camera_Front_Y, -0.1);
+        self.dmo_gfx.context.sync_vars.set_builtin(Camera_Front_Z, -0.5);
+
+        // Add model: 0 (Cube)
+        {
+            let mut model = Model::default();
+            model.model_type = ModelType::Cube;
+
+            // Add a mesh but no vertices, those will be created from shapes.
+            {
+                let mut mesh = Mesh::default();
+
+                mesh.vert_src_idx = scene_object_vert_src_idx;
+                mesh.frag_src_idx = cube_frag_src_idx;
+
+                model.meshes.push(mesh);
+            }
+
+            self.dmo_gfx.context.polygon_context.models.push(model);
+        }
+
+        // Add model: 1 (Suzanne)
+        self.add_model_from_obj(&PathBuf::from("./data/obj/suzanne.obj"),
+                                scene_object_vert_src_idx,
+                                suzanne_frag_src_idx)?;
+
+        // Add model: 2 (Skull)
+        self.add_model_from_obj(&PathBuf::from("./data/obj/skull.obj"),
+                                scene_object_vert_src_idx,
+                                skull_frag_src_idx)?;
+
+        // Add model: 3 (Dragon)
+        self.add_model_from_obj(&PathBuf::from("./data/obj/dragon.obj"),
+                                dragon_vert_src_idx,
+                                dragon_frag_src_idx)?;
+
+        // Create the OpenGL objects
+
+        match self.dmo_gfx.create_models(&mut err_msg_buf) {
+            Ok(_) => {},
+            Err(e) => {
+                let msg = String::from_utf8(err_msg_buf.to_vec())?;
+                return Err(Box::new(ToolError::Runtime(e, msg)));
+            }
+        }
+
+        let mut polygon_scene = PolygonScene::default();
+
+        // Add SceneObjects.
+
+        // Four objects 0 1 2 3, we add correcponding models later.
+        for i in 0..4 {
+            let mut scene_object = SceneObject::default();
+
+            scene_object.model_idx = i;
+
+            scene_object.position_var = ValueVec3::Fixed(4.0, 0.0, 2.0 - (i as f32)*1.5);
+            scene_object.scale_var = ValueFloat::Fixed(1.0);
+
+            /*
+            scene_object.layout_to_vars.push(
+                UniformMapping::Float(0,
+                                      builtin_to_idx(Time) as u8));
+
+            scene_object.layout_to_vars.push(
+                UniformMapping::Vec2(1,
+                                     builtin_to_idx(Window_Width) as u8,
+                                     builtin_to_idx(Window_Height) as u8));
+
+            scene_object.layout_to_vars.push(
+                UniformMapping::Vec2(2,
+                                     builtin_to_idx(Screen_Width) as u8,
+                                     builtin_to_idx(Screen_Height) as u8));
+            */
+
+            match self.dmo_gfx.compile_model_shaders(scene_object.model_idx, &mut err_msg_buf) {
+                Ok(_) => {},
+                Err(e) => {
+                    let msg = String::from_utf8(err_msg_buf.to_vec())?;
+                    return Err(Box::new(ToolError::Runtime(e, msg)));
+                }
+            }
+
+            polygon_scene.scene_objects.push(scene_object);
+
+        }
+
+        self.dmo_gfx.context.polygon_scenes.push(polygon_scene);
+
+        let aspect = self.dmo_gfx.context.get_window_aspect();
+        self.dmo_gfx.context.polygon_context.update_projection_matrix(aspect as f32);
+
+
+        Ok(())
+    }
+
+    fn add_shader_src(&mut self, path: &PathBuf) -> usize {
+        let src = file_to_string(path).unwrap();
+        self.dmo_gfx.context.shader_sources.push(SmallVec::from_slice(src.as_bytes()));
+        return self.dmo_gfx.context.shader_sources.len() - 1;
+    }
+
+    fn add_model_from_obj(&mut self,
+                          path: &PathBuf,
+                          vert_src_idx: usize,
+                          frag_src_idx: usize)
+                          -> Result<(), Box<Error>>
+    {
+        let mut model = Model::default();
+        model.model_type = ModelType::Obj;
+
+        // Add meshes.
+        {
+            let (meshes, _materials) = tobj::load_obj(&path)?;
+
+            for i in meshes.iter() {
+                let mesh = &i.mesh;
+                let mut new_mesh = Mesh::default();
+
+                // Serializing each vertex per index.
+                // This will be a vertex array, not an indexed object using EBO.
+
+                let n_index = mesh.indices.len();
+                if n_index > std::u32::MAX as usize {
+                    panic!{"Index list must not be over u32 max"};
+                }
+
+                // Add vertex data.
+                for index in mesh.indices.iter() {
+                    let i = *index as usize;
+
+                    let position: [f32; 3] = [mesh.positions[3*i],
+                                              mesh.positions[3*i+1],
+                                              mesh.positions[3*i+2]];
+
+                    let normal: [f32; 3] = [mesh.normals[3*i],
+                                            mesh.normals[3*i+1],
+                                            mesh.normals[3*i+2]];
+
+                    let vertex = Vertex {
+                        position: position,
+                        normal: normal,
+                        texcoords: [0.0; 2], // TODO UV texcoords
+                    };
+
+                    new_mesh.vertices.push(vertex);
+                }
+
+                // Use the shaders specified on the model for each mesh.
+                new_mesh.vert_src_idx = vert_src_idx;
+                new_mesh.frag_src_idx = frag_src_idx;
+
+                model.meshes.push(new_mesh);
+            }
+        }
+
+        self.dmo_gfx.context.polygon_context.models.push(model);
 
         Ok(())
     }

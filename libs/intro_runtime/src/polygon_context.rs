@@ -12,9 +12,6 @@ pub struct PolygonContext {
     pub view_matrix: [[f32; 4]; 4],
     pub projection_matrix: [[f32; 4]; 4],
 
-    pub view_position_var_idx: [usize; 3],
-    pub view_front_var_idx: [usize; 3],
-
     pub fovy: f32,
     pub znear: f32,
     pub zfar: f32,
@@ -32,12 +29,9 @@ impl Default for PolygonContext {
             view_matrix: [[0.0; 4]; 4],
             projection_matrix: [[0.0; 4]; 4],
 
-            view_position_var_idx: [0; 3],
-            view_front_var_idx: [0; 3],
-
-            fovy: 0.0,
-            znear: 0.0,
-            zfar: 0.0,
+            fovy: 45.0,
+            znear: 0.1,
+            zfar: 100.0,
 
             models: SmallVec::new(),
         }

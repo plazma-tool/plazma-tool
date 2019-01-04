@@ -137,6 +137,11 @@ impl ContextGfx {
          self.sync_vars.get_builtin(Window_Height))
     }
 
+    pub fn get_window_aspect(&self) -> f64 {
+        let (wx, wy) = self.get_window_resolution();
+        return wx / wy;
+    }
+
     pub fn set_screen_resolution(&mut self, width: f64, height: f64) {
         self.sync_vars.set_builtin(Screen_Width, width);
         self.sync_vars.set_builtin(Screen_Height, height);

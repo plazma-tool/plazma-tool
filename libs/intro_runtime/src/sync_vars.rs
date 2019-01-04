@@ -16,16 +16,11 @@ pub struct SyncTrack {
 impl Default for SyncVars {
     fn default() -> SyncVars {
         let mut tracks: SmallVec<[SyncTrack; VAR_NUM]> = SmallVec::new();
-        // 0: time
-        tracks.push(SyncTrack {name: [0; 64], value: 0.0});
 
-        // 1, 2: window_resolution x y
-        tracks.push(SyncTrack {name: [0; 64], value: 0.0});
-        tracks.push(SyncTrack {name: [0; 64], value: 0.0});
-
-        // 3, 4: screen_resolution x y
-        tracks.push(SyncTrack {name: [0; 64], value: 0.0});
-        tracks.push(SyncTrack {name: [0; 64], value: 0.0});
+        // 31 tracks for 31 enum variants.
+        for _ in 0..32 {
+            tracks.push(SyncTrack {name: [0; 64], value: 0.0});
+        }
 
         SyncVars {
             tracks: tracks,
@@ -78,18 +73,93 @@ impl SyncVars {
 pub fn builtin_to_idx(name: BuiltIn) -> usize {
     use self::BuiltIn::*;
     match name {
-        Time          => 0,
-        Window_Width  => 1,
-        Window_Height => 2,
-        Screen_Width  => 3,
-        Screen_Height => 4,
+        Time                    => 0,
+
+        Window_Width            => 1,
+        Window_Height           => 2,
+
+        Screen_Width            => 3,
+        Screen_Height           => 4,
+
+        Camera_Pos_X            => 5,
+        Camera_Pos_Y            => 6,
+        Camera_Pos_Z            => 7,
+
+        Camera_Front_X          => 8,
+        Camera_Front_Y          => 9,
+        Camera_Front_Z          => 10,
+
+        Camera_Up_X             => 11,
+        Camera_Up_Y             => 12,
+        Camera_Up_Z             => 13,
+
+        Camera_LookAt_X         => 14,
+        Camera_LookAt_Y         => 15,
+        Camera_LookAt_Z         => 16,
+
+        Fovy                    => 17,
+        Znear                   => 18,
+        Zfar                    => 19,
+
+        Light_Pos_X             => 20,
+        Light_Pos_Y             => 21,
+        Light_Pos_Z             => 22,
+
+        Light_Dir_X             => 23,
+        Light_Dir_Y             => 24,
+        Light_Dir_Z             => 25,
+
+        Light_Strength          => 26,
+        Light_Constant_Falloff  => 27,
+        Light_Linear_Falloff    => 28,
+        Light_Quadratic_Falloff => 29,
+        Light_Cutoff_Angle      => 30,
     }
 }
 
+
+// NOTE remember to update SyncVars::default() when adding more enum variants.
+
 pub enum BuiltIn {
     Time,
+
     Window_Width,
     Window_Height,
+
     Screen_Width,
     Screen_Height,
+
+    Camera_Pos_X,
+    Camera_Pos_Y,
+    Camera_Pos_Z,
+
+    Camera_Front_X,
+    Camera_Front_Y,
+    Camera_Front_Z,
+
+    Camera_Up_X,
+    Camera_Up_Y,
+    Camera_Up_Z,
+
+    Camera_LookAt_X,
+    Camera_LookAt_Y,
+    Camera_LookAt_Z,
+
+    Fovy,
+    Znear,
+    Zfar,
+
+    Light_Pos_X,
+    Light_Pos_Y,
+    Light_Pos_Z,
+
+    Light_Dir_X,
+    Light_Dir_Y,
+    Light_Dir_Z,
+
+    Light_Strength,
+    Light_Constant_Falloff,
+    Light_Linear_Falloff,
+    Light_Quadratic_Falloff,
+    Light_Cutoff_Angle,
 }

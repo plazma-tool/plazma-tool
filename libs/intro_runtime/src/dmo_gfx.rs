@@ -35,6 +35,16 @@ impl Default for DmoGfx {
 
 impl DmoGfx {
     pub fn draw(&self) {
+        self.draw_poly();
+    }
+
+    pub fn draw_poly(&self) {
+        self.context.impl_target_buffer_default();
+        self.context.impl_clear(55, 136, 182, 0); // #3788B6
+        self.context.impl_draw_polygon_scene(0);
+    }
+
+    pub fn draw_circle_and_cross(&self) {
         // draw the circle
         self.context.impl_target_buffer(0);
         self.context.impl_clear(0, 0, 255, 0);
@@ -234,20 +244,21 @@ impl DmoGfx {
     /// Update global view and projection matrix of the PolygonContext, and
     /// update individual model matrices.
     pub fn update_polygon_context(&mut self) {
-
-        let v = self.context.polygon_context.view_position_var_idx;
+        use crate::sync_vars::BuiltIn::*;
 
         self.context.polygon_context.view_position =
-            Vector3::new(self.context.sync_vars.get_index(v[0]) as f32,
-                         self.context.sync_vars.get_index(v[1]) as f32,
-                         self.context.sync_vars.get_index(v[2]) as f32);
-
-        let v = self.context.polygon_context.view_front_var_idx;
+            Vector3::new(self.context.sync_vars.get_builtin(Camera_Pos_X) as f32,
+                         self.context.sync_vars.get_builtin(Camera_Pos_Y) as f32,
+                         self.context.sync_vars.get_builtin(Camera_Pos_Z) as f32);
 
         self.context.polygon_context.view_front =
-            Vector3::new(self.context.sync_vars.get_index(v[0]) as f32,
-                         self.context.sync_vars.get_index(v[1]) as f32,
-                         self.context.sync_vars.get_index(v[2]) as f32);
+            Vector3::new(self.context.sync_vars.get_builtin(Camera_Front_X) as f32,
+                         self.context.sync_vars.get_builtin(Camera_Front_Y) as f32,
+                         self.context.sync_vars.get_builtin(Camera_Front_Z) as f32);
+
+        self.context.polygon_context.fovy = self.context.sync_vars.get_builtin(Fovy) as f32;
+        self.context.polygon_context.znear = self.context.sync_vars.get_builtin(Znear) as f32;
+        self.context.polygon_context.zfar = self.context.sync_vars.get_builtin(Zfar) as f32;
 
         self.context.polygon_context.update_view_matrix();
 

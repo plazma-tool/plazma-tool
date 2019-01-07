@@ -212,8 +212,8 @@ impl PreviewState {
 
         // Add SceneObjects.
 
-        // Four objects 0 1 2 3, we add correcponding models later.
-        for i in 0..4 {
+        // Four objects, 0 1 2 3, corresponding to model indices.
+        for i in 0..1 {
             let mut scene_object = SceneObject::default();
 
             scene_object.model_idx = i;
@@ -221,21 +221,30 @@ impl PreviewState {
             scene_object.position_var = ValueVec3::Fixed(4.0, 0.0, 2.0 - (i as f32)*1.5);
             scene_object.scale_var = ValueFloat::Fixed(1.0);
 
-            /*
+            // When drawing a polygon mesh, uniform locations 0, 1, 2, 3 are
+            // always bound to model, view, projection and view_pos.
+            //
+            // Further locations are bound with layout_to_vars.
+
             scene_object.layout_to_vars.push(
-                UniformMapping::Float(0,
+                UniformMapping::Float(4,
                                       builtin_to_idx(Time) as u8));
 
             scene_object.layout_to_vars.push(
-                UniformMapping::Vec2(1,
+                UniformMapping::Vec2(5,
                                      builtin_to_idx(Window_Width) as u8,
                                      builtin_to_idx(Window_Height) as u8));
 
             scene_object.layout_to_vars.push(
-                UniformMapping::Vec2(2,
+                UniformMapping::Vec2(6,
                                      builtin_to_idx(Screen_Width) as u8,
                                      builtin_to_idx(Screen_Height) as u8));
-            */
+
+            scene_object.layout_to_vars.push(
+                UniformMapping::Vec3(7,
+                                     builtin_to_idx(Light_Pos_X) as u8,
+                                     builtin_to_idx(Light_Pos_Y) as u8,
+                                     builtin_to_idx(Light_Pos_Z) as u8));
 
             match self.dmo_gfx.compile_model_shaders(scene_object.model_idx, &mut err_msg_buf) {
                 Ok(_) => {},

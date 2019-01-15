@@ -2,6 +2,8 @@ use std::error::Error;
 use std::time::{Duration, Instant};
 use std::path::PathBuf;
 
+use glutin::VirtualKeyCode;
+
 use smallvec::SmallVec;
 
 use tobj;
@@ -28,8 +30,12 @@ pub struct PreviewState {
     pub t_delta: Duration,
     pub t_frame_target: Duration,
 
+    pub pressed_keys: [bool; 1024],
+    pub explore_mode: bool,
+
     pub draw_anyway: bool,
     pub should_recompile: bool,
+    pub movement_speed: f32,
 
     pub dmo_gfx: DmoGfx,
 }
@@ -45,8 +51,12 @@ impl PreviewState {
             t_delta: Duration::new(0, 0),
             t_frame_target: Duration::from_millis(16),
 
+            pressed_keys: [false; 1024],
+            explore_mode: false,
+
             draw_anyway: false,
             should_recompile: false,
+            movement_speed: 0.5,
 
             dmo_gfx: DmoGfx::default(),
         };
@@ -213,7 +223,7 @@ impl PreviewState {
         // Add SceneObjects.
 
         // Four objects, 0 1 2 3, corresponding to model indices.
-        for i in 0..1 {
+        for i in 0..4 {
             let mut scene_object = SceneObject::default();
 
             scene_object.model_idx = i;
@@ -461,4 +471,56 @@ impl PreviewState {
         (self.t_frame_target.as_secs() * 1_000_000_000) + (self.t_frame_target.subsec_nanos() as u64)
     }
 
+    pub fn set_key_pressed(&mut self, vcode: VirtualKeyCode, pressed: bool) {
+        let n = vcode as usize;
+        if n < self.pressed_keys.len() {
+            self.pressed_keys[n] = pressed;
+        }
+    }
+
+    pub fn set_camera_from_context(&mut self) {
+        // FIXME set pitch and yaw from the front vector. This is what causes
+        // the angle jump when explore mode takes over camera control.
+
+        let a = self.get_context_camera_position();
+        self.dmo_gfx.context.camera.set_position(a);
+        let a = self.get_context_camera_front();
+        self.dmo_gfx.context.camera.set_front(a);
+    }
+
+    pub fn get_context_camera_position(&self) -> Vector3 {
+        let position: Vector3 = Vector3::new(
+            self.dmo_gfx.context.sync_vars.get_builtin(Camera_Pos_X) as f32,
+            self.dmo_gfx.context.sync_vars.get_builtin(Camera_Pos_Y) as f32,
+            self.dmo_gfx.context.sync_vars.get_builtin(Camera_Pos_Z) as f32);
+        position
+    }
+
+    pub fn get_context_camera_front(&self) -> Vector3 {
+        let front: Vector3 = Vector3::new(
+            self.dmo_gfx.context.sync_vars.get_builtin(Camera_Front_X) as f32,
+            self.dmo_gfx.context.sync_vars.get_builtin(Camera_Front_Y) as f32,
+            self.dmo_gfx.context.sync_vars.get_builtin(Camera_Front_Z) as f32);
+        front
+    }
+
+    pub fn update_camera_from_keys(&mut self) {
+        if self.pressed_keys[VirtualKeyCode::W as usize] {
+            self.dmo_gfx.context.camera.move_forward(self.movement_speed);
+            self.draw_anyway = true;
+        }
+        if self.pressed_keys[VirtualKeyCode::S as usize] {
+            self.dmo_gfx.context.camera.move_backward(self.movement_speed);
+            self.draw_anyway = true;
+        }
+        if self.pressed_keys[VirtualKeyCode::A as usize] {
+            self.dmo_gfx.context.camera.move_left(self.movement_speed);
+            self.draw_anyway = true;
+        }
+        if self.pressed_keys[VirtualKeyCode::D as usize] {
+            self.dmo_gfx.context.camera.move_right(self.movement_speed);
+            self.draw_anyway = true;
+        }
+        self.dmo_gfx.context.camera.update_view();
+    }
 }

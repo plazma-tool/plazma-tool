@@ -7,8 +7,11 @@ use smallvec::SmallVec;
 
 use gl;
 
+use intro_3d::Vector3;
+
 use crate::polygon_context::PolygonContext;
 use crate::polygon_scene::PolygonScene;
+use crate::camera::Camera;
 use crate::types::{Image, BufferMapping, UniformMapping};
 use crate::sync_vars::SyncVars;
 use crate::quad_scene_gfx::QuadSceneGfx;
@@ -31,6 +34,8 @@ pub struct ContextGfx {
 
     pub polygon_scenes: SmallVec<[PolygonScene; 64]>,
     pub polygon_context: PolygonContext,
+
+    pub camera: Camera,
 
     /// Profile events for 60 frames, max 100 events per frame.
     pub profile_times: [[f32; PROFILE_EVENTS]; PROFILE_FRAMES],
@@ -76,6 +81,13 @@ impl ContextGfx {
                frame_buffers: SmallVec<[FrameBuffer; 64]>)
                -> ContextGfx
     {
+        let window_aspect = window_width as f32 / window_height as f32;
+        let camera = Camera::new(45.0,
+                                 window_aspect,
+                                 Vector3::new(0.0, 0.0, 10.0),
+                                 Vector3::new(0.0, 1.0, 0.0),
+                                 0.0,
+                                 90.0);
         let mut sync_vars = SyncVars::default();
 
         sync_vars.set_builtin(Time, time);
@@ -97,6 +109,8 @@ impl ContextGfx {
 
             polygon_scenes: polygon_scenes,
             polygon_context: polygon_context,
+
+            camera: camera,
 
             profile_times: empty_profile,
             profile_frame_idx: 0,
@@ -150,6 +164,15 @@ impl ContextGfx {
     pub fn get_screen_resolution(&self) -> (f64, f64) {
         (self.sync_vars.get_builtin(Screen_Width),
          self.sync_vars.get_builtin(Screen_Height))
+    }
+
+    pub fn set_camera_sync(&mut self) {
+        self.sync_vars.set_builtin(Camera_Pos_X, self.camera.position.x as f64);
+        self.sync_vars.set_builtin(Camera_Pos_Y, self.camera.position.y as f64);
+        self.sync_vars.set_builtin(Camera_Pos_Z, self.camera.position.z as f64);
+        self.sync_vars.set_builtin(Camera_Front_X, self.camera.front.x as f64);
+        self.sync_vars.set_builtin(Camera_Front_Y, self.camera.front.y as f64);
+        self.sync_vars.set_builtin(Camera_Front_Z, self.camera.front.z as f64);
     }
 
     pub fn get_last_work_buffer(&self) -> &FrameBuffer {

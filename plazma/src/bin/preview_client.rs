@@ -229,6 +229,12 @@ fn render_loop(window: &GlWindow,
             Err(e) => error!("{:?}", e),
         }
 
+        // In explore mode, override camera sync variables (calculated from the
+        // sync tracks) with camera position (calculated from keys and mouse).
+        if state.explore_mode {
+            state.dmo_gfx.context.set_camera_sync();
+        }
+
         // 2. deal with events
 
         events_loop.poll_events(|event| {
@@ -237,6 +243,66 @@ fn render_loop(window: &GlWindow,
                     WindowEvent::CloseRequested => {
                         state.set_is_running(false);
                     },
+
+                    WindowEvent::KeyboardInput{ device_id, input } => {
+                        use glutin::VirtualKeyCode::*;
+
+                        if let Some(vcode) = input.virtual_keycode {
+
+                            let pressed = match input.state {
+                                ElementState::Pressed => true,
+                                ElementState::Released => false,
+                            };
+
+                            match vcode {
+                                Escape => state.set_is_running(false),
+
+                                // movement
+                                W | A | S | D => {
+                                    state.set_key_pressed(vcode, pressed);
+                                },
+
+                                // explore mode
+                                X => {
+                                    // act on key release
+                                    if !pressed {
+                                        state.explore_mode = !state.explore_mode;
+                                    }
+
+                                    // When turning on explore mode, copy the
+                                    // Dmo Context camera values to State
+                                    // camera.
+                                    if state.explore_mode {
+                                        state.set_camera_from_context();
+                                    }
+                                },
+
+                                _ => (),
+                            }
+                        }
+                    },
+
+                    /*
+                    WindowEvent::MouseMoved(mx, my) => {
+                        state.callback_mouse_moved(mx, my);
+                    },
+
+                    WindowEvent::MouseWheel(scroll_delta, _) => {
+                        match scroll_delta {
+                            glutin::MouseScrollDelta::LineDelta(_, dy) |
+                            glutin::MouseScrollDelta::PixelDelta(_, dy) => {
+                                state.callback_mouse_wheel(dy);
+                            }
+                        }
+                    },
+
+                    WindowEvent::MouseInput(pressed_state, button) => {
+                        state.callback_mouse_input(pressed_state, button);
+                    },
+                    */
+
+                    WindowEvent::CursorEntered{ device_id } => {},
+                    WindowEvent::CursorLeft{ device_id } => {},
 
                     WindowEvent::HiDpiFactorChanged(dpi) => {
                         dpi_factor = dpi;
@@ -262,7 +328,9 @@ fn render_loop(window: &GlWindow,
 
         // 3. move, update camera in explore mode
 
-        // TODO
+        if state.explore_mode {
+            state.update_camera_from_keys();
+        }
 
         // 4. rebuild when assets change
 

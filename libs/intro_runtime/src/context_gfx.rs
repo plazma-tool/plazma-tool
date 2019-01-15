@@ -166,6 +166,15 @@ impl ContextGfx {
          self.sync_vars.get_builtin(Screen_Height))
     }
 
+    pub fn set_camera_sync(&mut self) {
+        self.sync_vars.set_builtin(Camera_Pos_X, self.camera.position.x as f64);
+        self.sync_vars.set_builtin(Camera_Pos_Y, self.camera.position.y as f64);
+        self.sync_vars.set_builtin(Camera_Pos_Z, self.camera.position.z as f64);
+        self.sync_vars.set_builtin(Camera_Front_X, self.camera.front.x as f64);
+        self.sync_vars.set_builtin(Camera_Front_Y, self.camera.front.y as f64);
+        self.sync_vars.set_builtin(Camera_Front_Z, self.camera.front.z as f64);
+    }
+
     pub fn get_last_work_buffer(&self) -> &FrameBuffer {
         let n = self.frame_buffers.len();
         &self.frame_buffers[n - 1]

@@ -229,6 +229,12 @@ fn render_loop(window: &GlWindow,
             Err(e) => error!("{:?}", e),
         }
 
+        // In explore mode, override camera sync variables (calculated from the
+        // sync tracks) with camera position (calculated from keys and mouse).
+        if state.explore_mode {
+            state.dmo_gfx.context.set_camera_sync();
+        }
+
         // 2. deal with events
 
         events_loop.poll_events(|event| {
@@ -322,7 +328,9 @@ fn render_loop(window: &GlWindow,
 
         // 3. move, update camera in explore mode
 
-        // TODO
+        if state.explore_mode {
+            state.update_camera_from_keys();
+        }
 
         // 4. rebuild when assets change
 

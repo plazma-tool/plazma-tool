@@ -8,8 +8,8 @@ pub struct Camera {
     pub projection: [[f32; 4]; 4],
     pub view: [[f32; 4]; 4],
 
-    position: Vector3,
-    front: Vector3,
+    pub position: Vector3,
+    pub front: Vector3,
     pub up: Vector3,
     pub right: Vector3,
     pub world_up: Vector3,

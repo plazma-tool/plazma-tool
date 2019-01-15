@@ -35,6 +35,7 @@ pub struct PreviewState {
 
     pub draw_anyway: bool,
     pub should_recompile: bool,
+    pub movement_speed: f32,
 
     pub dmo_gfx: DmoGfx,
 }
@@ -55,6 +56,7 @@ impl PreviewState {
 
             draw_anyway: false,
             should_recompile: false,
+            movement_speed: 0.5,
 
             dmo_gfx: DmoGfx::default(),
         };
@@ -221,7 +223,7 @@ impl PreviewState {
         // Add SceneObjects.
 
         // Four objects, 0 1 2 3, corresponding to model indices.
-        for i in 0..1 {
+        for i in 0..4 {
             let mut scene_object = SceneObject::default();
 
             scene_object.model_idx = i;
@@ -500,5 +502,25 @@ impl PreviewState {
             self.dmo_gfx.context.sync_vars.get_builtin(Camera_Front_Y) as f32,
             self.dmo_gfx.context.sync_vars.get_builtin(Camera_Front_Z) as f32);
         front
+    }
+
+    pub fn update_camera_from_keys(&mut self) {
+        if self.pressed_keys[VirtualKeyCode::W as usize] {
+            self.dmo_gfx.context.camera.move_forward(self.movement_speed);
+            self.draw_anyway = true;
+        }
+        if self.pressed_keys[VirtualKeyCode::S as usize] {
+            self.dmo_gfx.context.camera.move_backward(self.movement_speed);
+            self.draw_anyway = true;
+        }
+        if self.pressed_keys[VirtualKeyCode::A as usize] {
+            self.dmo_gfx.context.camera.move_left(self.movement_speed);
+            self.draw_anyway = true;
+        }
+        if self.pressed_keys[VirtualKeyCode::D as usize] {
+            self.dmo_gfx.context.camera.move_right(self.movement_speed);
+            self.draw_anyway = true;
+        }
+        self.dmo_gfx.context.camera.update_view();
     }
 }

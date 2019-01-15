@@ -238,6 +238,66 @@ fn render_loop(window: &GlWindow,
                         state.set_is_running(false);
                     },
 
+                    WindowEvent::KeyboardInput{ device_id, input } => {
+                        use glutin::VirtualKeyCode::*;
+
+                        if let Some(vcode) = input.virtual_keycode {
+
+                            let pressed = match input.state {
+                                ElementState::Pressed => true,
+                                ElementState::Released => false,
+                            };
+
+                            match vcode {
+                                Escape => state.set_is_running(false),
+
+                                // movement
+                                W | A | S | D => {
+                                    state.set_key_pressed(vcode, pressed);
+                                },
+
+                                // explore mode
+                                X => {
+                                    // act on key release
+                                    if !pressed {
+                                        state.explore_mode = !state.explore_mode;
+                                    }
+
+                                    // When turning on explore mode, copy the
+                                    // Dmo Context camera values to State
+                                    // camera.
+                                    if state.explore_mode {
+                                        state.set_camera_from_context();
+                                    }
+                                },
+
+                                _ => (),
+                            }
+                        }
+                    },
+
+                    /*
+                    WindowEvent::MouseMoved(mx, my) => {
+                        state.callback_mouse_moved(mx, my);
+                    },
+
+                    WindowEvent::MouseWheel(scroll_delta, _) => {
+                        match scroll_delta {
+                            glutin::MouseScrollDelta::LineDelta(_, dy) |
+                            glutin::MouseScrollDelta::PixelDelta(_, dy) => {
+                                state.callback_mouse_wheel(dy);
+                            }
+                        }
+                    },
+
+                    WindowEvent::MouseInput(pressed_state, button) => {
+                        state.callback_mouse_input(pressed_state, button);
+                    },
+                    */
+
+                    WindowEvent::CursorEntered{ device_id } => {},
+                    WindowEvent::CursorLeft{ device_id } => {},
+
                     WindowEvent::HiDpiFactorChanged(dpi) => {
                         dpi_factor = dpi;
                     }

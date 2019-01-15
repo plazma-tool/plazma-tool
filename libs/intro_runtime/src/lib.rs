@@ -33,6 +33,7 @@ pub mod quad_scene_gfx;
 
 pub mod polygon_context;
 pub mod polygon_scene;
+pub mod camera;
 pub mod model;
 pub mod mesh;
 

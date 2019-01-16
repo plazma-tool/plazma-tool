@@ -26,7 +26,7 @@ use actix_web::ws;
 
 use futures::Future;
 
-use glutin::{Window, GlWindow, GlContext, EventsLoop, Event, WindowEvent, VirtualKeyCode, ElementState};
+use glutin::{Window, GlWindow, GlContext, EventsLoop, Event, WindowEvent, VirtualKeyCode, ElementState, MouseButton};
 
 use plazma::dmo_data::DmoData;
 use plazma::server_actor::Receiving;
@@ -282,24 +282,26 @@ fn render_loop(window: &GlWindow,
                         }
                     },
 
-                    /*
-                    WindowEvent::MouseMoved(mx, my) => {
+                    WindowEvent::CursorMoved{ device_id, position, modifiers } => {
+                        let (mx, my) = position.into();
                         state.callback_mouse_moved(mx, my);
                     },
 
-                    WindowEvent::MouseWheel(scroll_delta, _) => {
-                        match scroll_delta {
-                            glutin::MouseScrollDelta::LineDelta(_, dy) |
-                            glutin::MouseScrollDelta::PixelDelta(_, dy) => {
+                    WindowEvent::MouseWheel{ device_id, delta, phase, modifiers } => {
+                        match delta {
+                            glutin::MouseScrollDelta::LineDelta(_, dy) => {
                                 state.callback_mouse_wheel(dy);
+                            },
+                            glutin::MouseScrollDelta::PixelDelta(position) => {
+                                let (_, dy): (f64, f64) = position.into();
+                                state.callback_mouse_wheel(dy as f32);
                             }
                         }
                     },
 
-                    WindowEvent::MouseInput(pressed_state, button) => {
+                    WindowEvent::MouseInput{ device_id, state: pressed_state, button, modifiers } => {
                         state.callback_mouse_input(pressed_state, button);
                     },
-                    */
 
                     WindowEvent::CursorEntered{ device_id } => {},
                     WindowEvent::CursorLeft{ device_id } => {},
@@ -326,13 +328,11 @@ fn render_loop(window: &GlWindow,
             }
         });
 
-        // 3. move, update camera in explore mode
+        // 3. move, update camera (only works in explore mode)
 
-        if state.explore_mode {
-            state.update_camera_from_keys();
-        }
+        state.update_camera_from_keys();
 
-        // 4. rebuild when assets change
+        // 4. rebuild when assets change on disc
 
         // TODO
 

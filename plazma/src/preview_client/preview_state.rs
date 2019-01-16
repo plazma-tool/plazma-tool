@@ -2,7 +2,7 @@ use std::error::Error;
 use std::time::{Duration, Instant};
 use std::path::PathBuf;
 
-use glutin::VirtualKeyCode;
+use glutin::{VirtualKeyCode, ElementState, MouseButton};
 
 use smallvec::SmallVec;
 
@@ -17,6 +17,7 @@ use intro_runtime::frame_buffer::{FrameBuffer, BufferKind};
 use intro_runtime::mesh::Mesh;
 use intro_runtime::polygon_scene::{PolygonScene, SceneObject};
 use intro_runtime::model::{Model, ModelType};
+use intro_runtime::mouse::MouseButton as Btn;
 use intro_runtime::types::{PixelFormat, Vertex, ValueVec3, ValueFloat};
 use intro_runtime::error::RuntimeError;
 use intro_runtime::types::{BufferMapping, UniformMapping};
@@ -403,10 +404,59 @@ impl PreviewState {
         self.draw_anyway = true;
 
         let window_aspect = wx as f32 / wy as f32;
-        // self.camera.aspect = window_aspect;
-        // self.camera.update_projection();
+        self.dmo_gfx.context.camera.aspect = window_aspect;
+        self.dmo_gfx.context.camera.update_projection();
 
         Ok(())
+    }
+
+    pub fn callback_mouse_moved(&mut self, mouse_x: i32, mouse_y: i32) {
+        // Translating upper-left coords (mouse logic) to lower-left coords (OpenGL logic).
+        let (_, wy) = self.get_window_resolution();
+        self.dmo_gfx.context.mouse.update_mouse_moved(mouse_x, (wy as i32) - mouse_y);
+
+        if self.explore_mode && self.dmo_gfx.context.mouse.pressed[0] {
+            self.dmo_gfx.context.camera.do_pitch_and_yaw_from_mouse_delta(
+                self.dmo_gfx.context.mouse.delta_x,
+                self.dmo_gfx.context.mouse.delta_y
+            );
+            self.draw_anyway = true;
+        }
+    }
+
+    pub fn callback_mouse_input(&mut self, pressed_state: ElementState, button: MouseButton) {
+        let pressed = match pressed_state {
+            ElementState::Pressed => true,
+            ElementState::Released => false,
+        };
+        let btn = match button {
+            MouseButton::Left => Btn::Left,
+            MouseButton::Right => Btn::Right,
+            MouseButton::Middle => Btn::Middle,
+            _ => Btn::NoButton,
+        };
+        self.dmo_gfx.context.mouse.update_mouse_input(pressed, btn);
+    }
+
+    pub fn callback_mouse_wheel(&mut self, dy: f32) {
+        if !self.explore_mode {
+            return;
+        }
+
+        if self.dmo_gfx.context.camera.fovy_angle >= 1.0 && self.dmo_gfx.context.camera.fovy_angle <= 45.0 {
+            self.dmo_gfx.context.camera.fovy_angle -= dy as f32;
+            self.draw_anyway = true;
+        }
+        if self.dmo_gfx.context.camera.fovy_angle < 1.0 {
+            self.dmo_gfx.context.camera.fovy_angle = 1.0;
+            self.draw_anyway = true;
+        }
+        if self.dmo_gfx.context.camera.fovy_angle > 45.0 {
+            self.dmo_gfx.context.camera.fovy_angle = 45.0;
+            self.draw_anyway = true;
+        }
+
+        self.dmo_gfx.context.camera.update_projection();
     }
 
     // -- get and set --
@@ -505,6 +555,10 @@ impl PreviewState {
     }
 
     pub fn update_camera_from_keys(&mut self) {
+        if !self.explore_mode {
+            return;
+        }
+
         if self.pressed_keys[VirtualKeyCode::W as usize] {
             self.dmo_gfx.context.camera.move_forward(self.movement_speed);
             self.draw_anyway = true;

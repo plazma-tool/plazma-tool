@@ -51,38 +51,30 @@ class PlazmaMonacoToolbar extends React.Component {
     }
 }
 
-function getColorValuesFromCode(code) {
+function getVec3ValuesFromCode(code, re) {
     let values = [];
     if (code === null) {
         return values;
     }
 
-    let re_color = /vec3 +([^ ]+) *= *vec3\(([^\)]+)\); *\/\/ *!! color *$/gm;
-
-    let m = null;
-    while ((m = re_color.exec(code)) !== null) {
-        let name = m[1].trim();
-        let rgb = m[2].trim();
+    let match_vec3 = null;
+    while ((match_vec3 = re.exec(code)) !== null) {
+        let name = match_vec3[1].trim();
+        let vec3_components = match_vec3[2].trim();
         let vec = [];
 
-        let mm = rgb.match(/([0-9\.]+)/g);
-        if (mm !== null) {
-            mm.forEach((i) => {
+        let match_comp = vec3_components.match(/([0-9\.-]+)/g);
+        if (match_comp !== null) {
+            match_comp.forEach((i) => {
                 let n = Number(i);
                 if (!isNaN(n)) {
-                    let nn = Math.floor(n * 255);
-                    vec.push(nn);
+                    vec.push(n);
                 }
             });
             if (vec.length === 3) {
                 values.push({
                     name: name,
-                    rgba: {
-                        r: vec[0],
-                        g: vec[1],
-                        b: vec[2],
-                        a: 1.0,
-                    },
+                    vec: vec,
                 });
             }
         }
@@ -91,16 +83,14 @@ function getColorValuesFromCode(code) {
     return values;
 }
 
-function getSliderValuesFromCode(code) {
+function getFloatValueFromCode(code, re) {
     let values = [];
     if (code === null) {
         return values;
     }
 
-    let re_slider = /float +([^ ]+) *= *([0-9\.]+); *\/\/ *!! slider *$/gm;
-
     let m = null;
-    while ((m = re_slider.exec(code)) !== null) {
+    while ((m = re.exec(code)) !== null) {
         values.push({
             name: m[1].trim(),
             value: Math.floor(Number(m[2].trim()) * 1000),
@@ -108,6 +98,44 @@ function getSliderValuesFromCode(code) {
     }
 
     return values;
+}
+
+function getColorValuesFromCode(code) {
+    let re_color = /vec3 +([^ ]+) *= *vec3\(([^\)]+)\); *\/\/ *!! color *$/gm;
+    let v = getVec3ValuesFromCode(code, re_color);
+    let values = v.map((val) => {
+        return {
+            name: val.name,
+            rgba: {
+                r: Math.floor(val.vec[0] * 255),
+                g: Math.floor(val.vec[1] * 255),
+                b: Math.floor(val.vec[2] * 255),
+                a: 1.0,
+            }
+        };
+    });
+    return values;
+}
+
+function getPositionValuesFromCode(code) {
+    let re_position = /vec3 +([^ ]+) *= *vec3\(([^\)]+)\); *\/\/ *!! position *$/gm;
+    let v = getVec3ValuesFromCode(code, re_position);
+    let values = v.map((val) => {
+        return {
+            name: val.name,
+            xyz: {
+                x: Math.floor(val.vec[0] * 1000),
+                y: Math.floor(val.vec[1] * 1000),
+                z: Math.floor(val.vec[2] * 1000),
+            }
+        };
+    });
+    return values;
+}
+
+function getSliderValuesFromCode(code) {
+    let re_slider = /float +([^ ]+) *= *([0-9\.-]+); *\/\/ *!! slider *$/gm;
+    return getFloatValueFromCode(code, re_slider);
 }
 
 function numToStrPad(x) {
@@ -119,9 +147,16 @@ function numToStrPad(x) {
     }
 }
 
-function rgbaToVec3(rgba) {
-    let vec = [ rgba.r, rgba.g, rgba.b ].map((i) => {
+function rgbaToVec3(col) {
+    let vec = [ col.r, col.g, col.b ].map((i) => {
         return numToStrPad(Number((i / 255)));
+    });
+    return 'vec3(' + vec[0] + ', ' + vec[1] + ', ' + vec[2] + ')';
+}
+
+function xyzToVec3(pos) {
+    let vec = [ pos.x, pos.y, pos.z ].map((i) => {
+        return numToStrPad(Number(i / 1000));
     });
     return 'vec3(' + vec[0] + ', ' + vec[1] + ', ' + vec[2] + ')';
 }
@@ -130,6 +165,13 @@ function replaceColorValueInCode(newColorValue, code) {
     const c = newColorValue;
     let re_color = new RegExp('(vec3 +' + c.name + ' *= *)vec3\\([^\\)]+\\)(; *\\/\\/ *!! color *$)', 'gm');
     let newCodeValue = code.replace(re_color, '$1' + rgbaToVec3(c.rgba) + '$2');
+    return newCodeValue;
+}
+
+function replacePositionValueInCode(newPositionValue, code) {
+    const p = newPositionValue;
+    let re_position = new RegExp('(vec3 +' + p.name + ' *= *)vec3\\([^\\)]+\\)(; *\\/\\/ *!! position *$)', 'gm');
+    let newCodeValue = code.replace(re_position, '$1' + xyzToVec3(p.xyz) + '$2');
     return newCodeValue;
 }
 
@@ -166,6 +208,111 @@ class PlazmaColorPicker extends React.Component {
               <SketchPicker
                 color={c.rgba}
                 onChange={this.onChangeLocal}
+              />
+            </div>
+        );
+    }
+}
+
+// Requires props:
+// - position: { name: "name", xyz: { x: 0.0, y: 0.0, z: 0.0 } }
+// - onChangeLift
+class PositionSliders extends React.Component {
+    constructor(props) {
+        super(props);
+        this.onChangeX = this.onChangeX.bind(this);
+        this.onChangeY = this.onChangeY.bind(this);
+        this.onChangeZ = this.onChangeZ.bind(this);
+    }
+
+    onChangeX(x) {
+        let xyz = this.props.position.xyz;
+        xyz.x = x;
+
+        let newPositionValue = {
+            name: this.props.position.name,
+            xyz: xyz,
+        };
+        this.props.onChangeLift(newPositionValue);
+    }
+
+    onChangeY(y) {
+        let xyz = this.props.position.xyz;
+        xyz.y = y;
+
+        let newPositionValue = {
+            name: this.props.position.name,
+            xyz: xyz,
+        };
+        this.props.onChangeLift(newPositionValue);
+    }
+
+    onChangeZ(z) {
+        let xyz = this.props.position.xyz;
+        xyz.z = z;
+
+        let newPositionValue = {
+            name: this.props.position.name,
+            xyz: xyz,
+        };
+        this.props.onChangeLift(newPositionValue);
+    }
+
+    render() {
+        return (
+            <div>
+              <span>x</span>
+              <Slider
+                value={this.props.position.xyz.x}
+                step={1}
+                min={-1000}
+                max={1000}
+                onChange={this.onChangeX}
+              />
+
+              <span>y</span>
+              <Slider
+                value={this.props.position.xyz.y}
+                step={1}
+                min={-1000}
+                max={1000}
+                onChange={this.onChangeY}
+              />
+
+              <span>z</span>
+              <Slider
+                value={this.props.position.xyz.z}
+                step={1}
+                min={-1000}
+                max={1000}
+                onChange={this.onChangeZ}
+              />
+            </div>
+        );
+    }
+}
+
+// Requires props:
+// - position: { name: "name", xyz: { x: 0.0, y: 0.0, z: 0.0 } }
+// - onChangeLift
+class PlazmaPositionSliders extends React.Component {
+    constructor(props) {
+        super(props);
+        this.onChangeLocal = this.onChangeLocal.bind(this);
+    }
+
+    onChangeLocal(position) {
+        this.props.onChangeLift(position);
+    }
+
+    render() {
+        let p = this.props.position;
+        return (
+            <div className="is-half">
+              <span>{p.name}</span>
+              <PositionSliders
+                position={p}
+                onChangeLift={this.onChangeLocal}
               />
             </div>
         );
@@ -235,6 +382,39 @@ class ColorPickerColumns extends React.Component {
               <Columns>
                 {pickers}
               </Columns>
+            </Column>
+        );
+    }
+}
+
+// Requires props:
+// - code
+// - onChangeLift
+class PositionSlidersColumns extends React.Component {
+    constructor(props) {
+        super(props);
+        this.onChangeLocal = this.onChangeLocal.bind(this);
+    }
+
+    onChangeLocal(newPositionValue) {
+        let newCodeValue = replacePositionValueInCode(newPositionValue, this.props.code);
+        this.props.onChangeLift(newCodeValue);
+    }
+
+    render() {
+        let values = getPositionValuesFromCode(this.props.code);
+        let sliders = values.map((position, idx) => {
+            return (
+                <PlazmaPositionSliders
+                  key={position.name + idx}
+                  position={position}
+                  onChangeLift={this.onChangeLocal}
+                />
+            );
+        });
+        return (
+            <Column>
+              {sliders}
             </Column>
         );
     }
@@ -438,6 +618,7 @@ class App extends Component {
         this.sendUpdatedContent = this.sendUpdatedContent.bind(this);
         this.onEditorChange = this.onEditorChange.bind(this);
         this.onColorPickerChange = this.onColorPickerChange.bind(this);
+        this.onPositionSlidersChange = this.onPositionSlidersChange.bind(this);
         this.handleSocketOpen = this.handleSocketOpen.bind(this);
         this.handleSocketMessage = this.handleSocketMessage.bind(this);
         this.sendDmoData = this.sendDmoData.bind(this);
@@ -510,6 +691,10 @@ class App extends Component {
         this.sendUpdatedContent(newValue);
     }
 
+    onPositionSlidersChange(newValue) {
+        this.sendUpdatedContent(newValue);
+    }
+
     sendDmoData() {
         if (this.state.sentUpdateSinceChange) {
             return;
@@ -578,6 +763,11 @@ class App extends Component {
                     <ColorPickerColumns
                       code={this.state.editor_content}
                       onChangeLift={this.onColorPickerChange}
+                    />
+
+                    <PositionSlidersColumns
+                      code={this.state.editor_content}
+                      onChangeLift={this.onPositionSlidersChange}
                     />
 
                     <SliderColumns

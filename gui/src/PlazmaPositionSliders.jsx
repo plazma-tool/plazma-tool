@@ -40,15 +40,6 @@ export class PositionSlidersColumns extends React.Component {
 // - position: { name: "name", xyz: { x: 0.0, y: 0.0, z: 0.0 } }
 // - onChangeLift
 class PlazmaPositionSliders extends React.Component {
-    constructor(props) {
-        super(props);
-        this.onChangeLocal = this.onChangeLocal.bind(this);
-    }
-
-    onChangeLocal(position) {
-        this.props.onChangeLift(position);
-    }
-
     render() {
         let p = this.props.position;
         return (
@@ -56,7 +47,7 @@ class PlazmaPositionSliders extends React.Component {
               <span>{p.name}</span>
               <PositionSliders
                 position={p}
-                onChangeLift={this.onChangeLocal}
+                onChangeLift={this.onChangeLift}
               />
             </div>
         );

@@ -26,6 +26,8 @@ impl Default for QuadScene {
 
 impl QuadScene {
     pub fn circle() -> QuadScene {
+        use crate::dmo_data::BuiltIn as B;
+
         // FIXME these will have to be relative to project root stored in ProjectData
         let vert_src_path = "../data/screen_quad.vert".to_string();
         let vert_src = include_str!("../../data/screen_quad.vert").to_string();
@@ -39,20 +41,17 @@ impl QuadScene {
             frag_src_path: frag_src_path,
             frag_src: frag_src,
             layout_to_vars: vec![
-                UniformMapping::Float(0,
-                                      "time".to_string()),
-                UniformMapping::Vec2(1,
-                                     "window_resolution.x".to_string(),
-                                     "window_resolution.y".to_string()),
-                UniformMapping::Vec2(3,
-                                     "screen_resolution.x".to_string(),
-                                     "screen_resolution.y".to_string()),
+                UniformMapping::Float(0, B::Time),
+                UniformMapping::Vec2(1, B::Window_Width, B::Window_Height),
+                UniformMapping::Vec2(2, B::Screen_Width, B::Screen_Height),
             ],
             binding_to_buffers: vec![],
         }
     }
 
     pub fn cross() -> QuadScene {
+        use crate::dmo_data::BuiltIn as B;
+
         // FIXME these will have to be relative to project root stored in ProjectData
         let vert_src_path = "../data/screen_quad.vert".to_string();
         let vert_src = include_str!("../../data/screen_quad.vert").to_string();
@@ -66,16 +65,13 @@ impl QuadScene {
             frag_src_path: frag_src_path,
             frag_src: frag_src,
             layout_to_vars: vec![
-                UniformMapping::Float(0,
-                                      "time".to_string()),
-                UniformMapping::Vec2(1,
-                                     "window_resolution.x".to_string(),
-                                     "window_resolution.y".to_string()),
-                UniformMapping::Vec2(3,
-                                     "screen_resolution.x".to_string(),
-                                     "screen_resolution.y".to_string()),
+                UniformMapping::Float(0, B::Time),
+                UniformMapping::Vec2(1, B::Window_Width, B::Window_Height),
+                UniformMapping::Vec2(2, B::Screen_Width, B::Screen_Height),
             ],
-            binding_to_buffers: vec![],
+            binding_to_buffers: vec![
+                BufferMapping::Sampler2D(0, 0),
+            ],
         }
     }
 }

@@ -15,7 +15,7 @@ export class ColorPickerColumns extends React.Component {
                   key={color.name + idx}
                   code={this.props.code}
                   color={color}
-                  onChangeLift={this.onChangeLift}
+                  onChangeLift={this.props.onChangeLift}
                 />
             );
         });

@@ -32,9 +32,7 @@ pub struct SceneObject {
 
 impl Default for PolygonScene {
     fn default() -> PolygonScene {
-        PolygonScene {
-            scene_objects: SmallVec::new(),
-        }
+        PolygonScene::empty()
     }
 }
 
@@ -64,6 +62,12 @@ impl Default for SceneObject {
 }
 
 impl PolygonScene {
+    pub fn empty() -> PolygonScene {
+        PolygonScene {
+            scene_objects: SmallVec::new(),
+        }
+    }
+
     pub fn draw(&self, context: &ContextGfx) -> Result<(), RuntimeError> {
         for o in self.scene_objects.iter() {
             if let Some(ref model) = context.polygon_context.models.get(o.model_idx) {

@@ -114,6 +114,8 @@ pub fn builtin_to_idx(name: BuiltIn) -> usize {
         Light_Linear_Falloff    => 28,
         Light_Quadratic_Falloff => 29,
         Light_Cutoff_Angle      => 30,
+
+        Custom(n)               => 31 + n,
     }
 }
 
@@ -162,4 +164,6 @@ pub enum BuiltIn {
     Light_Linear_Falloff,
     Light_Quadratic_Falloff,
     Light_Cutoff_Angle,
+
+    Custom(usize),
 }

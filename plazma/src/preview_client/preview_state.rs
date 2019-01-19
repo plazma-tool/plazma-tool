@@ -18,9 +18,8 @@ use intro_runtime::mesh::Mesh;
 use intro_runtime::polygon_scene::{PolygonScene, SceneObject};
 use intro_runtime::model::{Model, ModelType};
 use intro_runtime::mouse::MouseButton as Btn;
-use intro_runtime::types::{PixelFormat, Vertex, ValueVec3, ValueFloat};
+use intro_runtime::types::{PixelFormat, Vertex, ValueVec3, ValueFloat, BufferMapping, UniformMapping};
 use intro_runtime::error::RuntimeError;
-use intro_runtime::types::{BufferMapping, UniformMapping};
 
 use crate::dmo_data::DmoData;
 use crate::error::ToolError;
@@ -68,7 +67,131 @@ impl PreviewState {
         Ok(state)
     }
 
-    pub fn build(&mut self, dmo_data: &DmoData) -> Result<(), Box<Error>> {
+    pub fn build_frame_buffers(&self,
+                               dmo_gfx: &mut DmoGfx,
+                               dmo_data: &DmoData)
+                               -> Result<(), Box<Error>>
+    {
+        use crate::dmo_data::context_data as d;
+
+        let mut frame_buffers: SmallVec<[FrameBuffer; 64]> = SmallVec::new();
+
+        for fb in dmo_data.context.frame_buffers.iter() {
+            let kind = match fb.kind {
+                d::BufferKind::NOOP => BufferKind::NOOP,
+                d::BufferKind::Empty_Texture => BufferKind::Empty_Texture,
+                d::BufferKind::Image_Texture => BufferKind::Image_Texture,
+            };
+
+            let format = match fb.format {
+                d::PixelFormat::NOOP => PixelFormat::NOOP,
+                d::PixelFormat::RED_u8 => PixelFormat::RED_u8,
+                d::PixelFormat::RGB_u8 => PixelFormat::RGB_u8,
+                d::PixelFormat::RGBA_u8 => PixelFormat::RGBA_u8,
+            };
+
+            frame_buffers.push(FrameBuffer::new(kind, format, None));
+        }
+
+        dmo_gfx.context.frame_buffers = frame_buffers;
+
+        match dmo_gfx.create_frame_buffers() {
+            Ok(_) => {},
+            Err(e) => return Err(Box::new(ToolError::Runtime(e, "".to_owned())))
+        }
+
+        Ok(())
+    }
+
+    pub fn build_quad_scenes(&mut self,
+                             dmo_gfx: &mut DmoGfx,
+                             dmo_data: &DmoData)
+                             -> Result<(), Box<Error>>
+    {
+        use crate::dmo_data as d;
+
+        dmo_gfx.context.quad_scenes = SmallVec::new();
+
+        for q in dmo_data.context.quad_scenes.iter() {
+            let mut layout_to_vars: SmallVec<[UniformMapping; 64]> = SmallVec::new();
+            let mut binding_to_buffers: SmallVec<[BufferMapping; 64]> = SmallVec::new();
+
+            for i in q.layout_to_vars.iter() {
+                let a = match i {
+                    d::UniformMapping::NOOP => UniformMapping::NOOP,
+
+                    d::UniformMapping::Float(layout_idx, a) =>
+                        UniformMapping::Float(*layout_idx,
+                                              d::builtin_to_idx(a) as u8),
+
+                    d::UniformMapping::Vec2(layout_idx, a, b) =>
+                        UniformMapping::Vec2(*layout_idx,
+                                             d::builtin_to_idx(a) as u8,
+                                             d::builtin_to_idx(b) as u8),
+
+                    d::UniformMapping::Vec3(layout_idx, a, b, c) =>
+                        UniformMapping::Vec3(*layout_idx,
+                                             d::builtin_to_idx(a) as u8,
+                                             d::builtin_to_idx(b) as u8,
+                                             d::builtin_to_idx(c) as u8),
+
+                    d::UniformMapping::Vec4(layout_idx, a, b, c, d) =>
+                        UniformMapping::Vec4(*layout_idx,
+                                             d::builtin_to_idx(a) as u8,
+                                             d::builtin_to_idx(b) as u8,
+                                             d::builtin_to_idx(c) as u8,
+                                             d::builtin_to_idx(d) as u8),
+                };
+                layout_to_vars.push(a);
+            }
+
+            for i in q.binding_to_buffers.iter() {
+                let a = match i {
+                    d::BufferMapping::NOOP => BufferMapping::NOOP,
+
+                    d::BufferMapping::Sampler2D(layout_idx, buffer_idx) =>
+                        BufferMapping::Sampler2D(*layout_idx, *buffer_idx),
+                };
+                binding_to_buffers.push(a);
+            }
+
+            dmo_gfx
+                .context
+                .add_quad_scene(&q.vert_src,
+                                &q.frag_src,
+                                layout_to_vars,
+                                binding_to_buffers);
+        }
+
+        let mut err_msg_buf = [32 as u8; ERR_MSG_LEN];
+
+        match dmo_gfx.create_quads(&mut err_msg_buf) {
+            Ok(_) => {},
+            Err(e) => {
+                let msg = String::from_utf8(err_msg_buf.to_vec())?;
+                return Err(Box::new(ToolError::Runtime(e, msg)));
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn build_dmo_gfx(&mut self, dmo_data: &DmoData) -> Result<(), Box<Error>> {
+        let mut dmo_gfx: DmoGfx = DmoGfx::default();
+
+        self.build_frame_buffers(&mut dmo_gfx, dmo_data)?;
+        self.build_quad_scenes(&mut dmo_gfx, dmo_data)?;
+        //self.build_polygon_scenes(&mut dmo_gfx, dmo_data)?;
+
+        self.dmo_gfx = dmo_gfx;
+
+        self.should_recompile = true;
+        self.draw_anyway = true;
+
+        Ok(())
+    }
+
+    pub fn build_old(&mut self, dmo_data: &DmoData) -> Result<(), Box<Error>> {
 
         // Manually for now. First add objects, then create OpenGL objects.
 

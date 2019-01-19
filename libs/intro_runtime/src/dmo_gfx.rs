@@ -35,7 +35,7 @@ impl Default for DmoGfx {
 
 impl DmoGfx {
     pub fn draw(&self) {
-        self.draw_poly();
+        self.draw_circle_and_cross();
     }
 
     pub fn draw_poly(&self) {

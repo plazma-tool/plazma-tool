@@ -20,18 +20,38 @@ pub enum ModelType {
 
 impl Default for Model {
     fn default() -> Model {
+        Model::empty_cube()
+    }
+}
+
+impl Model {
+    pub fn empty_cube() -> Model {
         Model {
             model_type: ModelType::Cube,
             meshes: SmallVec::new(),
         }
     }
-}
 
-impl Model {
     pub fn new(model_type: ModelType) -> Model {
         let mut m = Model::default();
         m.model_type = model_type;
         m
+    }
+
+    pub fn cube(vert_src_idx: usize, frag_src_idx: usize) -> Model {
+        let mut model = Model {
+            model_type: ModelType::Cube,
+            meshes: SmallVec::new(),
+        };
+
+        // Add a mesh but no vertices, which will be created from already stored shapes.
+        let mut mesh = Mesh::default();
+        mesh.vert_src_idx = vert_src_idx;
+        mesh.frag_src_idx = frag_src_idx;
+
+        model.meshes.push(mesh);
+
+        model
     }
 
     pub fn draw(&self,

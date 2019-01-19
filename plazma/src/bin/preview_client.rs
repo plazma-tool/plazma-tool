@@ -140,7 +140,7 @@ fn main() {
 
     // Start with a default DmoData until we receive update from the server.
     let dmo_data = DmoData::default();
-    state.build(&dmo_data).unwrap();
+    state.build_dmo_gfx(&dmo_data).unwrap();
 
     state.set_is_paused(false);
 
@@ -161,6 +161,8 @@ fn render_loop(window: &GlWindow,
     let mut dpi_factor = window.window().get_hidpi_factor();
 
     while state.get_is_running() {
+
+        state.draw_anyway = false;
 
         // 000. handle server messages
 
@@ -185,12 +187,9 @@ fn render_loop(window: &GlWindow,
                     SetDmo => {
                         match serde_json::from_str::<DmoData>(&message.data) {
                             Ok(d) => {
-                                if let Some(ref scene) = d.context.quad_scenes.get(0) {
-                                    state.dmo_gfx.update_shader_src(0, &scene.vert_src);
-                                    state.dmo_gfx.update_shader_src(1, &scene.frag_src);
-                                    state.should_recompile = true;
-                                } else {
-                                    println!("Error, no index 0");
+                                match state.build_dmo_gfx(&d) {
+                                    Ok(_) => {},
+                                    Err(e) => error!("Can't perform SetDmo: {:?}",e ),
                                 }
                             },
                             Err(e) => error!("Can't deserialize Dmo: {:?}", e),
@@ -213,7 +212,6 @@ fn render_loop(window: &GlWindow,
         // 0. update time
 
         state.update_time_frame_start();
-        state.draw_anyway = false;
 
         // 1. sync vars (time, camera, etc.)
 

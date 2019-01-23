@@ -19,9 +19,11 @@ use std::env;
 use std::sync::{Arc, Mutex};
 use std::thread;
 //use std::time::Duration;
+use std::path::PathBuf;
 //use std::error::Error;
 
 use clap::App as ClApp;
+use clap::{Arg, SubCommand};
 
 use web_view::Content;
 
@@ -65,9 +67,48 @@ fn main() {
 
     // --- CLI options ---
 
-    let _matches = ClApp::new("Plazma")
+    let matches = ClApp::new("Plazma")
         .version("0.1.0")
+        .author("etd <erethedaybreak@gmail.com>")
+        .subcommand(SubCommand::with_name("open")
+                    .about("open a demo")
+                    .arg(Arg::with_name("yml")
+                         .long("yml")
+                         .value_name("FILE")
+                         .required(true)
+                         .takes_value(true)
+                         .help("YAML demo file")))
         .get_matches();
+
+    // --- Process CLI args ---
+
+    let demo_yml_path: PathBuf;
+
+    if let Some(m) = matches.subcommand_matches("open") {
+
+        demo_yml_path = PathBuf::from(m.value_of("yml").unwrap());
+
+    } else {
+        // No CLI subcommands were given. Try default locations for a demo.yml
+
+        // ./demo.yml
+        let a = PathBuf::from("demo.yml".to_owned());
+        // ./data/demo.yml
+        let b = PathBuf::from("data".to_owned()).join(PathBuf::from("demo.yml".to_owned()));
+        if a.exists() {
+            demo_yml_path = a;
+        } else if b.exists() {
+            demo_yml_path = b;
+        } else {
+            // No subcommands were given and default locations don't exist.
+            // Start with a minimal default demo.
+
+            // ./data/minimal/demo.yml
+            demo_yml_path = PathBuf::from("data".to_owned())
+                .join(PathBuf::from("minimal".to_owned()))
+                .join(PathBuf::from("demo.yml".to_owned()));
+        }
+    }
 
     // --- HTTP and WebSocket server ---
 
@@ -77,7 +118,7 @@ fn main() {
 
         let sys = actix::System::new("plazma server");
 
-        let server_state = Arc::new(Mutex::new(ServerState::new()));
+        let server_state = Arc::new(Mutex::new(ServerState::new(&demo_yml_path).unwrap()));
 
         server::new(move || {
 

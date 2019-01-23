@@ -149,8 +149,10 @@ impl PreviewState {
                 let a = match i {
                     d::BufferMapping::NOOP => BufferMapping::NOOP,
 
-                    d::BufferMapping::Sampler2D(layout_idx, buffer_idx) =>
-                        BufferMapping::Sampler2D(*layout_idx, *buffer_idx),
+                    d::BufferMapping::Sampler2D(layout_idx, buffer_name) => {
+                        let buffer_idx = dmo_data.context.index.get_buffer_index(&buffer_name)?;
+                        BufferMapping::Sampler2D(*layout_idx, buffer_idx as u8)
+                    },
                 };
                 binding_to_buffers.push(a);
             }

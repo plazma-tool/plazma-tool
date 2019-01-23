@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+use std::error::Error;
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
@@ -40,11 +42,13 @@ pub struct ServerState {
 pub type ServerStateWrap = Arc<Mutex<ServerState>>;
 
 impl ServerState {
-    pub fn new() -> ServerState {
-        ServerState {
-            project_data: ProjectData::default(),
+    pub fn new(demo_yml_path: &PathBuf) -> Result<ServerState, Box<Error>> {
+        let state = ServerState {
+            project_data: ProjectData::new(&demo_yml_path)?,
             clients: HashMap::new(),
-        }
+        };
+
+        Ok(state)
     }
 }
 
@@ -183,7 +187,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                             let state = ctx.state().lock().expect("Can't lock ServerState.");
                             resp = Sending {
                                 data_type: SetDmo,
-                                data: serde_json::to_string(&state.project_data.dmo).unwrap(),
+                                data: serde_json::to_string(&state.project_data.dmo_data).unwrap(),
                             };
                         }
                         let body = serde_json::to_string(&resp).unwrap();
@@ -198,7 +202,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
 
                             Ok(dmo) => {
                                 let mut state = ctx.state().lock().expect("Can't lock ServerState.");
-                                state.project_data.dmo = dmo;
+                                state.project_data.dmo_data = dmo;
 
                                 for (id, addr) in &state.clients {
                                     if *id == self.client_id {
@@ -207,7 +211,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
 
                                     let resp = Sending {
                                         data_type: SetDmo,
-                                        data: serde_json::to_string(&state.project_data.dmo).unwrap(),
+                                        data: serde_json::to_string(&state.project_data.dmo_data).unwrap(),
                                     };
                                     addr.do_send(resp);
                                 }

@@ -4,8 +4,11 @@ use crate::dmo_data::{UniformMapping, BufferMapping};
 pub struct QuadScene {
     pub name: String,
     pub vert_src_path: String,
-    pub vert_src: String,
     pub frag_src_path: String,
+
+    #[serde(skip_serializing, skip_deserializing)]
+    pub vert_src: String,
+    #[serde(skip_serializing, skip_deserializing)]
     pub frag_src: String,
 
     /// Which index in `ContextData.sync_vars[]` corresponds to a uniform layout
@@ -19,59 +22,21 @@ pub struct QuadScene {
 
 impl Default for QuadScene {
     fn default() -> QuadScene {
-        QuadScene::circle()
+        QuadScene::new()
     }
-
 }
 
 impl QuadScene {
-    pub fn circle() -> QuadScene {
-        use crate::dmo_data::BuiltIn as B;
-
-        // FIXME these will have to be relative to project root stored in ProjectData
-        let vert_src_path = "../data/screen_quad.vert".to_string();
-        let vert_src = include_str!("../../data/screen_quad.vert").to_string();
-        let frag_src_path = "../data/circle.frag".to_string();
-        let frag_src = include_str!("../../data/circle.frag").to_string();
-
+    pub fn new() -> QuadScene {
         QuadScene {
-            name: "default".to_string(),
-            vert_src_path: vert_src_path,
-            vert_src: vert_src,
-            frag_src_path: frag_src_path,
-            frag_src: frag_src,
-            layout_to_vars: vec![
-                UniformMapping::Float(0, B::Time),
-                UniformMapping::Vec2(1, B::Window_Width, B::Window_Height),
-                UniformMapping::Vec2(2, B::Screen_Width, B::Screen_Height),
-            ],
+            name: "".to_string(),
+            vert_src_path: "".to_string(),
+            frag_src_path: "".to_string(),
+            vert_src: "".to_string(),
+            frag_src: "".to_string(),
+            layout_to_vars: vec![],
             binding_to_buffers: vec![],
         }
     }
-
-    pub fn cross() -> QuadScene {
-        use crate::dmo_data::BuiltIn as B;
-
-        // FIXME these will have to be relative to project root stored in ProjectData
-        let vert_src_path = "../data/screen_quad.vert".to_string();
-        let vert_src = include_str!("../../data/screen_quad.vert").to_string();
-        let frag_src_path = "../data/cross.frag".to_string();
-        let frag_src = include_str!("../../data/cross.frag").to_string();
-
-        QuadScene {
-            name: "default".to_string(),
-            vert_src_path: vert_src_path,
-            vert_src: vert_src,
-            frag_src_path: frag_src_path,
-            frag_src: frag_src,
-            layout_to_vars: vec![
-                UniformMapping::Float(0, B::Time),
-                UniformMapping::Vec2(1, B::Window_Width, B::Window_Height),
-                UniformMapping::Vec2(2, B::Screen_Width, B::Screen_Height),
-            ],
-            binding_to_buffers: vec![
-                BufferMapping::Sampler2D(0, 0),
-            ],
-        }
-    }
 }
+

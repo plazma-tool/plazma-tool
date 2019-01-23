@@ -1,0 +1,40 @@
+
+settings:
+  start_full_screen: false
+  audio_play_on_start: true
+  mouse_sensitivity: 0.5
+  movement_sensitivity: 0.5
+
+context:
+  quad_scenes:
+
+    - name: "circle"
+      vert_src_path: "./data/screen_quad.vert"
+      frag_src_path: "./data/circle.frag"
+      layout_to_vars:
+        - Float: [ 0, "Time" ]
+        - Vec2: [ 1, "Window_Width", "Window_Height" ]
+        - Vec2: [ 2, "Screen_Width", "Screen_Height" ]
+      binding_to_buffers: []
+
+    - name: "cross"
+      vert_src_path: "./data/screen_quad.vert"
+      frag_src_path: "./data/cross.frag"
+      layout_to_vars:
+        - Float: [ 0, "Time" ]
+        - Vec2: [ 1, "Window_Width", "Window_Height" ]
+        - Vec2: [ 2, "Screen_Width", "Screen_Height" ]
+      binding_to_buffers:
+        - Sampler2D: [ 0, "scene buf" ]
+
+  polygon_scenes: []
+
+  frame_buffers:
+    - { name: "scene buf", kind: Empty_Texture, format: RGBA_u8, image_path: "" }
+
+  sync_vars:
+    tracks: []
+
+timeline:
+  tracks: []
+

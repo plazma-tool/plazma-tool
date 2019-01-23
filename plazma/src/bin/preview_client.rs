@@ -20,6 +20,7 @@ use std::thread::{self, sleep};
 use std::sync::Arc;
 use std::sync::mpsc;
 use std::time::Duration;
+use std::path::PathBuf;
 
 use actix::*;
 use actix_web::ws;
@@ -32,6 +33,7 @@ use plazma::dmo_data::DmoData;
 use plazma::server_actor::Receiving;
 use plazma::preview_client::client_actor::ClientActor;
 use plazma::preview_client::preview_state::PreviewState;
+use plazma::utils::file_to_string;
 
 fn main() {
     std::env::set_var("RUST_LOG", "actix_web=info,preview_client=info");
@@ -138,8 +140,14 @@ fn main() {
         PreviewState::new(wx as f64, wy as f64,
                           wx as f64, wy as f64).unwrap();
 
-    // Start with a default DmoData until we receive update from the server.
-    let dmo_data = DmoData::default();
+    // Start with a minimal demo until we receive update from the server.
+    let demo_yml_path = PathBuf::from("data".to_owned())
+        .join(PathBuf::from("minimal".to_owned()))
+        .join(PathBuf::from("demo.yml".to_owned()));
+
+    let text: String = file_to_string(&demo_yml_path).unwrap();
+    let dmo_data = DmoData::new_from_yml_str(&text).unwrap();
+
     state.build_dmo_gfx(&dmo_data).unwrap();
 
     state.set_is_paused(false);

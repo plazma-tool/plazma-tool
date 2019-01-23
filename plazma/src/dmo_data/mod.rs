@@ -1,6 +1,10 @@
-use std::default::Default;
+use std::path::PathBuf;
+use std::error::Error;
+
+//use serde_yaml;
 
 pub mod context_data;
+pub mod data_index;
 pub mod quad_scene;
 pub mod polygon_scene;
 pub mod model;
@@ -34,6 +38,15 @@ impl Default for DmoData {
             context: ContextData::default(),
             timeline: Timeline::default(),
         }
+    }
+}
+
+impl DmoData {
+    pub fn new_from_yml_str(text: &str) -> Result<DmoData, Box<Error>> {
+        let mut dmo_data: DmoData = serde_yaml::from_str(text)?;
+        dmo_data.context.read_quad_scene_shaders()?;
+        dmo_data.context.update_index();
+        Ok(dmo_data)
     }
 }
 
@@ -82,7 +95,7 @@ pub enum UniformMapping {
 #[derive(Serialize, Deserialize, Debug)]
 pub enum BufferMapping {
     NOOP,
-    Sampler2D(u8, u8),
+    Sampler2D(u8, String),
 }
 
 #[derive(Serialize, Deserialize, Debug)]

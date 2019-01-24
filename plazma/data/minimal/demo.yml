@@ -36,5 +36,25 @@ context:
     tracks: []
 
 timeline:
-  tracks: []
+
+  tracks:
+
+    - scene_blocks:
+
+        - start: 0.0
+          end: 10.0
+          draw_ops:
+            - Target_Buffer: "scene buf"
+            - Clear: [ 55, 136, 182, 0 ]
+            - Draw_Quad_Scene: "circle"
+            - Target_Buffer_Default
+            - Clear: [ 0, 0, 0, 0 ]
+            - Draw_Quad_Scene: "cross"
+
+        - start: 10.0
+          end: 20.0
+          draw_ops:
+            - Target_Buffer_Default
+            - Clear: [ 0, 0, 0, 0 ]
+            - Draw_Quad_Scene: "cross"
 

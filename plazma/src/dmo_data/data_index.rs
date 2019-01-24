@@ -49,6 +49,21 @@ impl DataIndex {
         let idx = self.buffer_name_to_idx.get(name).ok_or("cannot get index: bad buffer name")?;
         Ok(*idx)
     }
+
+    pub fn get_quad_scene_index(&self, name: &str) -> Result<usize, Box<Error>> {
+        let idx = self.quad_scene_name_to_idx.get(name).ok_or("cannot get index: bad quad scene name")?;
+        Ok(*idx)
+    }
+
+    pub fn get_polygon_scene_index(&self, name: &str) -> Result<usize, Box<Error>> {
+        // FIXME
+        Ok(0)
+    }
+
+    pub fn get_profile_index(&self, name: &str) -> Result<usize, Box<Error>> {
+        // FIXME
+        Ok(0)
+    }
 }
 
 impl Default for DataIndex {

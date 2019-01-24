@@ -11,6 +11,7 @@ use intro_3d::Vector3;
 use intro_runtime::ERR_MSG_LEN;
 use intro_runtime::dmo_gfx::DmoGfx;
 use intro_runtime::dmo_sync::SyncDevice;
+use intro_runtime::timeline::{Timeline, TimeTrack, SceneBlock};
 use intro_runtime::sync_vars::builtin_to_idx;
 use intro_runtime::sync_vars::BuiltIn::*;
 use intro_runtime::frame_buffer::{FrameBuffer, BufferKind};
@@ -178,12 +179,81 @@ impl PreviewState {
         Ok(())
     }
 
+    pub fn build_timeline(&mut self,
+                          dmo_gfx: &mut DmoGfx,
+                          dmo_data: &DmoData)
+                          -> Result<(), Box<Error>>
+    {
+        use crate::dmo_data::timeline::DrawOp as D;
+        use intro_runtime::timeline::DrawOp as G;
+
+        dmo_gfx.timeline = Timeline::new();
+
+        for track in dmo_data.timeline.tracks.iter() {
+            let mut track_gfx = TimeTrack {
+                scene_blocks: SmallVec::new(),
+            };
+
+            for block in track.scene_blocks.iter() {
+                let mut ops: SmallVec<[G; 32]> = SmallVec::new();
+
+                for i in block.draw_ops.iter() {
+                    let o = match i {
+                        D::NOOP => G::NOOP,
+
+                        D::Exit(x) => G::Exit(*x),
+
+                        D::Draw_Quad_Scene(name) => {
+                            let idx = dmo_data.context.index.get_quad_scene_index(name)?;
+                            G::Draw_Quad_Scene(idx)
+                        },
+
+                        D::Draw_Poly_Scene(name) => {
+                            let idx = dmo_data.context.index.get_polygon_scene_index(name)?;
+                            G::Draw_Poly_Scene(idx)
+                        },
+
+                        D::Clear(r, g, b, a) => G::Clear(*r, *g, *b, *a),
+
+                        D::Target_Buffer(name) => {
+                            let idx = dmo_data.context.index.get_buffer_index(name)?;
+                            G::Target_Buffer(idx)
+                        },
+
+                        D::Target_Buffer_Default => G::Target_Buffer_Default,
+
+                        D::Profile(name) => {
+                            let idx = dmo_data.context.index.get_profile_index(name)?;
+                            G::Profile(idx)
+                        },
+                    };
+
+                    ops.push(o);
+                }
+
+                let block_gfx = SceneBlock {
+                    start: block.start,
+                    end: block.end,
+                    draw_ops: ops,
+                };
+
+                track_gfx.scene_blocks.push(block_gfx);
+            }
+
+            dmo_gfx.timeline.tracks.push(track_gfx);
+        }
+
+        Ok(())
+    }
+
     pub fn build_dmo_gfx(&mut self, dmo_data: &DmoData) -> Result<(), Box<Error>> {
         let mut dmo_gfx: DmoGfx = DmoGfx::default();
 
         self.build_frame_buffers(&mut dmo_gfx, dmo_data)?;
         self.build_quad_scenes(&mut dmo_gfx, dmo_data)?;
         //self.build_polygon_scenes(&mut dmo_gfx, dmo_data)?;
+
+        self.build_timeline(&mut dmo_gfx, dmo_data)?;
 
         self.dmo_gfx = dmo_gfx;
 
@@ -491,7 +561,7 @@ impl PreviewState {
 
     }
 
-    pub fn draw(&self) {
+    pub fn draw(&mut self) {
         self.dmo_gfx.draw();
     }
 

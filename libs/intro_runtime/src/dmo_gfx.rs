@@ -16,12 +16,12 @@ use crate::ERR_MSG_LEN;
 use crate::context_gfx::PROFILE_FRAMES;
 //use crate::error::RuntimeError;
 use crate::error::RuntimeError::*;
+use crate::timeline::{Timeline, DrawOp};
 
 pub struct DmoGfx {
     pub context: ContextGfx,
     pub sync: DmoSync,
-    // TODO timeline, which will be used to build the draw_ops
-    //pub timeline: Timeline,
+    pub timeline: Timeline,
 }
 
 impl Default for DmoGfx {
@@ -29,32 +29,27 @@ impl Default for DmoGfx {
         DmoGfx {
             context: ContextGfx::default(),
             sync: DmoSync::default(),
+            timeline: Timeline::default(),
         }
     }
 }
 
 impl DmoGfx {
-    pub fn draw(&self) {
-        self.draw_circle_and_cross();
-    }
+    pub fn draw(&mut self) {
+        use crate::timeline::DrawOp::*;
 
-    pub fn draw_poly(&self) {
-        self.context.impl_target_buffer_default();
-        self.context.impl_clear(55, 136, 182, 0); // #3788B6
-        self.context.impl_draw_polygon_scene(0);
-    }
-
-    pub fn draw_circle_and_cross(&self) {
-        // draw the circle
-        self.context.impl_target_buffer(0);
-        self.context.impl_clear(0, 0, 255, 0);
-        self.context.impl_draw_quad_scene(0);
-
-        self.context.impl_target_buffer_default();
-        self.context.impl_clear(0, 255, 0, 0);
-
-        // draw the cross
-        self.context.impl_draw_quad_scene(1);
+        for op in self.timeline.draw_ops_at_time(self.context.get_time()) {
+            match op {
+                NOOP => {},
+                Exit(x) => self.context.impl_exit(x),
+                Draw_Quad_Scene(x) => self.context.impl_draw_quad_scene(x),
+                Draw_Poly_Scene(x) => self.context.impl_draw_polygon_scene(x),
+                Clear(r, g, b, a) => self.context.impl_clear(r, g, b, a),
+                Target_Buffer(x) => self.context.impl_target_buffer(x),
+                Target_Buffer_Default => self.context.impl_target_buffer_default(),
+                Profile(x) => self.context.impl_profile_event(x),
+            }
+        }
     }
 
     pub fn create_quads(&mut self,

@@ -12,7 +12,8 @@ pub mod mesh;
 pub mod sync_vars;
 pub mod timeline;
 
-use crate::dmo_data::context_data::ContextData;
+use crate::dmo_data::context_data::{ContextData, FrameBuffer};
+use crate::dmo_data::quad_scene::QuadScene;
 use crate::dmo_data::timeline::Timeline;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -44,9 +45,25 @@ impl Default for DmoData {
 impl DmoData {
     pub fn new_from_yml_str(text: &str) -> Result<DmoData, Box<Error>> {
         let mut dmo_data: DmoData = serde_yaml::from_str(text)?;
+        dmo_data.ensure_implicit_builtins();
         dmo_data.context.read_quad_scene_shaders()?;
-        dmo_data.context.update_index();
+        dmo_data.context.build_index();
         Ok(dmo_data)
+    }
+
+    pub fn ensure_implicit_builtins(&mut self) {
+        // Ensure "RESULT_IMAGE" framebuffer. Index value is not significant.
+
+        self.context.frame_buffers.push(FrameBuffer::framebuffer_result_image());
+
+        // Ensure "DRAW_RESULT" QuadScene. Must have index 0.
+
+        let mut quad_scenes = vec![
+            QuadScene::scene_draw_result(),
+        ];
+        quad_scenes.append(&mut self.context.quad_scenes);
+
+        self.context.quad_scenes = quad_scenes;
     }
 }
 

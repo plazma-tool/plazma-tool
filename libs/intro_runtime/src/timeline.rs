@@ -41,16 +41,13 @@ impl Timeline {
 
         use self::DrawOp::*;
 
-        // FIXME not very sophisticated at the moment, just copying the ops from
-        // the first block, not even considering time.
+        let mut ops: SmallVec<[DrawOp; 64]> = SmallVec::new();
 
         if self.tracks.len() > 0 {
 
             let track = &self.tracks[0];
 
             if track.scene_blocks.len() > 0 {
-
-                let mut ops: SmallVec<[DrawOp; 64]> = SmallVec::new();
 
                 for i in track.scene_blocks[0].draw_ops.iter() {
                     let o = match i {
@@ -65,15 +62,20 @@ impl Timeline {
                     };
                     ops.push(o);
                 }
-
-                return ops;
             }
         }
 
-        let mut ops: SmallVec<[DrawOp; 64]> = SmallVec::new();
+        // The user must always render the final result to the framebuffer named
+        // "RESULT_IMAGE", which is implicitly created as the first item in the
+        // array `context.framebuffers`.
+        //
+        // Draw ops have an implicit final sequence: select the default
+        // framebuffer, clear with black, render a simple draw shader on a quad
+        // (scene index 0), reading from the "RESULT_IMAGE" framebuffer.
+
         ops.push(DrawOp::Target_Buffer_Default);
-        // #4682B4, Steel Blue
-        ops.push(DrawOp::Clear(70, 130, 180, 0));
+        ops.push(DrawOp::Clear(0, 0, 0, 0));
+        ops.push(DrawOp::Draw_Quad_Scene(0));
 
         return ops;
     }

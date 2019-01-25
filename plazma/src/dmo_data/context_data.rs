@@ -24,14 +24,20 @@ pub struct ContextData {
 impl ContextData {
     pub fn read_quad_scene_shaders(&mut self) -> Result<(), Box<Error>> {
         for scene in self.quad_scenes.iter_mut() {
-            scene.vert_src = file_to_string(&PathBuf::from(&scene.vert_src_path))?;
-            scene.frag_src = file_to_string(&PathBuf::from(&scene.frag_src_path))?;
+            if scene.vert_src_path.len() > 0 {
+                scene.vert_src = file_to_string(&PathBuf::from(&scene.vert_src_path))?;
+            }
+            if scene.frag_src_path.len() > 0 {
+                scene.frag_src = file_to_string(&PathBuf::from(&scene.frag_src_path))?;
+            }
         }
-
         Ok(())
     }
 
-    pub fn update_index(&mut self) {
+    pub fn build_index(&mut self) {
+        // First, empty any existing index data.
+        self.index = DataIndex::new();
+
         for (idx, scene) in self.quad_scenes.iter_mut().enumerate() {
             self.index.add_quad_scene(scene, idx);
         }
@@ -64,6 +70,16 @@ pub struct FrameBuffer {
     pub kind: BufferKind,
     pub format: PixelFormat,
     // image_data: ...
+}
+
+impl FrameBuffer {
+    pub fn framebuffer_result_image() -> FrameBuffer {
+        FrameBuffer{
+            name: "RESULT_IMAGE".to_string(),
+            kind: BufferKind::Empty_Texture,
+            format: PixelFormat::RGBA_u8,
+        }
+    }
 }
 
 /// Specifies the frame buffer kind to be generated

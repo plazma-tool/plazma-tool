@@ -14,7 +14,7 @@ pub struct SyncTrack {
 
 impl Default for SyncVars {
     fn default() -> SyncVars {
-        let text = include_str!("../../data/default_sync_tracks.yml");
+        let text = include_str!("../../data/builtin/default_sync_tracks.yml");
         let tracks: Vec<SyncTrack> = serde_yaml::from_str(&text).unwrap();
 
         SyncVars {

@@ -5,12 +5,14 @@ settings:
   mouse_sensitivity: 0.5
   movement_sensitivity: 0.5
 
+# FIXME rewrite paths to be relative to project root
+
 context:
   quad_scenes:
 
     - name: "circle"
-      vert_src_path: "./data/screen_quad.vert"
-      frag_src_path: "./data/circle.frag"
+      vert_src_path: "./data/minimal/data/screen_quad.vert"
+      frag_src_path: "./data/minimal/data/circle.frag"
       layout_to_vars:
         - Float: [ 0, "Time" ]
         - Vec2: [ 1, "Window_Width", "Window_Height" ]
@@ -18,8 +20,8 @@ context:
       binding_to_buffers: []
 
     - name: "cross"
-      vert_src_path: "./data/screen_quad.vert"
-      frag_src_path: "./data/cross.frag"
+      vert_src_path: "./data/minimal/data/screen_quad.vert"
+      frag_src_path: "./data/minimal/data/cross.frag"
       layout_to_vars:
         - Float: [ 0, "Time" ]
         - Vec2: [ 1, "Window_Width", "Window_Height" ]
@@ -47,14 +49,14 @@ timeline:
             - Target_Buffer: "scene buf"
             - Clear: [ 55, 136, 182, 0 ]
             - Draw_Quad_Scene: "circle"
-            - Target_Buffer_Default
+            - Target_Buffer: "RESULT_IMAGE"
             - Clear: [ 0, 0, 0, 0 ]
             - Draw_Quad_Scene: "cross"
 
         - start: 10.0
           end: 20.0
           draw_ops:
-            - Target_Buffer_Default
+            - Target_Buffer: "RESULT_IMAGE"
             - Clear: [ 0, 0, 0, 0 ]
             - Draw_Quad_Scene: "cross"
 

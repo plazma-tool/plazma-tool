@@ -4,6 +4,7 @@ settings:
   audio_play_on_start: true
   mouse_sensitivity: 0.5
   movement_sensitivity: 0.5
+  total_length: 10.0
 
 # FIXME rewrite paths to be relative to project root
 
@@ -44,19 +45,20 @@ timeline:
     - scene_blocks:
 
         - start: 0.0
-          end: 10.0
+          end: 3.0
           draw_ops:
             - Target_Buffer: "scene buf"
-            - Clear: [ 55, 136, 182, 0 ]
+            - Clear: [ 0, 0, 0, 0 ]
             - Draw_Quad_Scene: "circle"
             - Target_Buffer: "RESULT_IMAGE"
             - Clear: [ 0, 0, 0, 0 ]
             - Draw_Quad_Scene: "cross"
 
-        - start: 10.0
+        - start: 5.0
           end: 20.0
           draw_ops:
             - Target_Buffer: "RESULT_IMAGE"
             - Clear: [ 0, 0, 0, 0 ]
             - Draw_Quad_Scene: "cross"
+
 

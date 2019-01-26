@@ -52,9 +52,13 @@ impl DmoData {
     }
 
     pub fn ensure_implicit_builtins(&mut self) {
-        // Ensure "RESULT_IMAGE" framebuffer. Index value is not significant.
+        // Ensure "RESULT_IMAGE" framebuffer. Must have index 0.
 
-        self.context.frame_buffers.push(FrameBuffer::framebuffer_result_image());
+        let mut frame_buffers = vec![
+            FrameBuffer::framebuffer_result_image()
+        ];
+        frame_buffers.append(&mut self.context.frame_buffers);
+        self.context.frame_buffers = frame_buffers;
 
         // Ensure "DRAW_RESULT" QuadScene. Must have index 0.
 
@@ -62,7 +66,6 @@ impl DmoData {
             QuadScene::scene_draw_result(),
         ];
         quad_scenes.append(&mut self.context.quad_scenes);
-
         self.context.quad_scenes = quad_scenes;
     }
 }
@@ -73,6 +76,7 @@ pub struct Settings {
     pub audio_play_on_start: bool,
     pub mouse_sensitivity: f32,
     pub movement_sensitivity: f32,
+    pub total_length: f64,
 }
 
 impl Default for Settings {
@@ -82,6 +86,7 @@ impl Default for Settings {
             audio_play_on_start: true,
             mouse_sensitivity: 0.5,
             movement_sensitivity: 0.5,
+            total_length: 10.0,
         }
     }
 }

@@ -154,6 +154,8 @@ fn main() {
 
     render_loop(&window, &mut events_loop, &mut state, rx);
 
+    println!("Render loop exited.");
+
     //add.do_send(ClientMessage("stop the client".to_string()));
 
     client_handle.join().unwrap();
@@ -220,6 +222,10 @@ fn render_loop(window: &GlWindow,
         // 0. update time
 
         state.update_time_frame_start();
+
+        if state.dmo_gfx.settings.total_length < state.get_time() {
+            break;
+        }
 
         // 1. sync vars (time, camera, etc.)
 

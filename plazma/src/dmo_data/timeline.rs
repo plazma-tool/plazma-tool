@@ -44,7 +44,6 @@ pub struct SceneBlock {
 #[derive(Serialize, Deserialize, Debug)]
 pub enum DrawOp {
     NOOP,
-    Exit(f64),
     Draw_Quad_Scene(String),
     Draw_Poly_Scene(String),
     Clear(u8, u8, u8, u8),

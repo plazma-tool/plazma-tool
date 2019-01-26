@@ -43,24 +43,28 @@ impl Timeline {
 
         let mut ops: SmallVec<[DrawOp; 64]> = SmallVec::new();
 
+        // Always start by clearing the "RESULT_IMAGE" buffer.
+
+        ops.push(DrawOp::Target_Buffer(0));
+        ops.push(DrawOp::Clear(0, 0, 0, 0));
+
         if self.tracks.len() > 0 {
-
-            let track = &self.tracks[0];
-
-            if track.scene_blocks.len() > 0 {
-
-                for i in track.scene_blocks[0].draw_ops.iter() {
-                    let o = match i {
-                        NOOP => NOOP,
-                        Exit(x) => Exit(*x),
-                        Draw_Quad_Scene(x) => Draw_Quad_Scene(*x),
-                        Draw_Poly_Scene(x) => Draw_Poly_Scene(*x),
-                        Clear(r, g, b, a) => Clear(*r, *g, *b, *a),
-                        Target_Buffer(x) => Target_Buffer(*x),
-                        Target_Buffer_Default => Target_Buffer_Default,
-                        Profile(x) => Profile(*x),
-                    };
-                    ops.push(o);
+            for track in self.tracks.iter() {
+                for block in track.scene_blocks.iter() {
+                    if block.start <= time && block.end > time {
+                        for i in block.draw_ops.iter() {
+                            let o = match i {
+                                NOOP => NOOP,
+                                Draw_Quad_Scene(x) => Draw_Quad_Scene(*x),
+                                Draw_Poly_Scene(x) => Draw_Poly_Scene(*x),
+                                Clear(r, g, b, a) => Clear(*r, *g, *b, *a),
+                                Target_Buffer(x) => Target_Buffer(*x),
+                                Target_Buffer_Default => Target_Buffer_Default,
+                                Profile(x) => Profile(*x),
+                            };
+                            ops.push(o);
+                        }
+                    }
                 }
             }
         }
@@ -93,7 +97,6 @@ pub struct SceneBlock {
 
 pub enum DrawOp {
     NOOP,
-    Exit(f64),
     Draw_Quad_Scene(usize),
     Draw_Poly_Scene(usize),
     Clear(u8, u8, u8, u8),

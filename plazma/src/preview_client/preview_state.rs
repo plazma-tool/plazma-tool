@@ -9,7 +9,7 @@ use smallvec::SmallVec;
 use tobj;
 use intro_3d::Vector3;
 use intro_runtime::ERR_MSG_LEN;
-use intro_runtime::dmo_gfx::DmoGfx;
+use intro_runtime::dmo_gfx::{DmoGfx, Settings};
 use intro_runtime::dmo_sync::SyncDevice;
 use intro_runtime::timeline::{Timeline, TimeTrack, SceneBlock};
 use intro_runtime::sync_vars::builtin_to_idx;
@@ -66,6 +66,19 @@ impl PreviewState {
         state.set_screen_resolution(screen_width, screen_height);
 
         Ok(state)
+    }
+
+    pub fn build_settings(&self,
+                          dmo_gfx: &mut DmoGfx,
+                          dmo_data: &DmoData) {
+        let settings = Settings {
+            start_full_screen: dmo_data.settings.start_full_screen,
+            audio_play_on_start: dmo_data.settings.audio_play_on_start,
+            mouse_sensitivity: dmo_data.settings.mouse_sensitivity,
+            movement_sensitivity: dmo_data.settings.movement_sensitivity,
+            total_length: dmo_data.settings.total_length,
+        };
+        dmo_gfx.settings = settings;
     }
 
     pub fn build_frame_buffers(&self,
@@ -201,8 +214,6 @@ impl PreviewState {
                     let o = match i {
                         D::NOOP => G::NOOP,
 
-                        D::Exit(x) => G::Exit(*x),
-
                         D::Draw_Quad_Scene(name) => {
                             let idx = dmo_data.context.index.get_quad_scene_index(name)?;
                             G::Draw_Quad_Scene(idx)
@@ -249,6 +260,7 @@ impl PreviewState {
     pub fn build_dmo_gfx(&mut self, dmo_data: &DmoData) -> Result<(), Box<Error>> {
         let mut dmo_gfx: DmoGfx = DmoGfx::default();
 
+        self.build_settings(&mut dmo_gfx, dmo_data);
         self.build_frame_buffers(&mut dmo_gfx, dmo_data)?;
         self.build_quad_scenes(&mut dmo_gfx, dmo_data)?;
         //self.build_polygon_scenes(&mut dmo_gfx, dmo_data)?;
@@ -666,6 +678,10 @@ impl PreviewState {
 
     pub fn get_is_paused(&self) -> bool {
         self.dmo_gfx.sync.device.is_paused
+    }
+
+    pub fn get_time(&self) -> f64 {
+        self.dmo_gfx.sync.device.time as f64 / 1000.0
     }
 
     pub fn get_sync_time(&self) -> u32 {

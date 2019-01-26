@@ -19,14 +19,36 @@ use crate::error::RuntimeError::*;
 use crate::timeline::{Timeline, DrawOp};
 
 pub struct DmoGfx {
+    pub settings: Settings,
     pub context: ContextGfx,
     pub sync: DmoSync,
     pub timeline: Timeline,
 }
 
+pub struct Settings {
+    pub start_full_screen: bool,
+    pub audio_play_on_start: bool,
+    pub mouse_sensitivity: f32,
+    pub movement_sensitivity: f32,
+    pub total_length: f64,
+}
+
+impl Default for Settings {
+    fn default() -> Settings {
+        Settings {
+            start_full_screen: false,
+            audio_play_on_start: true,
+            mouse_sensitivity: 0.5,
+            movement_sensitivity: 0.5,
+            total_length: 10.0,
+        }
+    }
+}
+
 impl Default for DmoGfx {
     fn default() -> DmoGfx {
         DmoGfx {
+            settings: Settings::default(),
             context: ContextGfx::default(),
             sync: DmoSync::default(),
             timeline: Timeline::default(),
@@ -41,7 +63,6 @@ impl DmoGfx {
         for op in self.timeline.draw_ops_at_time(self.context.get_time()) {
             match op {
                 NOOP => {},
-                Exit(x) => self.context.impl_exit(x),
                 Draw_Quad_Scene(x) => self.context.impl_draw_quad_scene(x),
                 Draw_Poly_Scene(x) => self.context.impl_draw_polygon_scene(x),
                 Clear(r, g, b, a) => self.context.impl_clear(r, g, b, a),
@@ -139,7 +160,11 @@ impl DmoGfx {
         self.sync.update_vars(&mut self.context)
     }
 
-    pub fn update_shader_src(&mut self, idx: usize, frag_src: &str) -> Result<(), RuntimeError> {
+    pub fn update_shader_src(&mut self,
+                             idx: usize,
+                             frag_src: &str)
+                             -> Result<(), RuntimeError>
+    {
         if idx < self.context.shader_sources.len() {
             let mut s = SmallVec::new();
             for i in frag_src.as_bytes().iter() {

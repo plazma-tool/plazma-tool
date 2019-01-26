@@ -207,12 +207,6 @@ impl ContextGfx {
         self.quad_scenes.push(quad_scene);
     }
 
-    pub fn impl_exit(&mut self, limit: f64) {
-        if self.get_time() > limit {
-            self.is_running = false;
-        }
-    }
-
     pub fn impl_draw_quad_scene(&self, scene_idx: usize) {
         if let Some(ref scene) = self.quad_scenes.get(scene_idx) {
             scene.draw(&self).unwrap();

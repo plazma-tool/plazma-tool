@@ -1,16 +1,20 @@
 use std::path::PathBuf;
 use std::error::Error;
 
+use smallvec::SmallVec;
 //use serde_yaml;
+use tobj;
 
 pub mod context_data;
 pub mod data_index;
 pub mod quad_scene;
 pub mod polygon_scene;
+pub mod polygon_context;
 pub mod model;
-pub mod mesh;
 pub mod sync_vars;
 pub mod timeline;
+
+use intro_runtime::dmo_gfx::DmoGfx;
 
 use crate::dmo_data::context_data::{ContextData, FrameBuffer};
 use crate::dmo_data::quad_scene::QuadScene;
@@ -46,7 +50,7 @@ impl DmoData {
     pub fn new_from_yml_str(text: &str) -> Result<DmoData, Box<Error>> {
         let mut dmo_data: DmoData = serde_yaml::from_str(text)?;
         dmo_data.ensure_implicit_builtins();
-        dmo_data.context.read_quad_scene_shaders()?;
+        dmo_data.context.read_shaders()?;
         dmo_data.context.build_index();
         Ok(dmo_data)
     }
@@ -67,6 +71,126 @@ impl DmoData {
         ];
         quad_scenes.append(&mut self.context.quad_scenes);
         self.context.quad_scenes = quad_scenes;
+    }
+
+    pub fn add_models_to(&self, dmo_gfx: &mut DmoGfx) -> Result<(), Box<Error>> {
+        use crate::dmo_data as d;
+
+        for model_data in self.context.polygon_context.models.iter() {
+            match model_data.model_type {
+                d::model::ModelType::Cube => self.add_model_cube_to(dmo_gfx, model_data)?,
+                d::model::ModelType::Obj => self.add_model_obj_to(dmo_gfx, model_data)?,
+                d::model::ModelType::NOOP => {},
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn add_model_cube_to(&self,
+                            dmo_gfx: &mut DmoGfx,
+                            model_data: &self::model::Model)
+                            -> Result<(), Box<Error>>
+    {
+        use intro_runtime::model::Model;
+        use intro_runtime::mesh::Mesh;
+
+        let mut model = Model::empty_cube();
+
+        // FIXME use get_shader_index instead of pushing onto shader_sources
+        // let vert_src_idx = self.context.index.get_shader_index(&model_data.vert_src_path)?;
+        // let frag_src_idx = self.context.index.get_shader_index(&model_data.frag_src_path)?;
+
+        dmo_gfx.context.shader_sources.push(SmallVec::from_slice(model_data.vert_src.as_bytes()));
+        let vert_src_idx = dmo_gfx.context.shader_sources.len() - 1;
+        dmo_gfx.context.shader_sources.push(SmallVec::from_slice(model_data.frag_src.as_bytes()));
+        let frag_src_idx = dmo_gfx.context.shader_sources.len() - 1;
+
+        // Add a mesh but no vertices, those will be created from shapes.
+        let mut mesh = Mesh::default();
+        mesh.vert_src_idx = vert_src_idx;
+        mesh.frag_src_idx = frag_src_idx;
+
+        model.meshes.push(mesh);
+
+        dmo_gfx.context.polygon_context.models.push(model);
+
+        Ok(())
+    }
+
+    pub fn add_model_obj_to(&self,
+                        dmo_gfx: &mut DmoGfx,
+                        model_data: &self::model::Model)
+                        -> Result<(), Box<Error>>
+    {
+        use intro_runtime::model::Model;
+        use intro_runtime::mesh::Mesh;
+        use intro_runtime::types::Vertex;
+
+        let mut model = Model::empty_obj();
+
+        // FIXME use get_shader_index instead of pushing onto shader_sources
+        // let vert_src_idx = self.context.index.get_shader_index(&model_data.vert_src_path)?;
+        // let frag_src_idx = self.context.index.get_shader_index(&model_data.frag_src_path)?;
+
+        dmo_gfx.context.shader_sources.push(SmallVec::from_slice(model_data.vert_src.as_bytes()));
+        let vert_src_idx = dmo_gfx.context.shader_sources.len() - 1;
+        dmo_gfx.context.shader_sources.push(SmallVec::from_slice(model_data.frag_src.as_bytes()));
+        let frag_src_idx = dmo_gfx.context.shader_sources.len() - 1;
+
+        // if model_data.obj_path.len() == 0 {
+        //     // that's a problem.
+        //     // FIXME return an error
+        // }
+
+        // Add meshes.
+        {
+            let (meshes, _materials) = tobj::load_obj(&PathBuf::from(&model_data.obj_path))?;
+
+            for i in meshes.iter() {
+                let mesh = &i.mesh;
+                let mut new_mesh = Mesh::default();
+
+                // Serializing each vertex per index.
+                // This will be a vertex array, not an indexed object using EBO.
+
+                let n_index = mesh.indices.len();
+                if n_index > std::u32::MAX as usize {
+                    panic!{"Index list must not be over u32 max"};
+                }
+
+                // Add vertex data.
+                for index in mesh.indices.iter() {
+                    let i = *index as usize;
+
+                    let position: [f32; 3] = [mesh.positions[3*i],
+                                              mesh.positions[3*i+1],
+                                              mesh.positions[3*i+2]];
+
+                    let normal: [f32; 3] = [mesh.normals[3*i],
+                                            mesh.normals[3*i+1],
+                                            mesh.normals[3*i+2]];
+
+                    let vertex = Vertex {
+                        position: position,
+                        normal: normal,
+                        texcoords: [0.0; 2], // TODO UV texcoords
+                    };
+
+                    new_mesh.vertices.push(vertex);
+                }
+
+                // Use the shaders specified on the model for each mesh.
+                new_mesh.vert_src_idx = vert_src_idx;
+                new_mesh.frag_src_idx = frag_src_idx;
+
+                model.meshes.push(new_mesh);
+            }
+        }
+
+        dmo_gfx.context.polygon_context.models.push(model);
+
+        Ok(())
     }
 }
 
@@ -94,14 +218,14 @@ impl Default for Settings {
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ValueVec3 {
     NOOP,
-    Sync(String, String, String),
+    Sync(BuiltIn, BuiltIn, BuiltIn),
     Fixed(f32, f32, f32),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ValueFloat {
     NOOP,
-    Sync(String),
+    Sync(BuiltIn),
     Fixed(f32),
 }
 

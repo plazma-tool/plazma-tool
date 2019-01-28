@@ -21,10 +21,36 @@ pub struct PolygonContext {
 
 impl Default for PolygonContext {
     fn default() -> PolygonContext {
-        PolygonContext {
-            view_position: Vector3::from_slice(&[0.0; 3]),
-            view_front: Vector3::from_slice(&[0.0; 3]),
-            view_up: Vector3::new(0.0, 1.0, 0.0),
+        PolygonContext::new_defaults(1.7777)// 16:9 aspect
+    }
+}
+
+impl PolygonContext {
+    pub fn new_defaults(aspect: f32) -> PolygonContext {
+        PolygonContext::new(
+            Vector3::from_slice(&[0.0; 3]),
+            Vector3::from_slice(&[0.0; 3]),
+            Vector3::new(0.0, 1.0, 0.0),
+            45.0,
+            0.1,
+            100.0,
+            aspect
+        )
+    }
+
+    pub fn new(view_position: Vector3,
+               view_front: Vector3,
+               view_up: Vector3,
+               fovy: f32,
+               znear: f32,
+               zfar: f32,
+               aspect: f32)
+               -> PolygonContext
+    {
+        let mut p = PolygonContext {
+            view_position: view_position,
+            view_front: view_front,
+            view_up: view_up,
 
             view_matrix: [[0.0; 4]; 4],
             projection_matrix: [[0.0; 4]; 4],
@@ -34,11 +60,14 @@ impl Default for PolygonContext {
             zfar: 100.0,
 
             models: SmallVec::new(),
-        }
-    }
-}
+        };
 
-impl PolygonContext {
+        p.update_view_matrix();
+        p.update_projection_matrix(aspect);
+
+        p
+    }
+
     pub fn update_view_matrix(&mut self) {
         let m = Matrix4::look_at_rh(&self.view_position,
                                     &{&self.view_position + &self.view_front},

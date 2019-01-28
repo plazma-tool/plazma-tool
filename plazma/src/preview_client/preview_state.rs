@@ -1,30 +1,26 @@
 use std::error::Error;
 use std::time::{Duration, Instant};
-use std::path::PathBuf;
 
 use glutin::{VirtualKeyCode, ElementState, MouseButton};
 
 use smallvec::SmallVec;
 
-use tobj;
 use intro_3d::Vector3;
 use intro_runtime::ERR_MSG_LEN;
 use intro_runtime::dmo_gfx::{DmoGfx, Settings};
+use intro_runtime::polygon_context::PolygonContext;
 use intro_runtime::dmo_sync::SyncDevice;
 use intro_runtime::timeline::{Timeline, TimeTrack, SceneBlock};
-use intro_runtime::sync_vars::builtin_to_idx;
 use intro_runtime::sync_vars::BuiltIn::*;
 use intro_runtime::frame_buffer::{FrameBuffer, BufferKind};
-use intro_runtime::mesh::Mesh;
 use intro_runtime::polygon_scene::{PolygonScene, SceneObject};
-use intro_runtime::model::{Model, ModelType};
 use intro_runtime::mouse::MouseButton as Btn;
-use intro_runtime::types::{PixelFormat, Vertex, ValueVec3, ValueFloat, BufferMapping, UniformMapping};
+use intro_runtime::types::{PixelFormat, ValueVec3, BufferMapping, UniformMapping};
 use intro_runtime::error::RuntimeError;
 
 use crate::dmo_data::DmoData;
+use crate::dmo_data::builtin_to_idx;
 use crate::error::ToolError;
-use crate::utils::file_to_string;
 
 pub struct PreviewState {
     pub t_frame_start: Instant,
@@ -192,6 +188,130 @@ impl PreviewState {
         Ok(())
     }
 
+    pub fn build_polygon_context_and_scenes(&mut self,
+                                            dmo_gfx: &mut DmoGfx,
+                                            dmo_data: &DmoData)
+                                            -> Result<(), Box<Error>>
+    {
+        use crate::dmo_data as d;
+
+        // Create a PolygonContext and add models.
+
+        let aspect = dmo_gfx.context.get_window_aspect();
+
+        dmo_gfx.context.polygon_context = PolygonContext::new(
+            Vector3::from_slice(&dmo_data.context.polygon_context.view_position),
+            Vector3::from_slice(&dmo_data.context.polygon_context.view_front),
+            Vector3::from_slice(&dmo_data.context.polygon_context.view_up),
+            dmo_data.context.polygon_context.fovy,
+            dmo_data.context.polygon_context.znear,
+            dmo_data.context.polygon_context.zfar,
+            aspect as f32
+        );
+
+        dmo_data.add_models_to(dmo_gfx)?;
+
+        // Create correcponding OpenGL objects.
+
+        let mut err_msg_buf = [32 as u8; ERR_MSG_LEN];
+
+        match dmo_gfx.create_models(&mut err_msg_buf) {
+            Ok(_) => {},
+            Err(e) => {
+                let msg = String::from_utf8(err_msg_buf.to_vec())?;
+                return Err(Box::new(ToolError::Runtime(e, msg)));
+            }
+        }
+
+        dbg!{dmo_gfx.context.polygon_context.models.len()};
+
+        // PolygonContext is ready.
+
+        // Add PolygonScenes.
+
+        for (idx, scene) in dmo_data.context.polygon_scenes.iter().enumerate() {
+
+            let mut polygon_scene = PolygonScene::default();
+
+            for obj_data in scene.scene_objects.iter() {
+                let mut scene_object = SceneObject::default();
+                scene_object.model_idx = dmo_data.context.index.get_model_index(&obj_data.name)?;
+
+                scene_object.position_var = match &obj_data.position {
+                    d::ValueVec3::NOOP => ValueVec3::NOOP,
+
+                    d::ValueVec3::Fixed(a, b, c) => ValueVec3::Fixed(*a, *b, *c),
+
+                    d::ValueVec3::Sync(a, b, c) =>
+                        ValueVec3::Sync(builtin_to_idx(&a) as u8,
+                                        builtin_to_idx(&b) as u8,
+                                        builtin_to_idx(&c) as u8),
+                };
+
+                // TODO scene_object.euler_rotation_var = match obj_data.euler_rotation {}
+                // TODO scene_object.scale_var = match obj_data.scale {}
+
+                for i in obj_data.layout_to_vars.iter() {
+                    let m = match i {
+                        d::UniformMapping::NOOP => UniformMapping::NOOP,
+
+                        d::UniformMapping::Float(x, a) =>
+                            UniformMapping::Float(*x, builtin_to_idx(&a) as u8),
+
+                        d::UniformMapping::Vec2(x, a, b) =>
+                            UniformMapping::Vec2(*x,
+                                                 builtin_to_idx(&a) as u8,
+                                                 builtin_to_idx(&b) as u8),
+
+                        d::UniformMapping::Vec3(x, a, b, c) =>
+                            UniformMapping::Vec3(*x,
+                                                 builtin_to_idx(&a) as u8,
+                                                 builtin_to_idx(&b) as u8,
+                                                 builtin_to_idx(&c) as u8),
+
+                        d::UniformMapping::Vec4(x, a, b, c, d) =>
+                            UniformMapping::Vec4(*x,
+                                                 builtin_to_idx(&a) as u8,
+                                                 builtin_to_idx(&b) as u8,
+                                                 builtin_to_idx(&c) as u8,
+                                                 builtin_to_idx(&d) as u8),
+                    };
+
+                    scene_object.layout_to_vars.push(m);
+                }
+
+                for i in obj_data.binding_to_buffers.iter() {
+                    let m = match i {
+
+                        d::BufferMapping::NOOP => BufferMapping::NOOP,
+
+                        d::BufferMapping::Sampler2D(layout_idx, name) => {
+                            let buffer_idx = dmo_data.context.index.get_buffer_index(&name)?;
+                            BufferMapping::Sampler2D(*layout_idx, buffer_idx as u8)
+                        },
+
+                    };
+
+                    scene_object.binding_to_buffers.push(m);
+                }
+
+                match dmo_gfx.compile_model_shaders(scene_object.model_idx, &mut err_msg_buf) {
+                    Ok(_) => {},
+                    Err(e) => {
+                        let msg = String::from_utf8(err_msg_buf.to_vec())?;
+                        return Err(Box::new(ToolError::Runtime(e, msg)));
+                    }
+                }
+
+                polygon_scene.scene_objects.push(scene_object);
+            }
+
+            dmo_gfx.context.polygon_scenes.push(polygon_scene);
+        }
+
+        Ok(())
+    }
+
     pub fn build_timeline(&mut self,
                           dmo_gfx: &mut DmoGfx,
                           dmo_data: &DmoData)
@@ -257,15 +377,15 @@ impl PreviewState {
         Ok(())
     }
 
-    pub fn build_dmo_gfx(&mut self, dmo_data: &DmoData) -> Result<(), Box<Error>> {
+    pub fn build_dmo_gfx_from_yml_str(&mut self, yml_str: &str) -> Result<(), Box<Error>> {
+        let dmo_data: DmoData = DmoData::new_from_yml_str(&yml_str)?;
         let mut dmo_gfx: DmoGfx = DmoGfx::default();
 
-        self.build_settings(&mut dmo_gfx, dmo_data);
-        self.build_frame_buffers(&mut dmo_gfx, dmo_data)?;
-        self.build_quad_scenes(&mut dmo_gfx, dmo_data)?;
-        //self.build_polygon_scenes(&mut dmo_gfx, dmo_data)?;
-
-        self.build_timeline(&mut dmo_gfx, dmo_data)?;
+        self.build_settings(&mut dmo_gfx, &dmo_data);
+        self.build_frame_buffers(&mut dmo_gfx, &dmo_data)?;
+        self.build_quad_scenes(&mut dmo_gfx, &dmo_data)?;
+        self.build_polygon_context_and_scenes(&mut dmo_gfx, &dmo_data)?;
+        self.build_timeline(&mut dmo_gfx, &dmo_data)?;
 
         self.dmo_gfx = dmo_gfx;
 
@@ -275,280 +395,11 @@ impl PreviewState {
         Ok(())
     }
 
-    pub fn build_old(&mut self, dmo_data: &DmoData) -> Result<(), Box<Error>> {
-
-        // Manually for now. First add objects, then create OpenGL objects.
-
-        // Add frame buffers
-
-        self.dmo_gfx.context.frame_buffers.push(
-            FrameBuffer::new(BufferKind::Empty_Texture,
-                             PixelFormat::RGBA_u8,
-                             None)
-        );
-
-        // Add quad scenes
-
-        for quad_scene_data in dmo_data.context.quad_scenes.iter() {
-            if quad_scene_data.frag_src_path.ends_with("circle.frag") {
-                let mut layout_to_vars: SmallVec<[UniformMapping; 64]> = SmallVec::new();
-
-                layout_to_vars.push(UniformMapping::Float(0,
-                                                          builtin_to_idx(Time) as u8));
-
-                layout_to_vars.push(UniformMapping::Vec2(1,
-                                                         builtin_to_idx(Window_Width) as u8,
-                                                         builtin_to_idx(Window_Height) as u8));
-
-                layout_to_vars.push(UniformMapping::Vec2(2,
-                                                         builtin_to_idx(Screen_Width) as u8,
-                                                         builtin_to_idx(Screen_Height) as u8));
-
-                self.dmo_gfx
-                    .context
-                    .add_quad_scene(&quad_scene_data.vert_src,
-                                    &quad_scene_data.frag_src,
-                                    layout_to_vars,
-                                    SmallVec::new());
-            }
-            else if quad_scene_data.frag_src_path.ends_with("cross.frag") {
-                let mut layout_to_vars: SmallVec<[UniformMapping; 64]> = SmallVec::new();
-
-                layout_to_vars.push(UniformMapping::Float(0,
-                                                          builtin_to_idx(Time) as u8));
-
-                layout_to_vars.push(UniformMapping::Vec2(1,
-                                                         builtin_to_idx(Window_Width) as u8,
-                                                         builtin_to_idx(Window_Height) as u8));
-
-                layout_to_vars.push(UniformMapping::Vec2(2,
-                                                         builtin_to_idx(Screen_Width) as u8,
-                                                         builtin_to_idx(Screen_Height) as u8));
-
-                let mut binding_to_buffers: SmallVec<[BufferMapping; 64]> = SmallVec::new();
-
-                binding_to_buffers.push(BufferMapping::Sampler2D(0, 0));
-
-                self.dmo_gfx
-                    .context
-                    .add_quad_scene(&quad_scene_data.vert_src,
-                                    &quad_scene_data.frag_src,
-                                    layout_to_vars,
-                                    binding_to_buffers);
-            }
-        }
-
-        // Create quads
-
-        let mut err_msg_buf = [32 as u8; ERR_MSG_LEN];
-
-        match self.dmo_gfx.create_quads(&mut err_msg_buf) {
-            Ok(_) => {},
-            Err(e) => {
-                let msg = String::from_utf8(err_msg_buf.to_vec())?;
-                return Err(Box::new(ToolError::Runtime(e, msg)));
-            }
-        }
-
-        // Create framebuffers
-
-        match self.dmo_gfx.create_frame_buffers() {
-            Ok(_) => {},
-            Err(e) => return Err(Box::new(ToolError::Runtime(e, "".to_owned())))
-        }
-
-        // === Polygon scene: Cube, Suzanne, Skull, Dragon ===
-
-        // read in object shaders and store indexes
-        let scene_object_vert_src_idx =
-            self.add_shader_src(&PathBuf::from("./data/shaders/scene_object.vert"));
-        let cube_frag_src_idx =
-            self.add_shader_src(&PathBuf::from("./data/shaders/cube_one.frag"));
-        let suzanne_frag_src_idx =
-            self.add_shader_src(&PathBuf::from("./data/shaders/suzanne.frag"));
-        let skull_frag_src_idx =
-            self.add_shader_src(&PathBuf::from("./data/shaders/skull.frag"));
-        let dragon_vert_src_idx =
-            self.add_shader_src(&PathBuf::from("./data/shaders/dragon.vert"));
-        let dragon_frag_src_idx =
-            self.add_shader_src(&PathBuf::from("./data/shaders/dragon.frag"));
-
-        // Set PolygonContext sync vars.
-
-        self.dmo_gfx.context.sync_vars.set_builtin(Camera_Pos_X, -5.0);
-        self.dmo_gfx.context.sync_vars.set_builtin(Camera_Pos_Y, 4.0);
-        self.dmo_gfx.context.sync_vars.set_builtin(Camera_Pos_Z, 10.0);
-
-        self.dmo_gfx.context.sync_vars.set_builtin(Camera_Front_X, 0.5);
-        self.dmo_gfx.context.sync_vars.set_builtin(Camera_Front_Y, -0.1);
-        self.dmo_gfx.context.sync_vars.set_builtin(Camera_Front_Z, -0.5);
-
-        // Add model: 0 (Cube)
-        {
-            let mut model = Model::default();
-            model.model_type = ModelType::Cube;
-
-            // Add a mesh but no vertices, those will be created from shapes.
-            {
-                let mut mesh = Mesh::default();
-
-                mesh.vert_src_idx = scene_object_vert_src_idx;
-                mesh.frag_src_idx = cube_frag_src_idx;
-
-                model.meshes.push(mesh);
-            }
-
-            self.dmo_gfx.context.polygon_context.models.push(model);
-        }
-
-        // Add model: 1 (Suzanne)
-        self.add_model_from_obj(&PathBuf::from("./data/obj/suzanne.obj"),
-                                scene_object_vert_src_idx,
-                                suzanne_frag_src_idx)?;
-
-        // Add model: 2 (Skull)
-        self.add_model_from_obj(&PathBuf::from("./data/obj/skull.obj"),
-                                scene_object_vert_src_idx,
-                                skull_frag_src_idx)?;
-
-        // Add model: 3 (Dragon)
-        self.add_model_from_obj(&PathBuf::from("./data/obj/dragon.obj"),
-                                dragon_vert_src_idx,
-                                dragon_frag_src_idx)?;
-
-        // Create the OpenGL objects
-
-        match self.dmo_gfx.create_models(&mut err_msg_buf) {
-            Ok(_) => {},
-            Err(e) => {
-                let msg = String::from_utf8(err_msg_buf.to_vec())?;
-                return Err(Box::new(ToolError::Runtime(e, msg)));
-            }
-        }
-
-        let mut polygon_scene = PolygonScene::default();
-
-        // Add SceneObjects.
-
-        // Four objects, 0 1 2 3, corresponding to model indices.
-        for i in 0..4 {
-            let mut scene_object = SceneObject::default();
-
-            scene_object.model_idx = i;
-
-            scene_object.position_var = ValueVec3::Fixed(4.0, 0.0, 2.0 - (i as f32)*1.5);
-            scene_object.scale_var = ValueFloat::Fixed(1.0);
-
-            // When drawing a polygon mesh, uniform locations 0, 1, 2, 3 are
-            // always bound to model, view, projection and view_pos.
-            //
-            // Further locations are bound with layout_to_vars.
-
-            scene_object.layout_to_vars.push(
-                UniformMapping::Float(4,
-                                      builtin_to_idx(Time) as u8));
-
-            scene_object.layout_to_vars.push(
-                UniformMapping::Vec2(5,
-                                     builtin_to_idx(Window_Width) as u8,
-                                     builtin_to_idx(Window_Height) as u8));
-
-            scene_object.layout_to_vars.push(
-                UniformMapping::Vec2(6,
-                                     builtin_to_idx(Screen_Width) as u8,
-                                     builtin_to_idx(Screen_Height) as u8));
-
-            scene_object.layout_to_vars.push(
-                UniformMapping::Vec3(7,
-                                     builtin_to_idx(Light_Pos_X) as u8,
-                                     builtin_to_idx(Light_Pos_Y) as u8,
-                                     builtin_to_idx(Light_Pos_Z) as u8));
-
-            match self.dmo_gfx.compile_model_shaders(scene_object.model_idx, &mut err_msg_buf) {
-                Ok(_) => {},
-                Err(e) => {
-                    let msg = String::from_utf8(err_msg_buf.to_vec())?;
-                    return Err(Box::new(ToolError::Runtime(e, msg)));
-                }
-            }
-
-            polygon_scene.scene_objects.push(scene_object);
-
-        }
-
-        self.dmo_gfx.context.polygon_scenes.push(polygon_scene);
-
-        let aspect = self.dmo_gfx.context.get_window_aspect();
-        self.dmo_gfx.context.polygon_context.update_projection_matrix(aspect as f32);
-
-
-        Ok(())
-    }
-
-    fn add_shader_src(&mut self, path: &PathBuf) -> usize {
-        let src = file_to_string(path).unwrap();
-        self.dmo_gfx.context.shader_sources.push(SmallVec::from_slice(src.as_bytes()));
-        return self.dmo_gfx.context.shader_sources.len() - 1;
-    }
-
-    fn add_model_from_obj(&mut self,
-                          path: &PathBuf,
-                          vert_src_idx: usize,
-                          frag_src_idx: usize)
-                          -> Result<(), Box<Error>>
-    {
-        let mut model = Model::default();
-        model.model_type = ModelType::Obj;
-
-        // Add meshes.
-        {
-            let (meshes, _materials) = tobj::load_obj(&path)?;
-
-            for i in meshes.iter() {
-                let mesh = &i.mesh;
-                let mut new_mesh = Mesh::default();
-
-                // Serializing each vertex per index.
-                // This will be a vertex array, not an indexed object using EBO.
-
-                let n_index = mesh.indices.len();
-                if n_index > std::u32::MAX as usize {
-                    panic!{"Index list must not be over u32 max"};
-                }
-
-                // Add vertex data.
-                for index in mesh.indices.iter() {
-                    let i = *index as usize;
-
-                    let position: [f32; 3] = [mesh.positions[3*i],
-                                              mesh.positions[3*i+1],
-                                              mesh.positions[3*i+2]];
-
-                    let normal: [f32; 3] = [mesh.normals[3*i],
-                                            mesh.normals[3*i+1],
-                                            mesh.normals[3*i+2]];
-
-                    let vertex = Vertex {
-                        position: position,
-                        normal: normal,
-                        texcoords: [0.0; 2], // TODO UV texcoords
-                    };
-
-                    new_mesh.vertices.push(vertex);
-                }
-
-                // Use the shaders specified on the model for each mesh.
-                new_mesh.vert_src_idx = vert_src_idx;
-                new_mesh.frag_src_idx = frag_src_idx;
-
-                model.meshes.push(new_mesh);
-            }
-        }
-
-        self.dmo_gfx.context.polygon_context.models.push(model);
-
-        Ok(())
-    }
+    // fn add_shader_src(&mut self, path: &PathBuf) -> usize {
+    //     let src = file_to_string(path).unwrap();
+    //     self.dmo_gfx.context.shader_sources.push(SmallVec::from_slice(src.as_bytes()));
+    //     return self.dmo_gfx.context.shader_sources.len() - 1;
+    // }
 
     pub fn recompile_dmo(&mut self) {
 

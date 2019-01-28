@@ -16,7 +16,7 @@ use crate::ERR_MSG_LEN;
 use crate::context_gfx::PROFILE_FRAMES;
 //use crate::error::RuntimeError;
 use crate::error::RuntimeError::*;
-use crate::timeline::{Timeline, DrawOp};
+use crate::timeline::Timeline;
 
 pub struct DmoGfx {
     pub settings: Settings,
@@ -205,6 +205,9 @@ impl DmoGfx {
                     None => return Err(FailedToCreateNoSuchVertSrcIdx),
                 };
 
+                dbg!{self.context.shader_sources.len()};
+                dbg!{mesh.frag_src_idx};
+
                 let frag_src = match self.context.shader_sources.get(mesh.frag_src_idx) {
                     Some(a) => str::from_utf8(&a).unwrap(),
                     None => return Err(FailedToCreateNoSuchFragSrcIdx),
@@ -247,6 +250,8 @@ impl DmoGfx {
     pub fn compile_model_shaders(&mut self, model_idx: usize, err_msg_buf: &mut [u8; ERR_MSG_LEN])
         -> Result<(), RuntimeError>
     {
+        dbg!{self.context.polygon_context.models.len()};
+        dbg!{model_idx};
         for mut mesh in self.context.polygon_context.models[model_idx].meshes.iter_mut() {
             let ref s = self.context.shader_sources[mesh.vert_src_idx];
             let vert_src = str::from_utf8(s).unwrap();

@@ -4,7 +4,7 @@ settings:
   audio_play_on_start: true
   mouse_sensitivity: 0.5
   movement_sensitivity: 0.5
-  total_length: 10.0
+  total_length: 240.0
 
 # FIXME rewrite paths to be relative to project root
 
@@ -30,13 +30,131 @@ context:
       binding_to_buffers:
         - Sampler2D: [ 0, "scene buf" ]
 
-  polygon_scenes: []
+  polygon_scenes:
+
+    - name: "cubes and suzanne"
+      scene_objects:
+
+        # When drawing a polygon mesh, uniform locations 0, 1, 2, 3 are
+        # always bound to model, view, projection and view_pos.
+        #
+        # Further locations are bound with layout_to_vars.
+
+        - name: "cube one"
+          position:
+            Fixed: [ 4.0, 0.0, 2.0 ]
+          euler_rotation:
+            Fixed: [ 0.0, 0.0, 0.0 ]
+          scale:
+            Fixed: 1.0
+          layout_to_vars:
+            - Float: [ 4, "Time" ] 
+            - Vec2: [ 5, "Window_Width", "Window_Height" ] 
+            - Vec2: [ 6, "Screen_Width", "Screen_Height" ] 
+            - Vec3: [ 7, "Light_Pos_X", "Light_Pos_Y", "Light_Pos_Z" ] 
+          binding_to_buffers: []
+
+        - name: "suzanne"
+          position:
+            Fixed: [ 4.0, 0.0, 0.0 ]
+          euler_rotation:
+            Fixed: [ 0.0, 0.0, 0.0 ]
+          scale:
+            Fixed: 1.0
+          layout_to_vars:
+            - Float: [ 4, "Time" ] 
+            - Vec2: [ 5, "Window_Width", "Window_Height" ] 
+            - Vec2: [ 6, "Screen_Width", "Screen_Height" ] 
+            - Vec3: [ 7, "Light_Pos_X", "Light_Pos_Y", "Light_Pos_Z" ] 
+          binding_to_buffers: []
+
+        - name: "cube two"
+          position:
+            Fixed: [ 4.0, 0.0, -2.0 ]
+          euler_rotation:
+            Fixed: [ 0.0, 0.0, 0.0 ]
+          scale:
+            Fixed: 1.0
+          layout_to_vars:
+            - Float: [ 4, "Time" ] 
+            - Vec2: [ 5, "Window_Width", "Window_Height" ] 
+            - Vec2: [ 6, "Screen_Width", "Screen_Height" ] 
+            - Vec3: [ 7, "Light_Pos_X", "Light_Pos_Y", "Light_Pos_Z" ] 
+          binding_to_buffers: []
+
+        #- name: "light"
+        #  position:
+        #    Sync: [ "Light_Pos_X", "Light_Pos_Y", "Light_Pos_Z" ]
+        #  euler_rotation:
+        #    Fixed: [ 0.0, 0.0, 0.0 ]
+        #  scale:
+        #    Fixed: 0.1
+        #  layout_to_vars: []
+        #  binding_to_buffers: []
+
+  polygon_context:
+
+    #view_position:
+    #  Sync: [ "Camera_Pos_X", "Camera_Pos_Y", "Camera_Pos_Z" ]
+    #view_front:
+    #  Sync: [ "Camera_Front_X", "Camera_Front_Y", "Camera_Front_Z" ]
+    #view_up:
+    #  Fixed: [ 0.0, 1.0, 0.0 ]
+
+    view_position: [ -5.0, 4.0, 10.0 ]
+    view_front: [ 0.5, -0.1, -0.5 ]
+    view_up: [ 0.0, 1.0, 0.0 ]
+
+    fovy: 45.0
+    znear: 0.1
+    zfar: 100.0
+
+    models:
+
+      # The vert_src_path and frag_src_path of the model will be used
+      # to set the shaders on each mesh.
+      #
+      # Cube type models will have a mesh loaded from a static array.
+      #
+      # Obj type models will include all the meshes from the .obj file, and each
+      # will run the same shader.
+
+      - name: "cube one"
+        model_type: Cube
+        vert_src_path: "./data/minimal/data/scene_object.vert"
+        frag_src_path: "./data/minimal/data/cube_one.frag"
+        obj_path: ""
+
+      - name: "cube two"
+        model_type: Obj
+        vert_src_path: "./data/minimal/data/scene_object.vert"
+        frag_src_path: "./data/minimal/data/cube_one.frag"
+        obj_path: "./data/minimal/data/cube.obj"
+
+      - name: "suzanne"
+        model_type: Obj
+        vert_src_path: "./data/minimal/data/scene_object.vert"
+        frag_src_path: "./data/minimal/data/suzanne.frag"
+        obj_path: "./data/minimal/data/suzanne.obj"
+      
+      #- name: "light"
+      #  model_type: Cube
+      #  vert_src_path: "./data/minimal/data/scene_object.vert"
+      #  frag_src_path: "./data/minimal/data/light.frag"
+      #  obj_path: ""
 
   frame_buffers:
     - { name: "scene buf", kind: Empty_Texture, format: RGBA_u8, image_path: "" }
 
   sync_vars:
     tracks: []
+
+      # - Camera_Pos_X: -5.0
+      # - Camera_Pos_Y: 4.0
+      # - Camera_Pos_Z: 10.0
+      # - Camera_Front_X: 0.5
+      # - Camera_Front_Y: -0.1
+      # - Camera_Front_Z: -0.5
 
 timeline:
 
@@ -45,20 +163,27 @@ timeline:
     - scene_blocks:
 
         - start: 0.0
-          end: 3.0
+          end: 240.0
           draw_ops:
-            - Target_Buffer: "scene buf"
-            - Clear: [ 0, 0, 0, 0 ]
-            - Draw_Quad_Scene: "circle"
             - Target_Buffer: "RESULT_IMAGE"
-            - Clear: [ 0, 0, 0, 0 ]
-            - Draw_Quad_Scene: "cross"
+            - Clear: [ 0, 0, 255, 0 ]
+            - Draw_Poly_Scene: "cubes and suzanne"
 
-        - start: 5.0
-          end: 20.0
-          draw_ops:
-            - Target_Buffer: "RESULT_IMAGE"
-            - Clear: [ 0, 0, 0, 0 ]
-            - Draw_Quad_Scene: "cross"
+        #- start: 0.0
+        #  end: 3.0
+        #  draw_ops:
+        #    - Target_Buffer: "scene buf"
+        #    - Clear: [ 0, 0, 0, 0 ]
+        #    - Draw_Quad_Scene: "circle"
+        #    - Target_Buffer: "RESULT_IMAGE"
+        #    - Clear: [ 0, 0, 0, 0 ]
+        #    - Draw_Quad_Scene: "cross"
+
+        #- start: 5.0
+        #  end: 20.0
+        #  draw_ops:
+        #    - Target_Buffer: "RESULT_IMAGE"
+        #    - Clear: [ 0, 0, 0, 0 ]
+        #    - Draw_Quad_Scene: "cross"
 
 

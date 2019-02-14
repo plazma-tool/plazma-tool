@@ -223,8 +223,6 @@ impl PreviewState {
             }
         }
 
-        dbg!{dmo_gfx.context.polygon_context.models.len()};
-
         // PolygonContext is ready.
 
         // Add PolygonScenes.

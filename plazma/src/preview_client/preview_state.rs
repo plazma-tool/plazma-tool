@@ -15,7 +15,7 @@ use intro_runtime::sync_vars::BuiltIn::*;
 use intro_runtime::frame_buffer::{FrameBuffer, BufferKind};
 use intro_runtime::polygon_scene::{PolygonScene, SceneObject};
 use intro_runtime::mouse::MouseButton as Btn;
-use intro_runtime::types::{PixelFormat, ValueVec3, BufferMapping, UniformMapping};
+use intro_runtime::types::{PixelFormat, ValueVec3, ValueFloat, BufferMapping, UniformMapping};
 use intro_runtime::error::RuntimeError;
 
 use crate::dmo_data::DmoData;
@@ -248,8 +248,22 @@ impl PreviewState {
                                         builtin_to_idx(&c) as u8),
                 };
 
-                // TODO scene_object.euler_rotation_var = match obj_data.euler_rotation {}
-                // TODO scene_object.scale_var = match obj_data.scale {}
+                scene_object.euler_rotation_var = match &obj_data.euler_rotation {
+                    d::ValueVec3::NOOP => ValueVec3::NOOP,
+
+                    d::ValueVec3::Fixed(a, b, c) => ValueVec3::Fixed(*a, *b, *c),
+
+                    d::ValueVec3::Sync(a, b, c) =>
+                        ValueVec3::Sync(builtin_to_idx(&a) as u8,
+                                        builtin_to_idx(&b) as u8,
+                                        builtin_to_idx(&c) as u8),
+                };
+
+                scene_object.scale_var = match &obj_data.scale {
+                    d::ValueFloat::NOOP => ValueFloat::NOOP,
+                    d::ValueFloat::Fixed(a) => ValueFloat::Fixed(*a),
+                    d::ValueFloat::Sync(a) => ValueFloat::Sync(builtin_to_idx(&a) as u8),
+                };
 
                 for i in obj_data.layout_to_vars.iter() {
                     let m = match i {

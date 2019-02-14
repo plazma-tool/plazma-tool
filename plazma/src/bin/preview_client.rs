@@ -195,7 +195,7 @@ fn render_loop(window: &GlWindow,
                     SetDmo => {
                         match state.build_dmo_gfx_from_yml_str(&message.data) {
                             Ok(_) => {},
-                            Err(e) => error!("Can't perform SetDmo: {:?}",e ),
+                            Err(e) => error!("Can't perform SetDmo: {:?}", e),
                         }
                     },
 

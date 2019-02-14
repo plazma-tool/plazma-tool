@@ -44,9 +44,9 @@ context:
           position:
             Fixed: [ 4.0, 0.0, 2.0 ]
           euler_rotation:
-            Fixed: [ 0.0, 0.0, 0.0 ]
+            Fixed: [ 45.0, 0.0, 45.0 ]
           scale:
-            Fixed: 1.0
+            Fixed: 0.5
           layout_to_vars:
             - Float: [ 4, "Time" ] 
             - Vec2: [ 5, "Window_Width", "Window_Height" ] 
@@ -58,7 +58,7 @@ context:
           position:
             Fixed: [ 4.0, 0.0, 0.0 ]
           euler_rotation:
-            Fixed: [ 0.0, 0.0, 0.0 ]
+            Fixed: [ 0.0, -45.0, 0.0 ]
           scale:
             Fixed: 1.0
           layout_to_vars:
@@ -74,7 +74,21 @@ context:
           euler_rotation:
             Fixed: [ 0.0, 0.0, 0.0 ]
           scale:
-            Fixed: 1.0
+            Fixed: 0.7
+          layout_to_vars:
+            - Float: [ 4, "Time" ] 
+            - Vec2: [ 5, "Window_Width", "Window_Height" ] 
+            - Vec2: [ 6, "Screen_Width", "Screen_Height" ] 
+            - Vec3: [ 7, "Light_Pos_X", "Light_Pos_Y", "Light_Pos_Z" ] 
+          binding_to_buffers: []
+
+        - name: "room box"
+          position:
+            Fixed: [ 0.0, 0.0, 0.0 ]
+          euler_rotation:
+            Fixed: [ 0.0, 0.0, 0.0 ]
+          scale:
+            Fixed: 20.0
           layout_to_vars:
             - Float: [ 4, "Time" ] 
             - Vec2: [ 5, "Window_Width", "Window_Height" ] 
@@ -119,6 +133,8 @@ context:
       # Obj type models will include all the meshes from the .obj file, and each
       # will run the same shader.
 
+      # FIXME Cube type cube is rendered with faces inside out
+
       - name: "cube one"
         model_type: Cube
         vert_src_path: "./data/minimal/data/scene_object.vert"
@@ -130,6 +146,12 @@ context:
         vert_src_path: "./data/minimal/data/scene_object.vert"
         frag_src_path: "./data/minimal/data/cube_one.frag"
         obj_path: "./data/minimal/data/cube.obj"
+
+      - name: "room box"
+        model_type: Cube
+        vert_src_path: "./data/minimal/data/scene_object.vert"
+        frag_src_path: "./data/minimal/data/cube_one.frag"
+        obj_path: ""
 
       - name: "suzanne"
         model_type: Obj

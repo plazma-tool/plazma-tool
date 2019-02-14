@@ -1,4 +1,4 @@
-//use crate::dmo_data::{UniformMapping, BufferMapping};
+use crate::dmo_data::{UniformMapping, BufferMapping, ValueVec3, ValueFloat};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PolygonScene {
@@ -8,12 +8,12 @@ pub struct PolygonScene {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SceneObject {
-    pub model_name: String,
-    //pub position: ValueVec3,
-    //pub euler_rotation: ValueVec3,
-    //pub scale: ValueFloat,
-    //pub layout_to_vars: Vec<UniformMapping>,
-    //pub binding_to_buffers: Vec<BufferMapping>,
+    pub name: String,
+    pub position: ValueVec3,
+    pub euler_rotation: ValueVec3,
+    pub scale: ValueFloat,
+    pub layout_to_vars: Vec<UniformMapping>,
+    pub binding_to_buffers: Vec<BufferMapping>,
 }
 
 impl Default for PolygonScene {

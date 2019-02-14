@@ -6,6 +6,7 @@ use intro_runtime::error::RuntimeError;
 pub enum ToolError {
     Runtime(RuntimeError, String),
     AudioTrackDoesntExists(String),
+    NameAlreadyExists,
     NoQuad,
     UiError(String),
 }
@@ -64,9 +65,9 @@ impl fmt::Debug for ToolError {
             },
 
             ToolError::AudioTrackDoesntExists(_) => "Audio track doesn't exists",
-
             ToolError::NoQuad => "No Quad",
             ToolError::UiError(_) => "UI Error",
+            ToolError::NameAlreadyExists => "Name already exists",
         };
 
         write!(fmt, "{}:\n{}", kind, self.description())
@@ -92,6 +93,7 @@ impl error::Error for ToolError {
             ToolError::AudioTrackDoesntExists(ref s) =>  s.trim(),
             ToolError::NoQuad => "No Quad",
             ToolError::UiError(ref s) => s.trim(),
+            ToolError::NameAlreadyExists => "Name already exists",
         }
     }
 

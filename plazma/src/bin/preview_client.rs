@@ -146,9 +146,7 @@ fn main() {
         .join(PathBuf::from("demo.yml".to_owned()));
 
     let text: String = file_to_string(&demo_yml_path).unwrap();
-    let dmo_data = DmoData::new_from_yml_str(&text).unwrap();
-
-    state.build_dmo_gfx(&dmo_data).unwrap();
+    state.build_dmo_gfx_from_yml_str(&text).unwrap();
 
     state.set_is_paused(false);
 
@@ -195,15 +193,10 @@ fn render_loop(window: &GlWindow,
                     FetchDmo => {},
 
                     SetDmo => {
-                        match serde_json::from_str::<DmoData>(&message.data) {
-                            Ok(d) => {
-                                match state.build_dmo_gfx(&d) {
-                                    Ok(_) => {},
-                                    Err(e) => error!("Can't perform SetDmo: {:?}",e ),
-                                }
-                            },
-                            Err(e) => error!("Can't deserialize Dmo: {:?}", e),
-                        };
+                        match state.build_dmo_gfx_from_yml_str(&message.data) {
+                            Ok(_) => {},
+                            Err(e) => error!("Can't perform SetDmo: {:?}", e),
+                        }
                     },
 
                     SetDmoTime => {},

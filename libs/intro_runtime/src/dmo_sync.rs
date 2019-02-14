@@ -27,6 +27,21 @@ pub struct SyncDevice {
 impl DmoSync {
     pub fn update_vars(&self, context: &mut ContextGfx) -> Result<(), RuntimeError> {
         context.sync_vars.set_builtin(Time, self.device.time as f64 / 1000.0);
+
+        context.sync_vars.set_builtin(Camera_Pos_X, context.camera.position.x as f64);
+        context.sync_vars.set_builtin(Camera_Pos_Y, context.camera.position.y as f64);
+        context.sync_vars.set_builtin(Camera_Pos_Z, context.camera.position.z as f64);
+        context.sync_vars.set_builtin(Camera_Front_X, context.camera.front.x as f64);
+        context.sync_vars.set_builtin(Camera_Front_Y, context.camera.front.y as f64);
+        context.sync_vars.set_builtin(Camera_Front_Z, context.camera.front.z as f64);
+        context.sync_vars.set_builtin(Camera_Up_X, context.camera.up.x as f64);
+        context.sync_vars.set_builtin(Camera_Up_Y, context.camera.up.y as f64);
+        context.sync_vars.set_builtin(Camera_Up_Z, context.camera.up.z as f64);
+
+        context.sync_vars.set_builtin(Fovy, context.camera.fovy_angle as f64);
+        context.sync_vars.set_builtin(Znear, context.camera.clip_near as f64);
+        context.sync_vars.set_builtin(Zfar, context.camera.clip_far as f64);
+
         Ok(())
     }
 }

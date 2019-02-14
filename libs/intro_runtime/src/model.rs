@@ -32,6 +32,13 @@ impl Model {
         }
     }
 
+    pub fn empty_obj() -> Model {
+        Model {
+            model_type: ModelType::Obj,
+            meshes: SmallVec::new(),
+        }
+    }
+
     pub fn new(model_type: ModelType) -> Model {
         let mut m = Model::default();
         m.model_type = model_type;

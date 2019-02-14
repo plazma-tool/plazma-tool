@@ -16,7 +16,7 @@ use crate::ERR_MSG_LEN;
 use crate::context_gfx::PROFILE_FRAMES;
 //use crate::error::RuntimeError;
 use crate::error::RuntimeError::*;
-use crate::timeline::{Timeline, DrawOp};
+use crate::timeline::Timeline;
 
 pub struct DmoGfx {
     pub settings: Settings,

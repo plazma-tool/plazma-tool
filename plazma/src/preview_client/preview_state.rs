@@ -1,3 +1,4 @@
+use core::str;
 use std::error::Error;
 use std::time::{Duration, Instant};
 
@@ -14,6 +15,7 @@ use intro_runtime::timeline::{Timeline, TimeTrack, SceneBlock};
 use intro_runtime::sync_vars::BuiltIn::*;
 use intro_runtime::frame_buffer::{FrameBuffer, BufferKind};
 use intro_runtime::polygon_scene::{PolygonScene, SceneObject};
+use intro_runtime::camera::Camera;
 use intro_runtime::mouse::MouseButton as Btn;
 use intro_runtime::types::{PixelFormat, ValueVec3, ValueFloat, BufferMapping, UniformMapping};
 use intro_runtime::error::RuntimeError;
@@ -39,11 +41,15 @@ pub struct PreviewState {
 
 impl PreviewState {
 
-    pub fn new(window_width: f64, window_height: f64,
-               screen_width: f64, screen_height: f64)
-               -> Result<PreviewState, Box<Error>>
+    pub fn new(window_width: f64, window_height: f64)
+        -> Result<PreviewState, Box<Error>>
     {
-        let mut state = PreviewState {
+        // NOTE screen width and height value has to be the same as window width and height when
+        // starting, otherwise the quads that cover the screen will sample framebuffers according
+        // to a different aspect ratio and resulting in the image being streched as passed on from
+        // one quad pass to another.
+
+        let state = PreviewState {
             t_frame_start: Instant::now(),
             t_delta: Duration::new(0, 0),
             t_frame_target: Duration::from_millis(16),
@@ -55,18 +61,19 @@ impl PreviewState {
             should_recompile: false,
             movement_speed: 0.5,
 
-            dmo_gfx: DmoGfx::default(),
+            dmo_gfx: DmoGfx::new_with_dimensions(window_width,
+                                                 window_height,
+                                                 window_width,
+                                                 window_height,
+                                                 None),
         };
-
-        state.set_window_resolution(window_width, window_height);
-        state.set_screen_resolution(screen_width, screen_height);
 
         Ok(state)
     }
 
-    pub fn build_settings(&self,
-                          dmo_gfx: &mut DmoGfx,
-                          dmo_data: &DmoData) {
+    fn build_settings(dmo_gfx: &mut DmoGfx,
+                      dmo_data: &DmoData)
+    {
         let settings = Settings {
             start_full_screen: dmo_data.settings.start_full_screen,
             audio_play_on_start: dmo_data.settings.audio_play_on_start,
@@ -77,10 +84,9 @@ impl PreviewState {
         dmo_gfx.settings = settings;
     }
 
-    pub fn build_frame_buffers(&self,
-                               dmo_gfx: &mut DmoGfx,
-                               dmo_data: &DmoData)
-                               -> Result<(), Box<Error>>
+    fn build_frame_buffers(dmo_gfx: &mut DmoGfx,
+                           dmo_data: &DmoData)
+                           -> Result<(), Box<Error>>
     {
         use crate::dmo_data::context_data as d;
 
@@ -113,16 +119,16 @@ impl PreviewState {
         Ok(())
     }
 
-    pub fn build_quad_scenes(&mut self,
-                             dmo_gfx: &mut DmoGfx,
-                             dmo_data: &DmoData)
-                             -> Result<(), Box<Error>>
+    fn build_quad_scenes(dmo_gfx: &mut DmoGfx,
+                         dmo_data: &DmoData)
+                         -> Result<(), Box<Error>>
     {
         use crate::dmo_data as d;
 
         dmo_gfx.context.quad_scenes = SmallVec::new();
 
-        for q in dmo_data.context.quad_scenes.iter() {
+        for q in dmo_data.context.quad_scenes.iter()
+        {
             let mut layout_to_vars: SmallVec<[UniformMapping; 64]> = SmallVec::new();
             let mut binding_to_buffers: SmallVec<[BufferMapping; 64]> = SmallVec::new();
 
@@ -167,10 +173,13 @@ impl PreviewState {
                 binding_to_buffers.push(a);
             }
 
+            let vert_src_idx = dmo_data.context.index.get_shader_index(&q.vert_src_path)?;
+            let frag_src_idx = dmo_data.context.index.get_shader_index(&q.frag_src_path)?;
+
             dmo_gfx
                 .context
-                .add_quad_scene(&q.vert_src,
-                                &q.frag_src,
+                .add_quad_scene(vert_src_idx,
+                                frag_src_idx,
                                 layout_to_vars,
                                 binding_to_buffers);
         }
@@ -188,16 +197,33 @@ impl PreviewState {
         Ok(())
     }
 
-    pub fn build_polygon_context_and_scenes(&mut self,
-                                            dmo_gfx: &mut DmoGfx,
-                                            dmo_data: &DmoData)
-                                            -> Result<(), Box<Error>>
+    fn build_shader_sources(dmo_gfx: &mut DmoGfx,
+                            dmo_data: &DmoData)
+    {
+        for i in dmo_data.context.shader_sources.iter() {
+            dmo_gfx.context.shader_sources.push(SmallVec::from_slice(i.as_bytes()));
+        }
+    }
+
+    fn build_polygon_context_and_scenes(dmo_gfx: &mut DmoGfx,
+                                        dmo_data: &DmoData)
+                                        -> Result<(), Box<Error>>
     {
         use crate::dmo_data as d;
 
         // Create a PolygonContext and add models.
 
         let aspect = dmo_gfx.context.get_window_aspect();
+
+        let camera = Camera::new(45.0,
+                                 aspect as f32,
+                                 Vector3::from_slice(&dmo_data.context.polygon_context.view_position),
+                                 Some(Vector3::from_slice(&dmo_data.context.polygon_context.view_front)),
+                                 Vector3::from_slice(&dmo_data.context.polygon_context.view_up),
+                                 0.0,
+                                 90.0);
+
+        dmo_gfx.context.camera = camera;
 
         dmo_gfx.context.polygon_context = PolygonContext::new(
             Vector3::from_slice(&dmo_data.context.polygon_context.view_position),
@@ -227,7 +253,7 @@ impl PreviewState {
 
         // Add PolygonScenes.
 
-        for (idx, scene) in dmo_data.context.polygon_scenes.iter().enumerate() {
+        for (_idx, scene) in dmo_data.context.polygon_scenes.iter().enumerate() {
 
             let mut polygon_scene = PolygonScene::default();
 
@@ -324,10 +350,9 @@ impl PreviewState {
         Ok(())
     }
 
-    pub fn build_timeline(&mut self,
-                          dmo_gfx: &mut DmoGfx,
-                          dmo_data: &DmoData)
-                          -> Result<(), Box<Error>>
+    fn build_timeline(dmo_gfx: &mut DmoGfx,
+                      dmo_data: &DmoData)
+                      -> Result<(), Box<Error>>
     {
         use crate::dmo_data::timeline::DrawOp as D;
         use intro_runtime::timeline::DrawOp as G;
@@ -389,15 +414,29 @@ impl PreviewState {
         Ok(())
     }
 
-    pub fn build_dmo_gfx_from_yml_str(&mut self, yml_str: &str) -> Result<(), Box<Error>> {
-        let dmo_data: DmoData = DmoData::new_from_yml_str(&yml_str)?;
-        let mut dmo_gfx: DmoGfx = DmoGfx::default();
+    pub fn build_dmo_gfx_from_yml_str(&mut self,
+                                      yml_str: &str,
+                                      read_shader_paths: bool,
+                                      window_width: f64,
+                                      window_height: f64,
+                                      screen_width: f64,
+                                      screen_height: f64,
+                                      camera: Option<Camera>)
+        -> Result<(), Box<Error>>
+    {
+        let dmo_data: DmoData = DmoData::new_from_yml_str(&yml_str, read_shader_paths)?;
+        let mut dmo_gfx: DmoGfx = DmoGfx::new_with_dimensions(window_width,
+                                                              window_height,
+                                                              screen_width,
+                                                              screen_height,
+                                                              camera);
 
-        self.build_settings(&mut dmo_gfx, &dmo_data);
-        self.build_frame_buffers(&mut dmo_gfx, &dmo_data)?;
-        self.build_quad_scenes(&mut dmo_gfx, &dmo_data)?;
-        self.build_polygon_context_and_scenes(&mut dmo_gfx, &dmo_data)?;
-        self.build_timeline(&mut dmo_gfx, &dmo_data)?;
+        PreviewState::build_shader_sources(&mut dmo_gfx, &dmo_data);
+        PreviewState::build_settings(&mut dmo_gfx, &dmo_data);
+        PreviewState::build_frame_buffers(&mut dmo_gfx, &dmo_data)?;
+        PreviewState::build_quad_scenes(&mut dmo_gfx, &dmo_data)?;
+        PreviewState::build_polygon_context_and_scenes(&mut dmo_gfx, &dmo_data)?;
+        PreviewState::build_timeline(&mut dmo_gfx, &dmo_data)?;
 
         self.dmo_gfx = dmo_gfx;
 
@@ -413,27 +452,44 @@ impl PreviewState {
     //     return self.dmo_gfx.context.shader_sources.len() - 1;
     // }
 
-    pub fn recompile_dmo(&mut self) {
+    pub fn recompile_dmo(&mut self) -> Result<(), Box<Error>> {
+        if !self.should_recompile {
+            return Ok(());
+        }
 
-        // Compile a single QuadScene for now.
+        // Compile shaders of all QuadScenes
 
-        if self.should_recompile {
-            let mut err_msg_buf = [32 as u8; ERR_MSG_LEN];
-            match self.dmo_gfx.compile_quad_scene(0, &mut err_msg_buf) {
-                Ok(_) => {
-                    println!("Recompiled");
-                },
+        let mut err_msg_buf = [32 as u8; ERR_MSG_LEN];
+
+        for scene_idx in 0..self.dmo_gfx.context.quad_scenes.len() {
+            match self.dmo_gfx.compile_quad_scene(scene_idx as usize, &mut err_msg_buf) {
+                Ok(_) => {},
                 Err(e) => {
-                    // FIXME return error
-                    let msg = String::from_utf8(err_msg_buf.to_vec()).unwrap();
-                    println!("Recompile error:\n{}", msg);
-                    //return Err(Box::new(ToolError::Runtime(e, msg)));
+                    let msg = String::from_utf8(err_msg_buf.to_vec())?;
+                    return Err(Box::new(ToolError::Runtime(e, msg)));
+                }
+            }
+        }
+
+        // Compile shaders of all Meshes of all Models
+
+        for model_idx in 0..self.dmo_gfx.context.polygon_context.models.len() {
+            match self.dmo_gfx.compile_model_shaders(model_idx, &mut err_msg_buf) {
+                Ok(_) => {},
+                Err(e) => {
+                    let msg = String::from_utf8(err_msg_buf.to_vec())?;
+                    return Err(Box::new(ToolError::Runtime(e, msg)));
                 }
             }
 
-            self.should_recompile = false;
         }
 
+        println!("Recompiled");
+        self.should_recompile = false;
+        // TODO draw_anyway needed?
+        //self.draw_anyway = true;
+
+        Ok(())
     }
 
     pub fn draw(&mut self) {
@@ -466,6 +522,8 @@ impl PreviewState {
     }
 
     pub fn callback_window_resized(&mut self, wx: f64, wy: f64) -> Result<(), Box<Error>> {
+        info!{"wx: {}, wy: {}", wx, wy};
+
         self.dmo_gfx.context.set_window_resolution(wx, wy);
         match self.dmo_gfx.recreate_framebuffers() {
             Ok(_) => {},

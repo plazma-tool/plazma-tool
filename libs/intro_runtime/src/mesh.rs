@@ -306,7 +306,7 @@ impl Mesh {
             gl::DeleteBuffers(1, &self.ebo);
             gl::DeleteVertexArrays(1, &self.vao);
         }
-        for mut tex in self.textures.iter_mut() {
+        for tex in self.textures.iter_mut() {
             tex.gl_cleanup();
         }
     }

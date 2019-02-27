@@ -78,7 +78,7 @@ impl Model {
     }
 
     pub fn gl_cleanup(&mut self) {
-        for mut mesh in self.meshes.iter_mut() {
+        for mesh in self.meshes.iter_mut() {
             mesh.gl_cleanup();
         }
     }

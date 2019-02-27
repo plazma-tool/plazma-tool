@@ -7,6 +7,7 @@ use smallvec::SmallVec;
 use intro_3d::{Vector3, to_radians};
 
 use crate::context_gfx::ContextGfx;
+use crate::camera::Camera;
 use crate::mesh::Mesh;
 use crate::model::ModelType;
 use crate::types::{ValueFloat, ValueVec3};
@@ -45,19 +46,39 @@ impl Default for Settings {
     }
 }
 
-impl Default for DmoGfx {
-    fn default() -> DmoGfx {
+// impl Default for DmoGfx {
+//     fn default() -> DmoGfx {
+//         DmoGfx {
+//             settings: Settings::default(),
+//             context: ContextGfx::default(),
+//             sync: DmoSync::default(),
+//             timeline: Timeline::default(),
+//         }
+//     }
+// }
+
+impl DmoGfx {
+    pub fn new_with_dimensions(window_width: f64,
+                               window_height: f64,
+                               screen_width: f64,
+                               screen_height: f64,
+                               camera: Option<Camera>)
+        -> DmoGfx
+    {
         DmoGfx {
             settings: Settings::default(),
-            context: ContextGfx::default(),
+            context: ContextGfx::new_with_dimensions(window_width,
+                                                     window_height,
+                                                     screen_width,
+                                                     screen_height,
+                                                     camera),
             sync: DmoSync::default(),
             timeline: Timeline::default(),
         }
     }
-}
 
-impl DmoGfx {
-    pub fn draw(&mut self) {
+    pub fn draw(&mut self)
+    {
         use crate::timeline::DrawOp::*;
 
         for op in self.timeline.draw_ops_at_time(self.context.get_time()) {
@@ -71,6 +92,7 @@ impl DmoGfx {
                 Profile(x) => self.context.impl_profile_event(x),
             }
         }
+
     }
 
     pub fn create_quads(&mut self,
@@ -119,7 +141,8 @@ impl DmoGfx {
         Ok(())
     }
 
-    pub fn create_frame_buffers(&mut self) -> Result<(), RuntimeError> {
+    pub fn create_frame_buffers(&mut self) -> Result<(), RuntimeError>
+    {
         let (wx, wy) = self.context.get_window_resolution();
 
         for buffer in self.context.frame_buffers.iter_mut() {
@@ -139,7 +162,8 @@ impl DmoGfx {
     // FIXME there are two cases: re-creating framebuffers which are window-sized
     // (need new dimensions) and buffers which are fixed size (image texture).
 
-    pub fn recreate_framebuffers(&mut self) -> Result<(), RuntimeError> {
+    pub fn recreate_framebuffers(&mut self) -> Result<(), RuntimeError>
+    {
         let (wx, wy) = self.context.get_window_resolution();
         for buffer in self.context.frame_buffers.iter_mut() {
             buffer.gl_cleanup();
@@ -156,7 +180,8 @@ impl DmoGfx {
         Ok(())
     }
 
-    pub fn update_vars(&mut self) -> Result<(), RuntimeError> {
+    pub fn update_vars(&mut self) -> Result<(), RuntimeError>
+    {
         self.sync.update_vars(&mut self.context)
     }
 
@@ -177,12 +202,14 @@ impl DmoGfx {
         Ok(())
     }
 
-    pub fn update_time_frame_start(&mut self, t: Instant) {
+    pub fn update_time_frame_start(&mut self, t: Instant)
+    {
         self.context.t_frame_start = t;
         self.context.profile_event_idx = 0;
     }
 
-    pub fn update_time_frame_end(&mut self, t: Instant) {
+    pub fn update_time_frame_end(&mut self, t: Instant)
+    {
         self.context.t_frame_end = t;
         if self.context.profile_frame_idx < PROFILE_FRAMES - 1 {
             self.context.profile_frame_idx += 1;
@@ -195,11 +222,11 @@ impl DmoGfx {
                          err_msg_buf: &mut [u8; ERR_MSG_LEN])
                          -> Result<(), RuntimeError>
     {
-        for mut model in self.context.polygon_context.models.iter_mut() {
+        for model in self.context.polygon_context.models.iter_mut() {
 
             let mut new_meshes: SmallVec<[Mesh; 2]> = SmallVec::new();
 
-            for mut mesh in model.meshes.iter_mut() {
+            for mesh in model.meshes.iter_mut() {
                 let vert_src = match self.context.shader_sources.get(mesh.vert_src_idx) {
                     Some(a) => str::from_utf8(&a).unwrap(),
                     None => return Err(FailedToCreateNoSuchVertSrcIdx),
@@ -247,7 +274,7 @@ impl DmoGfx {
     pub fn compile_model_shaders(&mut self, model_idx: usize, err_msg_buf: &mut [u8; ERR_MSG_LEN])
         -> Result<(), RuntimeError>
     {
-        for mut mesh in self.context.polygon_context.models[model_idx].meshes.iter_mut() {
+        for mesh in self.context.polygon_context.models[model_idx].meshes.iter_mut() {
             let ref s = self.context.shader_sources[mesh.vert_src_idx];
             let vert_src = str::from_utf8(s).unwrap();
             let ref s = self.context.shader_sources[mesh.frag_src_idx];
@@ -263,7 +290,8 @@ impl DmoGfx {
 
     /// Update global view and projection matrix of the PolygonContext, and
     /// update individual model matrices.
-    pub fn update_polygon_context(&mut self) {
+    pub fn update_polygon_context(&mut self)
+    {
         use crate::sync_vars::BuiltIn::*;
 
         self.context.polygon_context.view_position =
@@ -282,7 +310,7 @@ impl DmoGfx {
 
         self.context.polygon_context.update_view_matrix();
 
-        for mut scene in self.context.polygon_scenes.iter_mut() {
+        for scene in self.context.polygon_scenes.iter_mut() {
             for mut scene_object in scene.scene_objects.iter_mut() {
                 match scene_object.position_var {
                     ValueVec3::NOOP => {},

@@ -1,7 +1,6 @@
 extern crate actix;
 extern crate actix_web;
 
-#[macro_use]
 extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
@@ -27,16 +26,17 @@ use actix_web::ws;
 
 use futures::Future;
 
-use glutin::{Window, GlWindow, GlContext, EventsLoop, Event, WindowEvent, VirtualKeyCode, ElementState, MouseButton};
+use glutin::{GlWindow, GlContext, EventsLoop, Event, WindowEvent, ElementState};
 
-use plazma::dmo_data::DmoData;
+use intro_3d::Vector3;
+
 use plazma::server_actor::Receiving;
 use plazma::preview_client::client_actor::ClientActor;
 use plazma::preview_client::preview_state::PreviewState;
 use plazma::utils::file_to_string;
 
 fn main() {
-    std::env::set_var("RUST_LOG", "actix_web=info,preview_client=info");
+    std::env::set_var("RUST_LOG", "actix_web=info,plazma=info,preview_client=info");
     env_logger::init();
 
     let plazma_server_port = Arc::new(8080);
@@ -106,8 +106,10 @@ fn main() {
     let start_fullscreen = false;
 
     let mut events_loop = glutin::EventsLoop::new();
+
+    let monitor = events_loop.get_available_monitors().nth(0).expect("no monitor found");
+
     let window_builder = if start_fullscreen {
-        let monitor = events_loop.get_available_monitors().nth(0).expect("no monitor found");
         glutin::WindowBuilder::new()
             .with_title("plazma preview")
             .with_fullscreen(Some(monitor))
@@ -135,10 +137,7 @@ fn main() {
     // NOTE should we use LogicalSize instead, keep in mind the u32 truncates later
     let (wx, wy) = (physical_size.width, physical_size.height);
 
-    // Window size = screen size because we start fullscreen.
-    let mut state =
-        PreviewState::new(wx as f64, wy as f64,
-                          wx as f64, wy as f64).unwrap();
+    let mut state = PreviewState::new(wx, wy).unwrap();
 
     // Start with a minimal demo until we receive update from the server.
     let demo_yml_path = PathBuf::from("data".to_owned())
@@ -146,7 +145,9 @@ fn main() {
         .join(PathBuf::from("demo.yml".to_owned()));
 
     let text: String = file_to_string(&demo_yml_path).unwrap();
-    state.build_dmo_gfx_from_yml_str(&text).unwrap();
+
+    // NOTE Must use window size for screen size as well
+    state.build_dmo_gfx_from_yml_str(&text, true, wx, wy, wx, wy, None).unwrap();
 
     state.set_is_paused(false);
 
@@ -193,7 +194,19 @@ fn render_loop(window: &GlWindow,
                     FetchDmo => {},
 
                     SetDmo => {
-                        match state.build_dmo_gfx_from_yml_str(&message.data) {
+                        info!{"Received message.data_type: SetDmo"};
+
+                        let (sx, sy) = state.dmo_gfx.context.get_screen_resolution();
+                        info!{"sx: {}, sy: {}", sx, sy};
+                        let camera = state.dmo_gfx.context.camera.get_copy();
+
+                        // NOTE The original aspect when first created has to be preserved, so
+                        // passing screen sizes only, which are the size of the window when it was
+                        // first created.
+                        match state.build_dmo_gfx_from_yml_str(&message.data, false,
+                                                               sx, sy, sx, sy,
+                                                               Some(camera))
+                        {
                             Ok(_) => {},
                             Err(e) => error!("Can't perform SetDmo: {:?}", e),
                         }
@@ -210,7 +223,10 @@ fn render_loop(window: &GlWindow,
         }
 
         // 00. recompile if flag was set
-        state.recompile_dmo();
+        match state.recompile_dmo() {
+            Ok(_) => {},
+            Err(e) => error!{"{:?}", e},
+        }
 
         // 0. update time
 
@@ -236,9 +252,15 @@ fn render_loop(window: &GlWindow,
 
         // In explore mode, override camera sync variables (calculated from the
         // sync tracks) with camera position (calculated from keys and mouse).
-        if state.explore_mode {
-            state.dmo_gfx.context.set_camera_sync();
-        }
+
+        // FIXME camera sync tracks currently just reset to default zero coords so use the position
+        // and front vector values in PolygonContext usually reserved for explore mode camera
+
+        //if state.explore_mode {
+        //    state.dmo_gfx.context.set_camera_sync();
+        //}
+
+        state.dmo_gfx.context.set_camera_sync();
 
         // 2. deal with events
 
@@ -249,7 +271,7 @@ fn render_loop(window: &GlWindow,
                         state.set_is_running(false);
                     },
 
-                    WindowEvent::KeyboardInput{ device_id, input } => {
+                    WindowEvent::KeyboardInput{ device_id: _, input } => {
                         use glutin::VirtualKeyCode::*;
 
                         if let Some(vcode) = input.virtual_keycode {
@@ -282,17 +304,37 @@ fn render_loop(window: &GlWindow,
                                     }
                                 },
 
+                                // print camera values
+                                C => if pressed {
+                                    println!("------------------------------");
+                                    println!("");
+                                    println!("--- dmo_gfx.context.camera ---");
+                                    let a: &Vector3 = state.dmo_gfx.context.camera.get_position();
+                                    println!(".position: {}, {}, {}", a.x, a.y, a.z);
+                                    let a: &Vector3 = state.dmo_gfx.context.camera.get_front();
+                                    println!(".front: {}, {}, {}", a.x, a.y, a.z);
+                                    println!(".pitch: {}", state.dmo_gfx.context.camera.pitch);
+                                    println!(".yaw: {}", state.dmo_gfx.context.camera.yaw);
+                                    println!("");
+                                    println!("--- dmo_gfx.context.polygon_context ---");
+                                    let a: &Vector3 = state.dmo_gfx.context.polygon_context.get_view_position();
+                                    println!(".view_position: {}, {}, {}", a.x, a.y, a.z);
+                                    let a: &Vector3 = state.dmo_gfx.context.polygon_context.get_view_front();
+                                    println!(".view_front: {}, {}, {}", a.x, a.y, a.z);
+                                    println!("");
+                                }
+
                                 _ => (),
                             }
                         }
                     },
 
-                    WindowEvent::CursorMoved{ device_id, position, modifiers } => {
+                    WindowEvent::CursorMoved{ device_id: _, position, modifiers: _ } => {
                         let (mx, my) = position.into();
                         state.callback_mouse_moved(mx, my);
                     },
 
-                    WindowEvent::MouseWheel{ device_id, delta, phase, modifiers } => {
+                    WindowEvent::MouseWheel{ device_id: _, delta, phase: _, modifiers: _ } => {
                         match delta {
                             glutin::MouseScrollDelta::LineDelta(_, dy) => {
                                 state.callback_mouse_wheel(dy);
@@ -304,12 +346,12 @@ fn render_loop(window: &GlWindow,
                         }
                     },
 
-                    WindowEvent::MouseInput{ device_id, state: pressed_state, button, modifiers } => {
+                    WindowEvent::MouseInput{ device_id: _, state: pressed_state, button, modifiers: _ } => {
                         state.callback_mouse_input(pressed_state, button);
                     },
 
-                    WindowEvent::CursorEntered{ device_id } => {},
-                    WindowEvent::CursorLeft{ device_id } => {},
+                    WindowEvent::CursorEntered{ device_id: _ } => {},
+                    WindowEvent::CursorLeft{ device_id: _ } => {},
 
                     WindowEvent::HiDpiFactorChanged(dpi) => {
                         dpi_factor = dpi;
@@ -320,8 +362,11 @@ fn render_loop(window: &GlWindow,
                     },
 
                     WindowEvent::Resized(logical_size) => {
+                        info!{"WindowEvent::Resized"};
+
                         let physical_size = logical_size.to_physical(dpi_factor);
                         let (wx, wy) = (physical_size.width, physical_size.height);
+
                         match state.callback_window_resized(wx as f64, wy as f64) {
                             Ok(_) => {},
                             Err(e) => error!("{:?}", e),
@@ -336,6 +381,7 @@ fn render_loop(window: &GlWindow,
         // 3. move, update camera (only works in explore mode)
 
         state.update_camera_from_keys();
+        state.dmo_gfx.context.camera.update_view();// DEBUG
 
         // 4. rebuild when assets change on disc
 

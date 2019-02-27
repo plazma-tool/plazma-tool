@@ -48,10 +48,10 @@ context:
           scale:
             Fixed: 0.5
           layout_to_vars:
-            - Float: [ 4, "Time" ] 
-            - Vec2: [ 5, "Window_Width", "Window_Height" ] 
-            - Vec2: [ 6, "Screen_Width", "Screen_Height" ] 
-            - Vec3: [ 7, "Light_Pos_X", "Light_Pos_Y", "Light_Pos_Z" ] 
+            - Float: [ 4, "Time" ]
+            - Vec2: [ 5, "Window_Width", "Window_Height" ]
+            - Vec2: [ 6, "Screen_Width", "Screen_Height" ]
+            - Vec3: [ 7, "Light_Pos_X", "Light_Pos_Y", "Light_Pos_Z" ]
           binding_to_buffers: []
 
         - name: "suzanne"
@@ -62,11 +62,12 @@ context:
           scale:
             Fixed: 1.0
           layout_to_vars:
-            - Float: [ 4, "Time" ] 
-            - Vec2: [ 5, "Window_Width", "Window_Height" ] 
-            - Vec2: [ 6, "Screen_Width", "Screen_Height" ] 
-            - Vec3: [ 7, "Light_Pos_X", "Light_Pos_Y", "Light_Pos_Z" ] 
-          binding_to_buffers: []
+            - Float: [ 4, "Time" ]
+            - Vec2: [ 5, "Window_Width", "Window_Height" ]
+            - Vec2: [ 6, "Screen_Width", "Screen_Height" ]
+            - Vec3: [ 7, "Light_Pos_X", "Light_Pos_Y", "Light_Pos_Z" ]
+          binding_to_buffers:
+            - Sampler2D: [ 0, "scene buf" ]
 
         - name: "cube two"
           position:
@@ -76,10 +77,10 @@ context:
           scale:
             Fixed: 0.7
           layout_to_vars:
-            - Float: [ 4, "Time" ] 
-            - Vec2: [ 5, "Window_Width", "Window_Height" ] 
-            - Vec2: [ 6, "Screen_Width", "Screen_Height" ] 
-            - Vec3: [ 7, "Light_Pos_X", "Light_Pos_Y", "Light_Pos_Z" ] 
+            - Float: [ 4, "Time" ]
+            - Vec2: [ 5, "Window_Width", "Window_Height" ]
+            - Vec2: [ 6, "Screen_Width", "Screen_Height" ]
+            - Vec3: [ 7, "Light_Pos_X", "Light_Pos_Y", "Light_Pos_Z" ]
           binding_to_buffers: []
 
         - name: "room box"
@@ -90,11 +91,12 @@ context:
           scale:
             Fixed: 20.0
           layout_to_vars:
-            - Float: [ 4, "Time" ] 
-            - Vec2: [ 5, "Window_Width", "Window_Height" ] 
-            - Vec2: [ 6, "Screen_Width", "Screen_Height" ] 
-            - Vec3: [ 7, "Light_Pos_X", "Light_Pos_Y", "Light_Pos_Z" ] 
-          binding_to_buffers: []
+            - Float: [ 4, "Time" ]
+            - Vec2: [ 5, "Window_Width", "Window_Height" ]
+            - Vec2: [ 6, "Screen_Width", "Screen_Height" ]
+            - Vec3: [ 7, "Light_Pos_X", "Light_Pos_Y", "Light_Pos_Z" ]
+          binding_to_buffers:
+            - Sampler2D: [ 0, "scene buf" ]
 
         #- name: "light"
         #  position:
@@ -115,8 +117,8 @@ context:
     #view_up:
     #  Fixed: [ 0.0, 1.0, 0.0 ]
 
-    view_position: [ -5.0, 4.0, 10.0 ]
-    view_front: [ 0.5, -0.1, -0.5 ]
+    view_position: [ -3.4, 0.42, 0.07 ]
+    view_front: [ 0.99, -0.07, -0.07 ]
     view_up: [ 0.0, 1.0, 0.0 ]
 
     fovy: 45.0
@@ -158,7 +160,7 @@ context:
         vert_src_path: "./data/minimal/data/scene_object.vert"
         frag_src_path: "./data/minimal/data/suzanne.frag"
         obj_path: "./data/minimal/data/suzanne.obj"
-      
+
       #- name: "light"
       #  model_type: Cube
       #  vert_src_path: "./data/minimal/data/scene_object.vert"
@@ -178,6 +180,9 @@ context:
       # - Camera_Front_Y: -0.1
       # - Camera_Front_Z: -0.5
 
+  # Leave empty. Will be populated with shader sources read from paths.
+  shader_sources: []
+
 timeline:
 
   tracks:
@@ -185,27 +190,29 @@ timeline:
     - scene_blocks:
 
         - start: 0.0
-          end: 240.0
+          end: 200.0
           draw_ops:
+            - Target_Buffer: "scene buf"
+            - Clear: [ 50, 0, 0, 0 ]
             - Target_Buffer: "RESULT_IMAGE"
-            - Clear: [ 0, 0, 255, 0 ]
+            - Clear: [ 0, 50, 0, 0 ]
             - Draw_Poly_Scene: "cubes and suzanne"
 
-        #- start: 0.0
-        #  end: 3.0
-        #  draw_ops:
-        #    - Target_Buffer: "scene buf"
-        #    - Clear: [ 0, 0, 0, 0 ]
-        #    - Draw_Quad_Scene: "circle"
-        #    - Target_Buffer: "RESULT_IMAGE"
-        #    - Clear: [ 0, 0, 0, 0 ]
-        #    - Draw_Quad_Scene: "cross"
+#        - start: 0.0
+#          end: 200.0
+#          draw_ops:
+#            - Target_Buffer: "scene buf"
+#            - Clear: [ 0, 0, 0, 0 ]
+#            - Draw_Quad_Scene: "circle"
+#            - Target_Buffer: "RESULT_IMAGE"
+#            - Clear: [ 0, 0, 0, 0 ]
+#            - Draw_Quad_Scene: "cross"
 
-        #- start: 5.0
-        #  end: 20.0
-        #  draw_ops:
-        #    - Target_Buffer: "RESULT_IMAGE"
-        #    - Clear: [ 0, 0, 0, 0 ]
-        #    - Draw_Quad_Scene: "cross"
+#        - start: 10.0
+#          end: 20.0
+#          draw_ops:
+#            - Target_Buffer: "RESULT_IMAGE"
+#            - Clear: [ 0, 0, 0, 0 ]
+#            - Draw_Quad_Scene: "circle"
 
 

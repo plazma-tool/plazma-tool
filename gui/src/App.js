@@ -5,6 +5,9 @@ import MonacoEditor from 'react-monaco-editor';
 import { ColorPickerColumns } from './PlazmaColorPicker';
 import { PositionSlidersColumns } from './PlazmaPositionSliders';
 import { SliderColumns } from './PlazmaSlider';
+import { DmoSettingsMenu } from './DmoSettings';
+import { DmoContextMenu } from './DmoContext';
+import { DmoTimelineMenu } from './DmoTimeline';
 import './App.css';
 
 //import logo from './logo.svg';
@@ -205,10 +208,22 @@ class App extends Component {
     constructor(props) {
         super(props);
 
+        // TODO add a new attribute to select what is displayed in the main
+        // panel.
+
+        // NOTE No 0 index to avoid == problems.
+        const CurrentPage = {
+            Settings: 1,
+            ContextShader: 2,
+            Timeline: 3,
+        };
+
         this.state = {
             socket: null,
             dmo_data: null,
             editor_content: null,
+            current_page: CurrentPage.ContextShader,
+            current_shader_index: null,
             sentUpdateSinceChange: false,
         };
 
@@ -216,6 +231,7 @@ class App extends Component {
 
         this.sendUpdatedContent = this.sendUpdatedContent.bind(this);
         this.onEditorChange = this.onEditorChange.bind(this);
+        this.onContextMenuChange = this.onContextMenuChange.bind(this);
         this.onColorPickerChange = this.onColorPickerChange.bind(this);
         this.onPositionSlidersChange = this.onPositionSlidersChange.bind(this);
         this.handleSocketOpen = this.handleSocketOpen.bind(this);
@@ -256,7 +272,9 @@ class App extends Component {
         var msg = JSON.parse(event.data);
         if (msg.data_type === 'SetDmo') {
             let d = JSON.parse(msg.data);
-            let frag_src = d.context.quad_scenes[0].frag_src;
+
+            let idx = this.state.current_shader_index;
+            let frag_src = d.context.shader_sources[idx];
             this.setState({
                 dmo_data: d,
                 editor_content: frag_src,
@@ -270,7 +288,8 @@ class App extends Component {
     sendUpdatedContent(newValue) {
         if (this.state.dmo_data) {
             let d = this.state.dmo_data;
-            d.context.quad_scenes[0].frag_src = newValue;
+            let idx = this.state.current_shader_index;
+            d.context.shader_sources[idx] = newValue;
 
             this.setState({
                 dmo_data: d,
@@ -279,6 +298,13 @@ class App extends Component {
         }
         this.setState({
             sentUpdateSinceChange: false,
+        });
+    }
+
+    onContextMenuChange(idx) {
+        this.setState({
+            current_shader_index: idx,
+            editor_content: this.state.dmo_data.context.shader_sources[idx],
         });
     }
 
@@ -315,27 +341,16 @@ class App extends Component {
               <Columns>
                 <Column isSize={{default: 1}}>
                   <Menu>
-                    <MenuLabel>Textures</MenuLabel>
-                    <MenuList>
-                      <li><MenuLink>Medium RGBA Noise</MenuLink></li>
-                      <li><MenuLink>Rock</MenuLink></li>
-                      <li><MenuLink>Street</MenuLink></li>
-                    </MenuList>
-                    <MenuLabel>Shaders</MenuLabel>
-                    <MenuList>
-                      <li><MenuLink>background</MenuLink></li>
-                      <li><MenuLink>text</MenuLink></li>
-                      <li><MenuLink>raymarch</MenuLink></li>
-                      <li><MenuLink>bloom</MenuLink></li>
-                      <li><MenuLink>compositing</MenuLink></li>
-                    </MenuList>
+                    <DmoSettingsMenu/>
+                    <DmoContextMenu
+                        dmoData={this.state.dmo_data}
+                        currentIndex={this.state.current_shader_index}
+                        onChangeLift={this.onContextMenuChange}
+                    />
+                    <DmoTimelineMenu/>
                   </Menu>
-                  <div>
-                    <Button isActive isColor='primary'>Variables</Button>
-                  </div>
-                  <div>
-                    <Button>Samplers</Button>
-                  </div>
+
+                  {/*
                   <div>
                     <Button>
                       <Icon className="fas fa-fast-backward fa-lg" />
@@ -347,6 +362,7 @@ class App extends Component {
                       <Icon className="fas fa-fast-forward fa-lg" />
                     </Button>
                   </div>
+                  */}
                 </Column>
                 <Column>
                   <Columns>

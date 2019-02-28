@@ -1,5 +1,6 @@
 import React from 'react';
-import { MenuLabel, MenuList, MenuLink } from 'bloomer';
+import { Heading, Title, MenuLabel, MenuList, MenuLink } from 'bloomer';
+import { CurrentPage } from './Helpers';
 
 // TODO Use a collapsed and expanded state. Click on the menu label expands a
 // tree. Selecting a shader opens it in the editor.
@@ -29,7 +30,9 @@ function pathBasename(path) {
 // Requires props:
 // - dmoData
 // - currentIndex
+// - currentPage
 // - onChangeLift
+// - onClickLift
 export class DmoContextMenu extends React.Component {
     constructor(props) {
         super(props);
@@ -66,9 +69,14 @@ export class DmoContextMenu extends React.Component {
             );
         });
 
+        let color = "";
+        if (this.props.currentPage === CurrentPage.ContextShader) {
+            color = "primary";
+        }
+
         return (
-            <div>
-                <MenuLabel>Context</MenuLabel>
+            <div onClick={this.props.onClickLift}>
+                <Title tag='h1' hasTextColor={color}>Context</Title>
                 <MenuLabel>Shaders</MenuLabel>
                 <MenuList>
                     {pathLinks}

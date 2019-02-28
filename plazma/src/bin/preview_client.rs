@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 extern crate actix;
 extern crate actix_web;
 
@@ -181,10 +183,11 @@ fn render_loop(window: &GlWindow,
                 let message: Receiving = match serde_json::from_str(&text) {
                     Ok(x) => x,
                     Err(e) => {
-                        error!("Can't deserialize message: {:?}", e);
+                        error!{"Can't deserialize message: {:?}", e};
                         return;
                     },
                 };
+                info!{"Received: message.data_type: {:?}", message.data_type};
 
                 use plazma::server_actor::MsgDataType::*;
                 match message.data_type {
@@ -194,8 +197,6 @@ fn render_loop(window: &GlWindow,
                     FetchDmo => {},
 
                     SetDmo => {
-                        info!{"Received message.data_type: SetDmo"};
-
                         let (sx, sy) = state.dmo_gfx.context.get_screen_resolution();
                         info!{"sx: {}, sy: {}", sx, sy};
                         let camera = state.dmo_gfx.context.camera.get_copy();
@@ -208,17 +209,47 @@ fn render_loop(window: &GlWindow,
                                                                Some(camera))
                         {
                             Ok(_) => {},
-                            Err(e) => error!("Can't perform SetDmo: {:?}", e),
+                            Err(e) => error!{"Can't perform SetDmo: {:?}", e},
                         }
                     },
 
-                    SetDmoTime => {},
+                    SetDmoTime => {
+                        let time: f64 = match serde_json::from_str(&message.data) {
+                            Ok(x) => x,
+                            Err(e) => {
+                                error!{"Can't deserialize to time f64: {:?}", e};
+                                return;
+                            },
+                        };
+                        state.dmo_gfx.context.set_time(time);
+                    },
+
+                    SetSettings => {
+                        let settings_data: plazma::dmo_data::Settings = match serde_json::from_str(&message.data) {
+                            Ok(x) => x,
+                            Err(e) => {
+                                error!{"Can't deserialize to Settings: {:?}", e};
+                                return;
+                            },
+                        };
+
+                        let settings = intro_runtime::dmo_gfx::Settings {
+                            start_full_screen: settings_data.start_full_screen,
+                            audio_play_on_start: settings_data.audio_play_on_start,
+                            mouse_sensitivity: settings_data.mouse_sensitivity,
+                            movement_sensitivity: settings_data.movement_sensitivity,
+                            total_length: settings_data.total_length,
+                        };
+                        state.dmo_gfx.settings = settings;
+                    },
 
                     ShowErrorMessage =>
-                        error!("Server sending error: {:?}", message.data),
+                        error!{"Server sending error: {:?}", message.data},
                 }
 
             },
+
+            // Silently drop the error when there is no message to receive.
             Err(_) => {},
         }
 
@@ -235,6 +266,8 @@ fn render_loop(window: &GlWindow,
         if state.dmo_gfx.settings.total_length < state.get_time() {
             break;
         }
+
+        // TODO When Rocket is not connected, we send the server the time.
 
         // 1. sync vars (time, camera, etc.)
 

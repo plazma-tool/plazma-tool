@@ -122,6 +122,7 @@ pub enum MsgDataType {
     SetDmo,
     SetDmoTime,
     ShowErrorMessage,
+    SetSettings,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -174,6 +175,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                         return;
                     },
                 };
+                info!{"Received: message.data_type: {:?}", message.data_type};
 
                 use self::MsgDataType::*;
                 match message.data_type {
@@ -201,6 +203,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                         match serde_json::from_str(&message.data) {
 
                             Ok(dmo) => {
+                                info!{"Deserialized Dmo"};
                                 let mut state = ctx.state().lock().expect("Can't lock ServerState.");
                                 state.project_data.dmo_data = dmo;
 
@@ -213,12 +216,13 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                                         data_type: SetDmo,
                                         data: serde_json::to_string(&state.project_data.dmo_data).unwrap(),
                                     };
+                                    info!{"Sending SetDmo"};
                                     addr.do_send(resp);
                                 }
-
                             },
 
                             Err(e) => {
+                                error!{"Error deserializing Dmo: {:?}", e};
                                 // Could not deserialize data, tell client to show an error.
                                 let resp = Sending {
                                     data_type: ShowErrorMessage,
@@ -235,6 +239,40 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                         // ServerState and send to other clients.
 
                         // TODO
+                    },
+
+                    SetSettings => {
+                        match serde_json::from_str(&message.data) {
+                            Ok(settings) => {
+                                info!{"Deserialized Settings"};
+                                let mut state = ctx.state().lock().expect("Can't lock ServerState.");
+                                state.project_data.dmo_data.settings = settings;
+
+                                for (id, addr) in &state.clients {
+                                    if *id == self.client_id {
+                                        continue;
+                                    }
+
+                                    let resp = Sending {
+                                        data_type: SetSettings,
+                                        data: serde_json::to_string(&state.project_data.dmo_data.settings).unwrap(),
+                                    };
+                                    info!{"Sending SetSettings"};
+                                    addr.do_send(resp);
+                                }
+                            },
+
+                            Err(e) => {
+                                error!{"Error deserializing Settings: {:?}", e};
+                                // Could not deserialize data, tell client to show an error.
+                                let resp = Sending {
+                                    data_type: ShowErrorMessage,
+                                    data: format!{"{:?}", e},
+                                };
+                                let body = serde_json::to_string(&resp).unwrap();
+                                ctx.text(body);
+                            }
+                        }
                     },
 
                     ShowErrorMessage => {

@@ -1,3 +1,9 @@
+export const CurrentPage = {
+    Settings: 1,
+    ContextShader: 2,
+    Timeline: 3,
+};
+
 export function getVec3ValuesFromCode(code, re) {
     let values = [];
     if (code === null) {

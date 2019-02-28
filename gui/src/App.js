@@ -1,13 +1,15 @@
 import React, { Component } from 'react';
 //import * as ReactDOM from 'react-dom';
-import { Icon, Button, Menu, MenuLabel, MenuList, MenuLink, Columns, Column  } from 'bloomer';
+import { Container, Menu, Columns, Column } from 'bloomer';
 import MonacoEditor from 'react-monaco-editor';
 import { ColorPickerColumns } from './PlazmaColorPicker';
 import { PositionSlidersColumns } from './PlazmaPositionSliders';
 import { SliderColumns } from './PlazmaSlider';
-import { DmoSettingsMenu } from './DmoSettings';
+import { DmoSettingsMenu, DmoSettingsForm } from './DmoSettings';
 import { DmoContextMenu } from './DmoContext';
-import { DmoTimelineMenu } from './DmoTimeline';
+import { DmoTimeScrub } from './DmoTimeScrub';
+import { CurrentPage } from './Helpers';
+//import { DmoTimelineMenu } from './DmoTimeline';
 import './App.css';
 
 //import logo from './logo.svg';
@@ -76,8 +78,6 @@ class PlazmaMonaco extends React.Component {
     }
 
     editorDidMount(editor, monaco) {
-        editor.getModel().setValue(this.props.editorContent);
-
         let id = editor.getModel().getAlternativeVersionId();
         let modelVersions = {
             initialVersion: id,
@@ -212,18 +212,13 @@ class App extends Component {
         // panel.
 
         // NOTE No 0 index to avoid == problems.
-        const CurrentPage = {
-            Settings: 1,
-            ContextShader: 2,
-            Timeline: 3,
-        };
-
         this.state = {
             socket: null,
             dmo_data: null,
             editor_content: null,
             current_page: CurrentPage.ContextShader,
             current_shader_index: null,
+            current_time: 0.0,
             sentUpdateSinceChange: false,
         };
 
@@ -232,6 +227,8 @@ class App extends Component {
         this.sendUpdatedContent = this.sendUpdatedContent.bind(this);
         this.onEditorChange = this.onEditorChange.bind(this);
         this.onContextMenuChange = this.onContextMenuChange.bind(this);
+        this.onTimeScrubChange = this.onTimeScrubChange.bind(this);
+        this.onSettingsFormChange = this.onSettingsFormChange.bind(this);
         this.onColorPickerChange = this.onColorPickerChange.bind(this);
         this.onPositionSlidersChange = this.onPositionSlidersChange.bind(this);
         this.handleSocketOpen = this.handleSocketOpen.bind(this);
@@ -270,18 +267,30 @@ class App extends Component {
 
     handleSocketMessage(event) {
         var msg = JSON.parse(event.data);
-        if (msg.data_type === 'SetDmo') {
-            let d = JSON.parse(msg.data);
+        switch (msg.data_type ) {
+            case 'SetDmo':
+                let d = JSON.parse(msg.data);
 
-            let idx = this.state.current_shader_index;
-            let frag_src = d.context.shader_sources[idx];
-            this.setState({
-                dmo_data: d,
-                editor_content: frag_src,
-            });
-            this.setState({
-                sentUpdateSinceChange: true,
-            });
+                let idx = this.state.current_shader_index;
+                let frag_src = d.context.shader_sources[idx];
+                this.setState({
+                    dmo_data: d,
+                    editor_content: frag_src,
+                });
+                this.setState({
+                    sentUpdateSinceChange: true,
+                });
+                break;
+
+            case 'SetTime':
+                let time = JSON.parse(msg.data);
+                this.setState({
+                    current_time: time,
+                });
+                break;
+
+            default:
+                console.log("Error: unknown message.data_type");
         }
     }
 
@@ -308,6 +317,22 @@ class App extends Component {
         });
     }
 
+    onSettingsFormChange(msg) {
+        if (msg.data_type === 'SetSettings') {
+            this.setState({ settings: msg.data });
+        }
+        let server_msg = {
+            data_type: 'SetSettings',
+            data: JSON.stringify(msg.data),
+        };
+        console.log('Sending server: SetSettings');
+        this.state.socket.send(JSON.stringify(server_msg));
+    }
+
+    onTimeScrubChange(x) {
+        console.log(x);
+    }
+
     onEditorChange(newValue, e) {
         this.sendUpdatedContent(newValue);
     }
@@ -328,6 +353,7 @@ class App extends Component {
                 data_type: 'SetDmo',
                 data: JSON.stringify(this.state.dmo_data),
             };
+            console.log('Sending server: SetDmo');
             this.state.socket.send(JSON.stringify(msg));
             this.setState({
                 sentUpdateSinceChange: true,
@@ -336,64 +362,80 @@ class App extends Component {
     }
 
     render() {
+        let page;
+        switch (this.state.current_page) {
+            case CurrentPage.Settings:
+                page =
+                    <div>
+                        <DmoSettingsForm
+                            dmoData={this.state.dmo_data}
+                            onChangeLift={this.onSettingsFormChange}
+                        />
+                    </div>;
+                break;
+            case CurrentPage.ContextShader:
+                page =
+                    <div>
+                        <Columns>
+                            <Column>
+                                <PlazmaMonaco
+                                    editorContent={this.state.editor_content}
+                                    onChangeLift={this.onEditorChange}
+                                />
+                            </Column>
+                        </Columns>
+                        <Columns>
+                            <ColorPickerColumns
+                                code={this.state.editor_content}
+                                onChangeLift={this.onColorPickerChange}
+                            />
+                            <PositionSlidersColumns
+                                code={this.state.editor_content}
+                                onChangeLift={this.onPositionSlidersChange}
+                            />
+                            <SliderColumns
+                                code={this.state.editor_content}
+                                onChangeLift={this.onColorPickerChange}
+                            />
+                        </Columns>
+                    </div>;
+                break;
+            default:
+                page =
+                    <div>
+                        <p>no page</p>
+                    </div>;
+        };
         return (
             <div className="App">
-              <Columns>
-                <Column isSize={{default: 1}}>
-                  <Menu>
-                    <DmoSettingsMenu/>
-                    <DmoContextMenu
-                        dmoData={this.state.dmo_data}
-                        currentIndex={this.state.current_shader_index}
-                        onChangeLift={this.onContextMenuChange}
-                    />
-                    <DmoTimelineMenu/>
-                  </Menu>
-
-                  {/*
-                  <div>
-                    <Button>
-                      <Icon className="fas fa-fast-backward fa-lg" />
-                    </Button>
-                    <Button isColor='success' isOutlined>
-                      <Icon className="fas fa-play fa-lg" />
-                    </Button>
-                    <Button>
-                      <Icon className="fas fa-fast-forward fa-lg" />
-                    </Button>
-                  </div>
-                  */}
-                </Column>
-                <Column>
-                  <Columns>
-                    <Column>
-                      <PlazmaMonaco
-                        editorContent={this.state.editor_content}
-                        onChangeLift={this.onEditorChange}
-                      />
-                    </Column>
-                  </Columns>
-                  <Columns>
-
-                    <ColorPickerColumns
-                      code={this.state.editor_content}
-                      onChangeLift={this.onColorPickerChange}
-                    />
-
-                    <PositionSlidersColumns
-                      code={this.state.editor_content}
-                      onChangeLift={this.onPositionSlidersChange}
-                    />
-
-                    <SliderColumns
-                      code={this.state.editor_content}
-                      onChangeLift={this.onColorPickerChange}
-                    />
-
-                  </Columns>
-                </Column>
-              </Columns>
-            </div>
+                <Columns>
+                    <Column isSize={{default: 1}}>
+                        <Menu>
+                            <DmoSettingsMenu
+                                currentPage={this.state.current_page}
+                                onClickLift={() => this.setState({ current_page: CurrentPage.Settings })}
+                            />
+                            <DmoContextMenu
+                                dmoData={this.state.dmo_data}
+                                currentIndex={this.state.current_shader_index}
+                                currentPage={this.state.current_page}
+                                onChangeLift={this.onContextMenuChange}
+                                onClickLift={() => this.setState({ current_page: CurrentPage.ContextShader })}
+                            />
+                        </Menu>
+              </Column>
+              <Column>
+                  {page}
+              </Column>
+          </Columns>
+          <Container>
+              <DmoTimeScrub
+                  dmoData={this.state.dmo_data}
+                  currentTime={this.state.current_time}
+                  onChangeLift={this.onTimeScrubChange}
+              />
+          </Container>
+      </div>
         );
     }
 }

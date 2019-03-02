@@ -1,5 +1,5 @@
 import React from 'react';
-import { Heading, Title, MenuLabel, MenuList, MenuLink } from 'bloomer';
+import { Title, MenuLabel, MenuList, MenuLink } from 'bloomer';
 import { CurrentPage } from './Helpers';
 
 // TODO Use a collapsed and expanded state. Click on the menu label expands a

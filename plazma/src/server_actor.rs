@@ -121,6 +121,7 @@ pub enum MsgDataType {
     FetchDmo,
     SetDmo,
     SetDmoTime,
+    GetDmoTime,
     ShowErrorMessage,
     SetSettings,
 }
@@ -175,7 +176,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                         return;
                     },
                 };
-                info!{"Received: message.data_type: {:?}", message.data_type};
+                //info!{"Received: message.data_type: {:?}", message.data_type};
 
                 use self::MsgDataType::*;
                 match message.data_type {
@@ -237,8 +238,53 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                     SetDmoTime => {
                         // Client is setting time. Deserialize, update
                         // ServerState and send to other clients.
+                        match serde_json::from_str::<f64>(&message.data) {
+                            Ok(time) => {
+                                //info!{"Deserialized time"};
+                                let state = ctx.state().lock().expect("Can't lock ServerState.");
 
-                        // TODO
+                                for (id, addr) in &state.clients {
+                                    if *id == self.client_id {
+                                        continue;
+                                    }
+
+                                    let resp = Sending {
+                                        data_type: SetDmoTime,
+                                        data: serde_json::to_string(&time).unwrap(),
+                                    };
+                                    //info!{"Sending SetDmoTime"};
+                                    addr.do_send(resp);
+                                }
+                            },
+
+                            Err(e) => {
+                                error!{"Error deserializing time: {:?}", e};
+                                // Could not deserialize data, tell client to show an error.
+                                let resp = Sending {
+                                    data_type: ShowErrorMessage,
+                                    data: format!{"{:?}", e},
+                                };
+                                let body = serde_json::to_string(&resp).unwrap();
+                                ctx.text(body);
+                            }
+                        }
+                    },
+
+                    GetDmoTime => {
+                        // Client is requesting time. Send the message to other clients to respond.
+                        let state = ctx.state().lock().expect("Can't lock ServerState.");
+
+                        for (id, addr) in &state.clients {
+                            if *id == self.client_id {
+                                continue;
+                            }
+
+                            let resp = Sending {
+                                data_type: GetDmoTime,
+                                data: "".to_owned(),
+                            };
+                            addr.do_send(resp);
+                        }
                     },
 
                     SetSettings => {

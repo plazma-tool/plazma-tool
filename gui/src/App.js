@@ -223,6 +223,7 @@ class App extends Component {
         };
 
         this.updateTimerId = null;
+        this.getDmoTimeTimerId = null;
 
         this.sendUpdatedContent = this.sendUpdatedContent.bind(this);
         this.onEditorChange = this.onEditorChange.bind(this);
@@ -234,6 +235,7 @@ class App extends Component {
         this.handleSocketOpen = this.handleSocketOpen.bind(this);
         this.handleSocketMessage = this.handleSocketMessage.bind(this);
         this.sendDmoData = this.sendDmoData.bind(this);
+        this.getDmoTime = this.getDmoTime.bind(this);
     }
 
     componentDidMount() {
@@ -243,6 +245,7 @@ class App extends Component {
         socket.addEventListener('message', this.handleSocketMessage);
 
         this.updateTimerId = window.setInterval(this.sendDmoData, 1000);
+        this.getDmoTimeTimerId = window.setInterval(this.getDmoTime, 500);
 
         this.setState({
             socket: socket,
@@ -273,24 +276,17 @@ class App extends Component {
 
                 let idx = this.state.current_shader_index;
                 let frag_src = d.context.shader_sources[idx];
-                this.setState({
-                    dmo_data: d,
-                    editor_content: frag_src,
-                });
-                this.setState({
-                    sentUpdateSinceChange: true,
-                });
+                this.setState({ dmo_data: d, editor_content: frag_src });
+                this.setState({ sentUpdateSinceChange: true });
                 break;
 
-            case 'SetTime':
+            case 'SetDmoTime':
                 let time = JSON.parse(msg.data);
-                this.setState({
-                    current_time: time,
-                });
+                this.setState({ current_time: time });
                 break;
 
             default:
-                console.log("Error: unknown message.data_type");
+                console.log("Error: unknown message.data_type '" + msg.data_type + "'");
         }
     }
 
@@ -329,8 +325,13 @@ class App extends Component {
         this.state.socket.send(JSON.stringify(server_msg));
     }
 
-    onTimeScrubChange(x) {
-        console.log(x);
+    onTimeScrubChange(msg) {
+        if (msg.data_type === 'SetDmoTime') {
+            console.log('Sending server SetDmoTime');
+            this.setState({ current_time: Number(msg.data) });
+            msg.data = String(msg.data);
+            this.state.socket.send(JSON.stringify(msg));
+        }
     }
 
     onEditorChange(newValue, e) {
@@ -359,6 +360,11 @@ class App extends Component {
                 sentUpdateSinceChange: true,
             });
         }
+    }
+
+    getDmoTime() {
+        let msg = { data_type: 'GetDmoTime', data: '' };
+        this.state.socket.send(JSON.stringify(msg));
     }
 
     render() {

@@ -47,7 +47,7 @@ class PlazmaPositionSliders extends React.Component {
               <span>{p.name}</span>
               <PositionSliders
                 position={p}
-                onChangeLift={this.onChangeLift}
+                onChangeLift={this.props.onChangeLift}
               />
             </div>
         );
@@ -140,7 +140,7 @@ export function xyzToVec3(pos) {
 }
 
 function getPositionValuesFromCode(code) {
-    let re_position = /vec3 +([^ ]+) *= *vec3\(([^\)]+)\); *\/\/ *!! position *$/gm;
+    let re_position = /vec3 +([^ ]+) *= *vec3\(([^)]+)\); *\/\/ *!! position *$/gm;
     let v = getVec3ValuesFromCode(code, re_position);
     let values = v.map((val) => {
         return {

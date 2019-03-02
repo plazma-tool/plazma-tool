@@ -1,5 +1,5 @@
 import React from 'react';
-import { Title, MenuLabel, Field, Label, Control, Input, Checkbox } from 'bloomer';
+import { Title, Field, Label, Control, Input, Checkbox } from 'bloomer';
 import { CurrentPage } from './Helpers';
 
 // TODO Click on the label shows the settings form in the main panel.

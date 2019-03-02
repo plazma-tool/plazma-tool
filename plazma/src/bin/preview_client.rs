@@ -32,8 +32,8 @@ use glutin::{GlWindow, GlContext, EventsLoop, Event, WindowEvent, ElementState};
 
 use intro_3d::Vector3;
 
-use plazma::server_actor::Receiving;
-use plazma::preview_client::client_actor::ClientActor;
+use plazma::server_actor::{Sending, Receiving, MsgDataType};
+use plazma::preview_client::client_actor::{ClientActor, ClientMessage};
 use plazma::preview_client::preview_state::PreviewState;
 use plazma::utils::file_to_string;
 
@@ -44,7 +44,11 @@ fn main() {
     let plazma_server_port = Arc::new(8080);
 
     // Channel to pass messages from the Websocket client to the OpenGL window.
-    let (tx, rx) = mpsc::channel();
+    let (client_sender, client_receiver) = mpsc::channel();
+
+    // Channel to pass messages from the OpenGL window to the Websocket client which will pass it
+    // on to the server.
+    let (server_sender, server_receiver) = mpsc::channel();
 
     // Start the Websocket client on a separate thread so that it is not blocked
     // (and is not blocking) the OpenGL window.
@@ -68,31 +72,27 @@ fn main() {
                     return;
                 })
                 .map(|(reader, writer)| {
-                    let _addr = ClientActor::create(|ctx| {
+                    let addr = ClientActor::create(|ctx| {
                         ClientActor::add_stream(reader, ctx);
                         ClientActor{
                             writer: writer,
-                            channel_sender: tx,
+                            channel_sender: client_sender,
                         }
                     });
 
                     // FIXME ? maybe don't need the new thread
 
                     thread::spawn(move || {
-                        //let msg = serde_json::to_string(&Sending{
-                        //    data_type: MsgDataType::StartOpenGlPreview,
-                        //    data: "".to_string(),
-                        //}).unwrap();
-
-                        //addr.do_send(ClientMessage{ data: msg });
-
-                        // FIXME ? should avoid this loop
                         loop {
-                            sleep(Duration::from_secs(1));
+                            match server_receiver.try_recv() {
+                                Ok(text) => {
+                                    addr.do_send(ClientMessage{ data: text });
+                                },
+                                Err(_) => {},
+                            }
+                            sleep(Duration::from_millis(100));
                         }
                     });
-
-                    // FIXME client is exiting too early, heartbeat fails
 
                     ()
                 }),
@@ -153,7 +153,7 @@ fn main() {
 
     state.set_is_paused(false);
 
-    render_loop(&window, &mut events_loop, &mut state, rx);
+    render_loop(&window, &mut events_loop, &mut state, client_receiver, server_sender);
 
     println!("Render loop exited.");
 
@@ -167,7 +167,8 @@ fn main() {
 fn render_loop(window: &GlWindow,
                events_loop: &mut EventsLoop,
                state: &mut PreviewState,
-               channel_receiver: mpsc::Receiver<String>) {
+               client_receiver: mpsc::Receiver<String>,
+               server_sender: mpsc::Sender<String>) {
 
     let mut dpi_factor = window.window().get_hidpi_factor();
 
@@ -177,7 +178,7 @@ fn render_loop(window: &GlWindow,
 
         // 000. handle server messages
 
-        match channel_receiver.try_recv() {
+        match client_receiver.try_recv() {
             Ok(text) => {
                 // FIXME return a NOOP otherwise it returns from the function.
                 let message: Receiving = match serde_json::from_str(&text) {
@@ -187,7 +188,7 @@ fn render_loop(window: &GlWindow,
                         return;
                     },
                 };
-                info!{"Received: message.data_type: {:?}", message.data_type};
+                //info!{"Received: message.data_type: {:?}", message.data_type};
 
                 use plazma::server_actor::MsgDataType::*;
                 match message.data_type {
@@ -221,7 +222,19 @@ fn render_loop(window: &GlWindow,
                                 return;
                             },
                         };
-                        state.dmo_gfx.context.set_time(time);
+                        state.set_time(time);
+                    },
+
+                    GetDmoTime => {
+                        // When Rocket is not connected, send the server the time.
+                        let msg = serde_json::to_string(&Sending{
+                            data_type: MsgDataType::SetDmoTime,
+                            data: format!{"{}", state.get_time()},
+                        }).unwrap();
+                        match server_sender.send(msg) {
+                            Ok(_) => {},
+                            Err(_) => {},
+                        };
                     },
 
                     SetSettings => {
@@ -260,14 +273,14 @@ fn render_loop(window: &GlWindow,
         }
 
         // 0. update time
+        //
+        // Note that frame time start is not the same as the time in the sync vars.
 
         state.update_time_frame_start();
 
         if state.dmo_gfx.settings.total_length < state.get_time() {
             break;
         }
-
-        // TODO When Rocket is not connected, we send the server the time.
 
         // 1. sync vars (time, camera, etc.)
 

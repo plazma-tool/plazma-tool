@@ -507,6 +507,13 @@ impl PreviewState {
         }
     }
 
+    pub fn set_time(&mut self, time: f64) {
+        self.dmo_gfx.sync.device.time = (time * 1000.0) as u32;
+        self.dmo_gfx.sync.device.set_row_from_time();
+        // sets the sync var
+        self.dmo_gfx.context.set_time(time);
+    }
+
     pub fn update_time_frame_end(&mut self) {
         self.dmo_gfx.update_time_frame_end(Instant::now());
     }

@@ -18,7 +18,21 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn new(fovy_angle: f32, aspect: f32, position: Vector3, world_up: Vector3, pitch: f32, yaw: f32) -> Camera {
+    /// If `front` vector is None, it will be set from pitch and yaw.
+    pub fn new(fovy_angle: f32,
+               aspect: f32,
+               position: Vector3,
+               front: Option<Vector3>,
+               world_up: Vector3,
+               pitch: f32,
+               yaw: f32)
+        -> Camera
+        {
+            let v = if let Some(ref a) = front {
+                Vector3::new(a.x, a.y, a.z)
+            } else {
+                Vector3::new(0.0, 0.0, 0.0)
+            };
 
         let mut camera = Camera {
             fovy_angle: fovy_angle,
@@ -29,19 +43,31 @@ impl Camera {
             view: [[0.0; 4]; 4],
             world_up: world_up,
             position: position,
-            front: Vector3::new(0.0, 0.0, 0.0),
+            front: v,
             up: Vector3::new(0.0, 0.0, 0.0),
             right: Vector3::new(0.0, 0.0, 0.0),
             pitch: pitch,
             yaw: yaw,
         };
 
-        // pitch and yaw determines the front, right, up vector
-        camera.do_pitch_and_yaw_from_mouse_delta(0.0, 0.0);
+        if let Some(_) = front {
+            camera.calculate_right_and_up_from_front();
+        } else {
+            // pitch and yaw determines the front, right, up vector
+            camera.do_pitch_and_yaw_from_mouse_delta(0.0, 0.0);
+        }
+
         camera.update_projection();
         camera.update_view();
 
         camera
+    }
+
+    pub fn get_copy(&self) -> Camera {
+        let position = self.get_position_copy();
+        let front = self.get_front_copy();
+        let world_up = self.get_world_up_copy();
+        Camera::new(self.fovy_angle, self.aspect, position, Some(front), world_up, self.pitch, self.yaw)
     }
 
     pub fn update_projection(&mut self) {
@@ -72,6 +98,11 @@ impl Camera {
         self.up = self.right.cross(&self.front).normalize();
     }
 
+    pub fn calculate_right_and_up_from_front(&mut self) {
+        self.right = self.front.cross(&self.world_up).normalize();
+        self.up = self.right.cross(&self.front).normalize();
+    }
+
     pub fn update_view(&mut self) {
         let a = Matrix4::look_at_rh(&self.position, &{&self.position + &self.front}, &self.up);
         self.view = a.as_row_slice();
@@ -97,6 +128,12 @@ impl Camera {
         &self.position
     }
 
+    pub fn get_position_copy(&self) -> Vector3 {
+        Vector3::new(self.position.x,
+                     self.position.y,
+                     self.position.z)
+    }
+
     pub fn set_position(&mut self, position: Vector3) {
         self.position = position;
         self.update_view();
@@ -104,6 +141,18 @@ impl Camera {
 
     pub fn get_front(&self) -> &Vector3 {
         &self.front
+    }
+
+    pub fn get_front_copy(&self) -> Vector3 {
+        Vector3::new(self.front.x,
+                     self.front.y,
+                     self.front.z)
+    }
+
+    pub fn get_world_up_copy(&self) -> Vector3 {
+        Vector3::new(self.world_up.x,
+                     self.world_up.y,
+                     self.world_up.z)
     }
 
     pub fn set_front(&mut self, front: Vector3) {

@@ -1,7 +1,8 @@
+#![allow(non_snake_case)]
+
 extern crate actix;
 extern crate actix_web;
 
-#[macro_use]
 extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
@@ -27,22 +28,27 @@ use actix_web::ws;
 
 use futures::Future;
 
-use glutin::{Window, GlWindow, GlContext, EventsLoop, Event, WindowEvent, VirtualKeyCode, ElementState, MouseButton};
+use glutin::{GlWindow, GlContext, EventsLoop, Event, WindowEvent, ElementState};
 
-use plazma::dmo_data::DmoData;
-use plazma::server_actor::Receiving;
-use plazma::preview_client::client_actor::ClientActor;
+use intro_3d::Vector3;
+
+use plazma::server_actor::{Sending, Receiving, MsgDataType};
+use plazma::preview_client::client_actor::{ClientActor, ClientMessage};
 use plazma::preview_client::preview_state::PreviewState;
 use plazma::utils::file_to_string;
 
 fn main() {
-    std::env::set_var("RUST_LOG", "actix_web=info,preview_client=info");
+    std::env::set_var("RUST_LOG", "actix_web=info,plazma=info,preview_client=info");
     env_logger::init();
 
     let plazma_server_port = Arc::new(8080);
 
     // Channel to pass messages from the Websocket client to the OpenGL window.
-    let (tx, rx) = mpsc::channel();
+    let (client_sender, client_receiver) = mpsc::channel();
+
+    // Channel to pass messages from the OpenGL window to the Websocket client which will pass it
+    // on to the server.
+    let (server_sender, server_receiver) = mpsc::channel();
 
     // Start the Websocket client on a separate thread so that it is not blocked
     // (and is not blocking) the OpenGL window.
@@ -66,31 +72,27 @@ fn main() {
                     return;
                 })
                 .map(|(reader, writer)| {
-                    let _addr = ClientActor::create(|ctx| {
+                    let addr = ClientActor::create(|ctx| {
                         ClientActor::add_stream(reader, ctx);
                         ClientActor{
                             writer: writer,
-                            channel_sender: tx,
+                            channel_sender: client_sender,
                         }
                     });
 
                     // FIXME ? maybe don't need the new thread
 
                     thread::spawn(move || {
-                        //let msg = serde_json::to_string(&Sending{
-                        //    data_type: MsgDataType::StartOpenGlPreview,
-                        //    data: "".to_string(),
-                        //}).unwrap();
-
-                        //addr.do_send(ClientMessage{ data: msg });
-
-                        // FIXME ? should avoid this loop
                         loop {
-                            sleep(Duration::from_secs(1));
+                            match server_receiver.try_recv() {
+                                Ok(text) => {
+                                    addr.do_send(ClientMessage{ data: text });
+                                },
+                                Err(_) => {},
+                            }
+                            sleep(Duration::from_millis(100));
                         }
                     });
-
-                    // FIXME client is exiting too early, heartbeat fails
 
                     ()
                 }),
@@ -106,8 +108,10 @@ fn main() {
     let start_fullscreen = false;
 
     let mut events_loop = glutin::EventsLoop::new();
+
+    let monitor = events_loop.get_available_monitors().nth(0).expect("no monitor found");
+
     let window_builder = if start_fullscreen {
-        let monitor = events_loop.get_available_monitors().nth(0).expect("no monitor found");
         glutin::WindowBuilder::new()
             .with_title("plazma preview")
             .with_fullscreen(Some(monitor))
@@ -135,10 +139,7 @@ fn main() {
     // NOTE should we use LogicalSize instead, keep in mind the u32 truncates later
     let (wx, wy) = (physical_size.width, physical_size.height);
 
-    // Window size = screen size because we start fullscreen.
-    let mut state =
-        PreviewState::new(wx as f64, wy as f64,
-                          wx as f64, wy as f64).unwrap();
+    let mut state = PreviewState::new(wx, wy).unwrap();
 
     // Start with a minimal demo until we receive update from the server.
     let demo_yml_path = PathBuf::from("data".to_owned())
@@ -146,11 +147,13 @@ fn main() {
         .join(PathBuf::from("demo.yml".to_owned()));
 
     let text: String = file_to_string(&demo_yml_path).unwrap();
-    state.build_dmo_gfx_from_yml_str(&text).unwrap();
+
+    // NOTE Must use window size for screen size as well
+    state.build_dmo_gfx_from_yml_str(&text, true, wx, wy, wx, wy, None).unwrap();
 
     state.set_is_paused(false);
 
-    render_loop(&window, &mut events_loop, &mut state, rx);
+    render_loop(&window, &mut events_loop, &mut state, client_receiver, server_sender);
 
     println!("Render loop exited.");
 
@@ -164,7 +167,8 @@ fn main() {
 fn render_loop(window: &GlWindow,
                events_loop: &mut EventsLoop,
                state: &mut PreviewState,
-               channel_receiver: mpsc::Receiver<String>) {
+               client_receiver: mpsc::Receiver<String>,
+               server_sender: mpsc::Sender<String>) {
 
     let mut dpi_factor = window.window().get_hidpi_factor();
 
@@ -174,16 +178,17 @@ fn render_loop(window: &GlWindow,
 
         // 000. handle server messages
 
-        match channel_receiver.try_recv() {
+        match client_receiver.try_recv() {
             Ok(text) => {
                 // FIXME return a NOOP otherwise it returns from the function.
                 let message: Receiving = match serde_json::from_str(&text) {
                     Ok(x) => x,
                     Err(e) => {
-                        error!("Can't deserialize message: {:?}", e);
+                        error!{"Can't deserialize message: {:?}", e};
                         return;
                     },
                 };
+                //info!{"Received: message.data_type: {:?}", message.data_type};
 
                 use plazma::server_actor::MsgDataType::*;
                 match message.data_type {
@@ -193,26 +198,83 @@ fn render_loop(window: &GlWindow,
                     FetchDmo => {},
 
                     SetDmo => {
-                        match state.build_dmo_gfx_from_yml_str(&message.data) {
+                        let (sx, sy) = state.dmo_gfx.context.get_screen_resolution();
+                        info!{"sx: {}, sy: {}", sx, sy};
+                        let camera = state.dmo_gfx.context.camera.get_copy();
+
+                        // NOTE The original aspect when first created has to be preserved, so
+                        // passing screen sizes only, which are the size of the window when it was
+                        // first created.
+                        match state.build_dmo_gfx_from_yml_str(&message.data, false,
+                                                               sx, sy, sx, sy,
+                                                               Some(camera))
+                        {
                             Ok(_) => {},
-                            Err(e) => error!("Can't perform SetDmo: {:?}", e),
+                            Err(e) => error!{"Can't perform SetDmo: {:?}", e},
                         }
                     },
 
-                    SetDmoTime => {},
+                    SetDmoTime => {
+                        let time: f64 = match serde_json::from_str(&message.data) {
+                            Ok(x) => x,
+                            Err(e) => {
+                                error!{"Can't deserialize to time f64: {:?}", e};
+                                return;
+                            },
+                        };
+                        state.set_time(time);
+                    },
+
+                    GetDmoTime => {
+                        // When Rocket is not connected, send the server the time.
+                        let msg = serde_json::to_string(&Sending{
+                            data_type: MsgDataType::SetDmoTime,
+                            data: format!{"{}", state.get_time()},
+                        }).unwrap();
+                        match server_sender.send(msg) {
+                            Ok(_) => {},
+                            Err(_) => {},
+                        };
+                    },
+
+                    SetSettings => {
+                        let settings_data: plazma::dmo_data::Settings = match serde_json::from_str(&message.data) {
+                            Ok(x) => x,
+                            Err(e) => {
+                                error!{"Can't deserialize to Settings: {:?}", e};
+                                return;
+                            },
+                        };
+
+                        let settings = intro_runtime::dmo_gfx::Settings {
+                            start_full_screen: settings_data.start_full_screen,
+                            audio_play_on_start: settings_data.audio_play_on_start,
+                            mouse_sensitivity: settings_data.mouse_sensitivity,
+                            movement_sensitivity: settings_data.movement_sensitivity,
+                            total_length: settings_data.total_length,
+                        };
+                        state.dmo_gfx.settings = settings;
+                    },
 
                     ShowErrorMessage =>
-                        error!("Server sending error: {:?}", message.data),
+                        error!{"Server sending error: {:?}", message.data},
                 }
 
             },
+
+            // Silently drop the error when there is no message to receive.
             Err(_) => {},
         }
 
         // 00. recompile if flag was set
-        state.recompile_dmo();
+        match state.recompile_dmo() {
+            Ok(_) => {},
+            Err(e) => error!{"{:?}", e},
+        }
 
         // 0. update time
+        //
+        // Note that frame time start is not the same as the time in the sync vars.
 
         state.update_time_frame_start();
 
@@ -236,9 +298,15 @@ fn render_loop(window: &GlWindow,
 
         // In explore mode, override camera sync variables (calculated from the
         // sync tracks) with camera position (calculated from keys and mouse).
-        if state.explore_mode {
-            state.dmo_gfx.context.set_camera_sync();
-        }
+
+        // FIXME camera sync tracks currently just reset to default zero coords so use the position
+        // and front vector values in PolygonContext usually reserved for explore mode camera
+
+        //if state.explore_mode {
+        //    state.dmo_gfx.context.set_camera_sync();
+        //}
+
+        state.dmo_gfx.context.set_camera_sync();
 
         // 2. deal with events
 
@@ -249,7 +317,7 @@ fn render_loop(window: &GlWindow,
                         state.set_is_running(false);
                     },
 
-                    WindowEvent::KeyboardInput{ device_id, input } => {
+                    WindowEvent::KeyboardInput{ device_id: _, input } => {
                         use glutin::VirtualKeyCode::*;
 
                         if let Some(vcode) = input.virtual_keycode {
@@ -282,17 +350,37 @@ fn render_loop(window: &GlWindow,
                                     }
                                 },
 
+                                // print camera values
+                                C => if pressed {
+                                    println!("------------------------------");
+                                    println!("");
+                                    println!("--- dmo_gfx.context.camera ---");
+                                    let a: &Vector3 = state.dmo_gfx.context.camera.get_position();
+                                    println!(".position: {}, {}, {}", a.x, a.y, a.z);
+                                    let a: &Vector3 = state.dmo_gfx.context.camera.get_front();
+                                    println!(".front: {}, {}, {}", a.x, a.y, a.z);
+                                    println!(".pitch: {}", state.dmo_gfx.context.camera.pitch);
+                                    println!(".yaw: {}", state.dmo_gfx.context.camera.yaw);
+                                    println!("");
+                                    println!("--- dmo_gfx.context.polygon_context ---");
+                                    let a: &Vector3 = state.dmo_gfx.context.polygon_context.get_view_position();
+                                    println!(".view_position: {}, {}, {}", a.x, a.y, a.z);
+                                    let a: &Vector3 = state.dmo_gfx.context.polygon_context.get_view_front();
+                                    println!(".view_front: {}, {}, {}", a.x, a.y, a.z);
+                                    println!("");
+                                }
+
                                 _ => (),
                             }
                         }
                     },
 
-                    WindowEvent::CursorMoved{ device_id, position, modifiers } => {
+                    WindowEvent::CursorMoved{ device_id: _, position, modifiers: _ } => {
                         let (mx, my) = position.into();
                         state.callback_mouse_moved(mx, my);
                     },
 
-                    WindowEvent::MouseWheel{ device_id, delta, phase, modifiers } => {
+                    WindowEvent::MouseWheel{ device_id: _, delta, phase: _, modifiers: _ } => {
                         match delta {
                             glutin::MouseScrollDelta::LineDelta(_, dy) => {
                                 state.callback_mouse_wheel(dy);
@@ -304,12 +392,12 @@ fn render_loop(window: &GlWindow,
                         }
                     },
 
-                    WindowEvent::MouseInput{ device_id, state: pressed_state, button, modifiers } => {
+                    WindowEvent::MouseInput{ device_id: _, state: pressed_state, button, modifiers: _ } => {
                         state.callback_mouse_input(pressed_state, button);
                     },
 
-                    WindowEvent::CursorEntered{ device_id } => {},
-                    WindowEvent::CursorLeft{ device_id } => {},
+                    WindowEvent::CursorEntered{ device_id: _ } => {},
+                    WindowEvent::CursorLeft{ device_id: _ } => {},
 
                     WindowEvent::HiDpiFactorChanged(dpi) => {
                         dpi_factor = dpi;
@@ -320,8 +408,11 @@ fn render_loop(window: &GlWindow,
                     },
 
                     WindowEvent::Resized(logical_size) => {
+                        info!{"WindowEvent::Resized"};
+
                         let physical_size = logical_size.to_physical(dpi_factor);
                         let (wx, wy) = (physical_size.width, physical_size.height);
+
                         match state.callback_window_resized(wx as f64, wy as f64) {
                             Ok(_) => {},
                             Err(e) => error!("{:?}", e),
@@ -336,6 +427,7 @@ fn render_loop(window: &GlWindow,
         // 3. move, update camera (only works in explore mode)
 
         state.update_camera_from_keys();
+        state.dmo_gfx.context.camera.update_view();// DEBUG
 
         // 4. rebuild when assets change on disc
 

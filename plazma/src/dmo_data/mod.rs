@@ -1,8 +1,6 @@
 use std::path::PathBuf;
 use std::error::Error;
 
-use smallvec::SmallVec;
-//use serde_yaml;
 use tobj;
 
 pub mod context_data;
@@ -47,30 +45,52 @@ impl Default for DmoData {
 }
 
 impl DmoData {
-    pub fn new_from_yml_str(text: &str) -> Result<DmoData, Box<Error>> {
+    pub fn new_from_yml_str(text: &str, read_shader_paths: bool) -> Result<DmoData, Box<Error>>
+    {
         let mut dmo_data: DmoData = serde_yaml::from_str(text)?;
         dmo_data.ensure_implicit_builtins();
-        dmo_data.context.read_shaders()?;
-        dmo_data.context.build_index();
+        dmo_data.context.build_index(read_shader_paths)?;
         Ok(dmo_data)
     }
 
+    /// Ensures implicit builtins are included in the data. Skips them when
+    /// already present. When the server is sending a serialized DmoData, the
+    /// builtins will already be there.
     pub fn ensure_implicit_builtins(&mut self) {
-        // Ensure "RESULT_IMAGE" framebuffer. Must have index 0.
+        // Ensure "RESULT_IMAGE" framebuffer. Must have index 0, so we are going to prepend it.
 
-        let mut frame_buffers = vec![
-            FrameBuffer::framebuffer_result_image()
-        ];
-        frame_buffers.append(&mut self.context.frame_buffers);
-        self.context.frame_buffers = frame_buffers;
+        let mut has_result_image = false;
+        for i in self.context.frame_buffers.iter() {
+            if i.name == "RESULT_IMAGE" {
+                has_result_image = true;
+            }
+        }
 
-        // Ensure "DRAW_RESULT" QuadScene. Must have index 0.
+        if !has_result_image {
+            let mut frame_buffers = vec![
+                FrameBuffer::framebuffer_result_image()
+            ];
+            frame_buffers.append(&mut self.context.frame_buffers);
+            self.context.frame_buffers = frame_buffers;
 
-        let mut quad_scenes = vec![
-            QuadScene::scene_draw_result(),
-        ];
-        quad_scenes.append(&mut self.context.quad_scenes);
-        self.context.quad_scenes = quad_scenes;
+        }
+
+        // Ensure "DRAW_RESULT" QuadScene. Must have index 0, so we are going to prepend it.
+
+        let mut has_draw_result = false;
+        for i in self.context.quad_scenes.iter() {
+            if i.name == "DRAW_RESULT" {
+                has_draw_result = true;
+            }
+        }
+
+        if !has_draw_result {
+            let mut quad_scenes = vec![
+                QuadScene::scene_draw_result(),
+            ];
+            quad_scenes.append(&mut self.context.quad_scenes);
+            self.context.quad_scenes = quad_scenes;
+        }
     }
 
     pub fn add_models_to(&self, dmo_gfx: &mut DmoGfx) -> Result<(), Box<Error>> {
@@ -97,14 +117,8 @@ impl DmoData {
 
         let mut model = Model::empty_cube();
 
-        // FIXME use get_shader_index instead of pushing onto shader_sources
-        // let vert_src_idx = self.context.index.get_shader_index(&model_data.vert_src_path)?;
-        // let frag_src_idx = self.context.index.get_shader_index(&model_data.frag_src_path)?;
-
-        dmo_gfx.context.shader_sources.push(SmallVec::from_slice(model_data.vert_src.as_bytes()));
-        let vert_src_idx = dmo_gfx.context.shader_sources.len() - 1;
-        dmo_gfx.context.shader_sources.push(SmallVec::from_slice(model_data.frag_src.as_bytes()));
-        let frag_src_idx = dmo_gfx.context.shader_sources.len() - 1;
+        let vert_src_idx = self.context.index.get_shader_index(&model_data.vert_src_path)?;
+        let frag_src_idx = self.context.index.get_shader_index(&model_data.frag_src_path)?;
 
         // Add a mesh but no vertices, those will be created from shapes.
         let mut mesh = Mesh::default();
@@ -129,14 +143,8 @@ impl DmoData {
 
         let mut model = Model::empty_obj();
 
-        // FIXME use get_shader_index instead of pushing onto shader_sources
-        // let vert_src_idx = self.context.index.get_shader_index(&model_data.vert_src_path)?;
-        // let frag_src_idx = self.context.index.get_shader_index(&model_data.frag_src_path)?;
-
-        dmo_gfx.context.shader_sources.push(SmallVec::from_slice(model_data.vert_src.as_bytes()));
-        let vert_src_idx = dmo_gfx.context.shader_sources.len() - 1;
-        dmo_gfx.context.shader_sources.push(SmallVec::from_slice(model_data.frag_src.as_bytes()));
-        let frag_src_idx = dmo_gfx.context.shader_sources.len() - 1;
+        let vert_src_idx = self.context.index.get_shader_index(&model_data.vert_src_path)?;
+        let frag_src_idx = self.context.index.get_shader_index(&model_data.frag_src_path)?;
 
         // if model_data.obj_path.len() == 0 {
         //     // that's a problem.

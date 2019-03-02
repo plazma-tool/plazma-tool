@@ -55,9 +55,9 @@ impl PolygonContext {
             view_matrix: [[0.0; 4]; 4],
             projection_matrix: [[0.0; 4]; 4],
 
-            fovy: 45.0,
-            znear: 0.1,
-            zfar: 100.0,
+            fovy: fovy,
+            znear: znear,
+            zfar: zfar,
 
             models: SmallVec::new(),
         };
@@ -81,6 +81,14 @@ impl PolygonContext {
                                          self.znear,
                                          self.zfar);
         self.projection_matrix = a.as_column_slice();
+    }
+
+    pub fn get_view_position(&self) -> &Vector3 {
+        &self.view_position
+    }
+
+    pub fn get_view_front(&self) -> &Vector3 {
+        &self.view_front
     }
 }
 

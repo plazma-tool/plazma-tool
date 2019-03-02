@@ -83,7 +83,7 @@ function replaceColorValueInCode(newColorValue, code) {
 }
 
 function getColorValuesFromCode(code) {
-    let re_color = /vec3 +([^ ]+) *= *vec3\(([^\)]+)\); *\/\/ *!! color *$/gm;
+    let re_color = /vec3 +([^ ]+) *= *vec3\(([^)]+)\); *\/\/ *!! color *$/gm;
     let v = getVec3ValuesFromCode(code, re_color);
     let values = v.map((val) => {
         return {

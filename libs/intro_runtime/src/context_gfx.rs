@@ -1,5 +1,3 @@
-use core::str;
-
 // TODO std::time is not very no_std
 use std::time::{Instant, Duration};
 
@@ -54,22 +52,28 @@ pub struct ContextGfx {
     pub is_running: bool,
 }
 
-impl Default for ContextGfx {
-    fn default() -> ContextGfx {
+impl ContextGfx {
+    pub fn new_with_dimensions(window_width: f64,
+                               window_height: f64,
+                               screen_width: f64,
+                               screen_height: f64,
+                               camera: Option<Camera>)
+        -> ContextGfx
+    {
         ContextGfx::new(0.0,// time
-                        1024.0, 768.0,// window width and height
-                        1024.0, 768.0,// screen width and height
+                        window_width,
+                        window_height,
+                        screen_width,
+                        screen_height,
                         SmallVec::new(),// shader sources
                         SmallVec::new(),// images
                         SmallVec::new(),// quad scenes
                         SmallVec::new(),// polygon scenes
                         PolygonContext::default(),// polygon context
-                        SmallVec::new()// frame buffers
-        )
+                        SmallVec::new(),// frame buffers
+                        camera)
     }
-}
 
-impl ContextGfx {
     pub fn new(time: f64,
                window_width: f64,
                window_height: f64,
@@ -80,24 +84,53 @@ impl ContextGfx {
                quad_scenes: SmallVec<[QuadSceneGfx; 64]>,
                polygon_scenes: SmallVec<[PolygonScene; 64]>,
                polygon_context: PolygonContext,
-               frame_buffers: SmallVec<[FrameBuffer; 64]>)
+               frame_buffers: SmallVec<[FrameBuffer; 64]>,
+               camera: Option<Camera>)
                -> ContextGfx
     {
-        let window_aspect = window_width as f32 / window_height as f32;
-        let camera = Camera::new(45.0,
-                                 window_aspect,
-                                 Vector3::new(0.0, 0.0, 10.0),
-                                 Vector3::new(0.0, 1.0, 0.0),
-                                 0.0,
-                                 90.0);
+        let camera = if let Some(c) = camera {
+            //c.aspect = window_width as f32 / window_height as f32;
+            //c.update_projection();
+            //c.update_view();
+            c
+        } else {
+            Camera::new(45.0,
+                        window_width as f32 / window_height as f32,
+                        Vector3::new(0.0, 0.0, 10.0),
+                        None,
+                        Vector3::new(0.0, 1.0, 0.0),
+                        0.0,
+                        90.0)
+        };
 
         let mouse = Mouse::new(0.05);
 
         let mut sync_vars = SyncVars::default();
 
+        // FIXME is it necessary to update camera sync vars?
+
+        // sync_vars.set_builtin(Camera_Pos_X, camera.position.x as f64);
+        // sync_vars.set_builtin(Camera_Pos_Y, camera.position.y as f64);
+        // sync_vars.set_builtin(Camera_Pos_Z, camera.position.z as f64);
+        // sync_vars.set_builtin(Camera_Front_X, camera.front.x as f64);
+        // sync_vars.set_builtin(Camera_Front_Y, camera.front.y as f64);
+        // sync_vars.set_builtin(Camera_Front_Z, camera.front.z as f64);
+        // sync_vars.set_builtin(Camera_Up_X, camera.up.x as f64);
+        // sync_vars.set_builtin(Camera_Up_Y, camera.up.y as f64);
+        // sync_vars.set_builtin(Camera_Up_Z, camera.up.z as f64);
+
+        // sync_vars.set_builtin(Fovy, camera.fovy_angle as f64);
+        // sync_vars.set_builtin(Znear, camera.clip_near as f64);
+        // sync_vars.set_builtin(Zfar, camera.clip_far as f64);
+
         sync_vars.set_builtin(Time, time);
         sync_vars.set_builtin(Window_Width, window_width);
         sync_vars.set_builtin(Window_Height, window_height);
+
+        // FIXME The aspect of the quad sticks and doesn't cover the window when it is
+        // resized. The effect could be a good thing for implementing a fixed ideal aspect ratio
+        // which can be defined as a setting in the YAML description.
+
         sync_vars.set_builtin(Screen_Width, screen_width);
         sync_vars.set_builtin(Screen_Height, screen_height);
 
@@ -187,15 +220,11 @@ impl ContextGfx {
     }
 
     pub fn add_quad_scene(&mut self,
-                          vert_src: &str,
-                          frag_src: &str,
+                          vert_src_idx: usize,
+                          frag_src_idx: usize,
                           layout_to_vars: SmallVec<[UniformMapping; 64]>,
                           binding_to_buffers: SmallVec<[BufferMapping; 64]>)
     {
-        self.shader_sources.push(SmallVec::from_slice(vert_src.as_bytes()));
-        let vert_src_idx = self.shader_sources.len() - 1;
-        self.shader_sources.push(SmallVec::from_slice(frag_src.as_bytes()));
-        let frag_src_idx = self.shader_sources.len() - 1;
         let n = self.quad_scenes.len();
         let quad_scene_id = if n > 0 { n - 1 } else { 0 };
 
@@ -242,7 +271,7 @@ impl ContextGfx {
         unsafe { gl::BindFramebuffer(gl::FRAMEBUFFER, 0); }
     }
 
-    pub fn impl_profile_event(&mut self, label_idx: usize) {
+    pub fn impl_profile_event(&mut self, _label_idx: usize) {
         if self.profile_frame_idx < PROFILE_FRAMES && self.profile_event_idx < PROFILE_EVENTS {
             let t_delta: Duration = self.t_frame_start.elapsed();
             // t_delta as nanosec

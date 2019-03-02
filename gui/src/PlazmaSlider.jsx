@@ -70,7 +70,7 @@ class PlazmaSlider extends React.Component {
 }
 
 function getSliderValuesFromCode(code) {
-    let re_slider = /float +([^ ]+) *= *([0-9\.-]+); *\/\/ *!! slider *$/gm;
+    let re_slider = /float +([^ ]+) *= *([0-9.-]+); *\/\/ *!! slider *$/gm;
     return getFloatValuesFromCode(code, re_slider);
 }
 

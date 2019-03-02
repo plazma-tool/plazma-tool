@@ -15,8 +15,7 @@ use crate::error::RuntimeError::*;
 
 pub struct QuadSceneGfx {
     /// an ID number to use with the `Draw_Quad_Scene(u8)` operator
-    // FIXME rename to idx, used as arrax index
-    pub id: u8,
+    pub idx: u8,
     /// Load the vertex shader using this index from `Context.shader_sources[]`
     pub vert_src_idx: usize,
     /// Load the fragment shader using this index from `Context.shader_sources[]`
@@ -36,9 +35,9 @@ pub struct Quad {
 }
 
 impl QuadSceneGfx {
-    pub fn new(id: u8, vert_src_idx: usize, frag_src_idx: usize) -> QuadSceneGfx {
+    pub fn new(idx: u8, vert_src_idx: usize, frag_src_idx: usize) -> QuadSceneGfx {
         QuadSceneGfx {
-            id: id,
+            idx: idx,
             vert_src_idx: vert_src_idx,
             frag_src_idx: frag_src_idx,
             layout_to_vars: SmallVec::new(),

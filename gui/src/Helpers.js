@@ -1,3 +1,9 @@
+export const CurrentPage = {
+    Settings: 1,
+    ContextShader: 2,
+    Timeline: 3,
+};
+
 export function getVec3ValuesFromCode(code, re) {
     let values = [];
     if (code === null) {
@@ -10,7 +16,7 @@ export function getVec3ValuesFromCode(code, re) {
         let vec3_components = match_vec3[2].trim();
         let vec = [];
 
-        let match_comp = vec3_components.match(/([0-9\.-]+)/g);
+        let match_comp = vec3_components.match(/([0-9.-]+)/g);
         if (match_comp !== null) {
             match_comp.forEach((i) => {
                 let n = Number(i);

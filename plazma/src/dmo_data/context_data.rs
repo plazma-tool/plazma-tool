@@ -4,13 +4,9 @@ use crate::dmo_data::quad_scene::QuadScene;
 use crate::dmo_data::polygon_scene::PolygonScene;
 use crate::dmo_data::polygon_context::PolygonContext;
 use crate::dmo_data::data_index::DataIndex;
-//use crate::dmo_data::polygon_context::PolygonContext;
-use crate::dmo_data::sync_vars::SyncVars;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ContextData {
-    pub sync_vars: SyncVars,
-
     /// Do both serialize and deserialize on `.shader_sources[]`.
     ///
     /// Deserializing from YAML file: shader sources will have to be declared in the file, but can
@@ -36,6 +32,8 @@ pub struct ContextData {
     pub polygon_context: PolygonContext,
 
     // TODO pub audio_path: PathBuf,
+
+    pub sync_tracks_path: String,
 
     /// Don't deserialize, the index doesn't have to be included in the YAML file and doesn't have to be
     /// sent by the server to the client.
@@ -75,7 +73,6 @@ impl ContextData {
 impl Default for ContextData {
     fn default() -> ContextData {
         ContextData {
-            sync_vars: SyncVars::default(),
             shader_sources: vec![],
             frame_buffers: vec![],
             quad_scenes: vec![],
@@ -83,6 +80,7 @@ impl Default for ContextData {
             polygon_context: PolygonContext::default(),
             //poly_models: vec![],
             //audio_path: PathBuf::from(""),
+            sync_tracks_path: String::new(),
             index: DataIndex::default(),
         }
     }

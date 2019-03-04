@@ -1,6 +1,10 @@
 use core::str;
 use std::error::Error;
 use std::time::{Duration, Instant};
+use std::collections::BTreeMap;
+use std::path::PathBuf;
+
+use serde_xml::value::{Element, Content};
 
 use glutin::{VirtualKeyCode, ElementState, MouseButton};
 
@@ -10,7 +14,6 @@ use intro_3d::Vector3;
 use intro_runtime::ERR_MSG_LEN;
 use intro_runtime::dmo_gfx::{DmoGfx, Settings};
 use intro_runtime::polygon_context::PolygonContext;
-use intro_runtime::dmo_sync::SyncDevice;
 use intro_runtime::timeline::{Timeline, TimeTrack, SceneBlock};
 use intro_runtime::sync_vars::BuiltIn::*;
 use intro_runtime::frame_buffer::{FrameBuffer, BufferKind};
@@ -20,11 +23,16 @@ use intro_runtime::mouse::MouseButton as Btn;
 use intro_runtime::types::{PixelFormat, ValueVec3, ValueFloat, BufferMapping, UniformMapping};
 use intro_runtime::error::RuntimeError;
 
+use rocket_sync::{SyncDevice, SyncTrack, TrackKey, code_to_key};
+use rocket_client::SyncClient;
+
 use crate::dmo_data::DmoData;
 use crate::dmo_data::builtin_to_idx;
 use crate::error::ToolError;
+use crate::utils::file_to_string;
 
 pub struct PreviewState {
+    pub t_rocket_last_connection_attempt: Instant,
     pub t_frame_start: Instant,
     pub t_delta: Duration,
     pub t_frame_target: Duration,
@@ -37,6 +45,13 @@ pub struct PreviewState {
     pub movement_speed: f32,
 
     pub dmo_gfx: DmoGfx,
+
+    /// The sync track names, stored in YAML or sent by the server with DmoData. We keep a copy
+    /// here because we have to send it to Rocket when it connects, which can be later than when we
+    /// are processing DmoData to DmoGfx.
+    pub track_names: Vec<String>,
+    /// Mapping the track names to variable indexes in `dmo_gfx.sync_vars`.
+    pub track_name_to_idx: BTreeMap<String, usize>,
 }
 
 impl PreviewState {
@@ -50,6 +65,7 @@ impl PreviewState {
         // one quad pass to another.
 
         let state = PreviewState {
+            t_rocket_last_connection_attempt: Instant::now(),
             t_frame_start: Instant::now(),
             t_delta: Duration::new(0, 0),
             t_frame_target: Duration::from_millis(16),
@@ -66,6 +82,9 @@ impl PreviewState {
                                                  window_width,
                                                  window_height,
                                                  None),
+
+            track_names: Vec::new(),
+            track_name_to_idx: BTreeMap::new(),
         };
 
         Ok(state)
@@ -215,25 +234,11 @@ impl PreviewState {
 
         let aspect = dmo_gfx.context.get_window_aspect();
 
-        let camera = Camera::new(45.0,
-                                 aspect as f32,
-                                 Vector3::from_slice(&dmo_data.context.polygon_context.view_position),
-                                 Some(Vector3::from_slice(&dmo_data.context.polygon_context.view_front)),
-                                 Vector3::from_slice(&dmo_data.context.polygon_context.view_up),
-                                 0.0,
-                                 90.0);
+        // Setting the aspect is enough. Camera view vectors, fovy, etc. will be set in the sync
+        // vars by calculating the track values defined in the Rocket XML.
 
-        dmo_gfx.context.camera = camera;
-
-        dmo_gfx.context.polygon_context = PolygonContext::new(
-            Vector3::from_slice(&dmo_data.context.polygon_context.view_position),
-            Vector3::from_slice(&dmo_data.context.polygon_context.view_front),
-            Vector3::from_slice(&dmo_data.context.polygon_context.view_up),
-            dmo_data.context.polygon_context.fovy,
-            dmo_data.context.polygon_context.znear,
-            dmo_data.context.polygon_context.zfar,
-            aspect as f32
-        );
+        dmo_gfx.context.camera = Camera::new_defaults(aspect as f32);
+        dmo_gfx.context.polygon_context = PolygonContext::new_defaults(aspect as f32);
 
         dmo_data.add_models_to(dmo_gfx)?;
 
@@ -414,6 +419,172 @@ impl PreviewState {
         Ok(())
     }
 
+    pub fn build_track_names(&mut self,
+                             dmo_data: &DmoData)
+        -> Result<(), Box<Error>>
+    {
+        // Build the track names and their sync var indexes.
+
+        // First, add the names of the builtin tracks and record their indexes.
+
+        // TODO produce this list from the sync mod where builtins are known
+        let builtin_names: Vec<String> = vec![
+            "Time".to_owned(),
+            "Window_Width".to_owned(),
+            "Window_Height".to_owned(),
+            "Screen_Width".to_owned(),
+            "Screen_Height".to_owned(),
+            "Camera_Pos_X".to_owned(),
+            "Camera_Pos_Y".to_owned(),
+            "Camera_Pos_Z".to_owned(),
+            "Camera_Front_X".to_owned(),
+            "Camera_Front_Y".to_owned(),
+            "Camera_Front_Z".to_owned(),
+            "Camera_Up_X".to_owned(),
+            "Camera_Up_Y".to_owned(),
+            "Camera_Up_Z".to_owned(),
+            "Camera_LookAt_X".to_owned(),
+            "Camera_LookAt_Y".to_owned(),
+            "Camera_LookAt_Z".to_owned(),
+            "Fovy".to_owned(),
+            "Znear".to_owned(),
+            "Zfar".to_owned(),
+            "Light_Pos_X".to_owned(),
+            "Light_Pos_Y".to_owned(),
+            "Light_Pos_Z".to_owned(),
+            "Light_Dir_X".to_owned(),
+            "Light_Dir_Y".to_owned(),
+            "Light_Dir_Z".to_owned(),
+            "Light_Strength".to_owned(),
+            "Light_Constant_Falloff".to_owned(),
+            "Light_Linear_Falloff".to_owned(),
+            "Light_Quadratic_Falloff".to_owned(),
+            "Light_Cutoff_Angle".to_owned(),
+            ];
+
+        let mut track_names: Vec<String> = Vec::new();
+        let mut track_name_to_idx: BTreeMap<String, usize> = BTreeMap::new();
+
+        for (idx, name) in builtin_names.iter().enumerate() {
+            track_names.push(name.clone());
+            track_name_to_idx.insert(name.clone(), idx);
+        }
+
+        // Then add the list of custom track names, defined in the rocket xml file, the path of
+        // which the user has defined in the demo YAML.
+
+        // Read the Rocket XML and add tracks.
+
+        let p: PathBuf = PathBuf::from(&dmo_data.context.sync_tracks_path);
+        let text = if p.exists() && p.is_file() {
+            file_to_string(&p)?
+        } else {
+            // TODO should not we simply stop if the file was not found?
+            String::from(EMPTY_ROCKET)
+        };
+
+        let tracks_data: Element = serde_xml::from_str(&text)?;
+        let bpm: f64;
+        let rpb: u8;
+        let tracks: Vec<Element>;
+
+        match tracks_data.members {
+            Content::Members(ref x) => {
+                let tt = x.get("tracks").ok_or("missing 'tracks'")?;
+                let ref e: Element = tt[0];
+
+                let tt = e.attributes.get("beatsPerMin").ok_or("missing 'beatsPerMin'")?;
+                let bpm_s = tt[0].to_owned();
+                bpm = bpm_s.parse()?;
+
+                let tt = e.attributes.get("rowsPerBeat").ok_or("missing 'rowsPerBeat'")?;
+                let rpb_s = tt[0].to_owned();
+                rpb = rpb_s.parse()?;
+
+                match e.members {
+                    Content::Members(ref x) => {
+                        let a = x.get("track").ok_or("missing 'track'")?;
+                        tracks = a.to_vec();
+                    },
+                    _ => return Err(From::from("no members in 'track'")),
+                }
+            },
+            _ => return Err(From::from("no members in 'tracks'")),
+        }
+
+        // new sync device
+        let mut sync_device = SyncDevice::new(bpm, rpb);
+
+        // add tracks and keys
+        for t in tracks.iter() {
+
+            let mut sync_track: SyncTrack = SyncTrack::new();
+
+            match t.members {
+                Content::Members(ref track) => {
+                    let keys = track.get("key").ok_or("missing 'key'")?;
+
+                    for k in keys.iter() {
+                        let a = k.attributes.get("row").ok_or("missing 'row'")?;
+                        let row: u32 = a[0].parse()?;
+
+                        let a = k.attributes.get("value").ok_or("missing 'value'")?;
+                        let value: f32 = a[0].parse()?;
+
+                        let a = k.attributes.get("interpolation").ok_or("missing 'interpolation'")?;
+                        let key_type: u8 = a[0].parse()?;
+
+                        let key = TrackKey{
+                            row: row,
+                            value: value,
+                            key_type: code_to_key(key_type),
+                        };
+
+                        sync_track.add_key(key);
+                    }
+                },
+                _ => {},
+            }
+
+            sync_device.tracks.push(sync_track);
+        }
+
+        // add track names to list and index
+        let start_idx = track_names.len();
+
+        for (idx, track) in tracks.iter().enumerate() {
+            let n = track.attributes.get("name").ok_or("missing 'name'")?;
+            track_names.push(n[0].clone());
+            track_name_to_idx.insert(n[0].clone(), start_idx + idx);
+        }
+
+        // Assign the new products
+        self.dmo_gfx.sync.device = sync_device;
+        self.track_names = track_names;
+        self.track_name_to_idx = track_name_to_idx;
+
+        Ok(())
+    }
+
+    pub fn build_rocket_connection(&mut self, rocket: &mut Option<SyncClient>) -> Result<(), Box<Error>> {
+
+        *rocket = match SyncClient::new("localhost:1338") {
+            Ok(x) => Some(x),
+            Err(_) => None,
+        };
+
+        // If Rocket is on, send the track names.
+        //
+        // NOTE There is no way to send Rocket the keys. The keys have to be loaded from the XML
+        // file using the Rocket editor, and the editor is going to send us the SetKey cmd.
+
+        if let &mut Some(ref mut r) = rocket {
+            r.send_track_names(self.get_track_names()).unwrap();
+        }
+
+        Ok(())
+    }
+
     pub fn build_dmo_gfx_from_yml_str(&mut self,
                                       yml_str: &str,
                                       read_shader_paths: bool,
@@ -439,6 +610,8 @@ impl PreviewState {
         PreviewState::build_timeline(&mut dmo_gfx, &dmo_data)?;
 
         self.dmo_gfx = dmo_gfx;
+        // after assigning new dmo_gfx
+        self.build_track_names(&dmo_data)?;
 
         self.should_recompile = true;
         self.draw_anyway = true;
@@ -516,6 +689,75 @@ impl PreviewState {
 
     pub fn update_time_frame_end(&mut self) {
         self.dmo_gfx.update_time_frame_end(Instant::now());
+    }
+
+    pub fn move_time_ms(&mut self, ms: i32) {
+        self.draw_anyway = true;
+
+        let d = self.get_sync_device_mut();
+        if ms > 0 {
+            d.time += ms as u32;
+        } else if d.time > ((ms * -1) as u32) {
+            d.time -= (ms * -1) as u32;
+        } else {
+            d.time = 0;
+        }
+        d.set_row_from_time();
+    }
+
+    pub fn update_rocket(&mut self, rocket: &mut Option<SyncClient>) -> Result<(), Box<Error>> {
+        let mut do_rocket_none = false;
+        if let &mut Some(ref mut r) = rocket {
+            match r.update(self.get_sync_device_mut()) {
+                Ok(a) => self.draw_anyway = a,
+                Err(err) => {
+                    do_rocket_none = true;
+                    // It's a Box<Error>, so we can't restore the original type.
+                    // Let's parse the debug string for now.
+                    let msg: &str = &format!("{:?}", err);
+                    if msg.contains("kind: UnexpectedEof") {
+                        warn!("Rocket disconnected");
+                    } else {
+                        error!("{}", msg);
+                    }
+                },
+            }
+        }
+
+        if do_rocket_none {
+            *rocket = None;
+        }
+
+        // Try to re-connect to Rocket. Good in the case when the Rocket Editor
+        // was started after the tool.
+        if rocket.is_none() && self.t_rocket_last_connection_attempt.elapsed() > Duration::from_secs(1) {
+            *rocket = match SyncClient::new("localhost:1338") {
+                Ok(r) => Some(r),
+                Err(_) => None,
+            };
+
+            // If Rocket is on, send the track names.
+            if let &mut Some(ref mut r) = rocket {
+                r.send_track_names(self.get_track_names()).unwrap();
+            }
+
+            if rocket.is_some() {
+                self.set_is_paused(true);
+            }
+
+            self.t_rocket_last_connection_attempt = Instant::now();
+        }
+
+        if !self.get_is_paused() {
+            if let &mut Some(ref mut r) = rocket {
+                match r.send_row(self.get_sync_device_mut()) {
+                    Ok(_) => {},
+                    Err(e) => warn!("{:?}", e),
+                }
+            }
+        }
+
+        Ok(())
     }
 
     pub fn update_vars(&mut self) -> Result<(), RuntimeError> {
@@ -636,6 +878,10 @@ impl PreviewState {
         &mut self.dmo_gfx.sync.device
     }
 
+    pub fn get_track_names(&self) -> &Vec<String> {
+        &self.track_names
+    }
+
     pub fn get_window_resolution(&self) -> (f64, f64) {
         self.dmo_gfx.context.get_window_resolution()
     }
@@ -665,6 +911,10 @@ impl PreviewState {
         if n < self.pressed_keys.len() {
             self.pressed_keys[n] = pressed;
         }
+    }
+
+    pub fn toggle_paused(&mut self) {
+        self.dmo_gfx.sync.device.is_paused = !self.dmo_gfx.sync.device.is_paused;
     }
 
     pub fn set_camera_from_context(&mut self) {
@@ -717,3 +967,14 @@ impl PreviewState {
         self.dmo_gfx.context.camera.update_view();
     }
 }
+
+const EMPTY_ROCKET: &'static str = r#"
+<?xml version="1.0" encoding="utf-8"?>
+<rootElement>
+<tracks rows="10000" startRow="0" endRow="10000" rowsPerBeat="8" beatsPerMin="125">
+        <track name="dummy" folded="0" muteKeyCount="0" color="aabbccdd">
+                <key row="0" value="0.000000" interpolation="0" />
+        </track>
+</tracks>
+</rootElement>"#;
+

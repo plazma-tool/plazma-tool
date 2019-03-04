@@ -63,6 +63,16 @@ impl Camera {
         camera
     }
 
+    pub fn new_defaults(aspect: f32) -> Camera {
+        Camera::new(45.0,
+                    aspect,
+                    Vector3::new(0.0, 0.0, 10.0),
+                    None,
+                    Vector3::new(0.0, 1.0, 0.0),
+                    0.0,
+                    90.0)
+    }
+
     pub fn get_copy(&self) -> Camera {
         let position = self.get_position_copy();
         let front = self.get_front_copy();

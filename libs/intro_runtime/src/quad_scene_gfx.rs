@@ -70,28 +70,28 @@ impl QuadSceneGfx {
 
                         Float(layout_idx, var_idx) => {
                             gl::Uniform1f(layout_idx as i32,
-                                          context.sync_vars.get_index(var_idx as usize) as f32);
+                                          context.sync_vars.get_index(var_idx as usize)? as f32);
                         },
 
                         Vec2(layout_idx, var1, var2) => {
                             gl::Uniform2f(layout_idx as i32,
-                                          context.sync_vars.get_index(var1 as usize) as f32,
-                                          context.sync_vars.get_index(var2 as usize) as f32);
+                                          context.sync_vars.get_index(var1 as usize)? as f32,
+                                          context.sync_vars.get_index(var2 as usize)? as f32);
                         },
 
                         Vec3(layout_idx, var1, var2, var3) => {
                             gl::Uniform3f(layout_idx as i32,
-                                          context.sync_vars.get_index(var1 as usize) as f32,
-                                          context.sync_vars.get_index(var2 as usize) as f32,
-                                          context.sync_vars.get_index(var3 as usize) as f32);
+                                          context.sync_vars.get_index(var1 as usize)? as f32,
+                                          context.sync_vars.get_index(var2 as usize)? as f32,
+                                          context.sync_vars.get_index(var3 as usize)? as f32);
                         },
 
                         Vec4(layout_idx, var1, var2, var3, var4) => {
                             gl::Uniform4f(layout_idx as i32,
-                                          context.sync_vars.get_index(var1 as usize) as f32,
-                                          context.sync_vars.get_index(var2 as usize) as f32,
-                                          context.sync_vars.get_index(var3 as usize) as f32,
-                                          context.sync_vars.get_index(var4 as usize) as f32);
+                                          context.sync_vars.get_index(var1 as usize)? as f32,
+                                          context.sync_vars.get_index(var2 as usize)? as f32,
+                                          context.sync_vars.get_index(var3 as usize)? as f32,
+                                          context.sync_vars.get_index(var4 as usize)? as f32);
                         },
                     }
                 }

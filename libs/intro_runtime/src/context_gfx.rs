@@ -94,13 +94,7 @@ impl ContextGfx {
             //c.update_view();
             c
         } else {
-            Camera::new(45.0,
-                        window_width as f32 / window_height as f32,
-                        Vector3::new(0.0, 0.0, 10.0),
-                        None,
-                        Vector3::new(0.0, 1.0, 0.0),
-                        0.0,
-                        90.0)
+            Camera::new_defaults(window_width as f32 / window_height as f32)
         };
 
         let mouse = Mouse::new(0.05);

@@ -1,3 +1,4 @@
+# Demo description, this will be deserialiazed into DmoData.
 
 settings:
   start_full_screen: false
@@ -110,21 +111,6 @@ context:
 
   polygon_context:
 
-    #view_position:
-    #  Sync: [ "Camera_Pos_X", "Camera_Pos_Y", "Camera_Pos_Z" ]
-    #view_front:
-    #  Sync: [ "Camera_Front_X", "Camera_Front_Y", "Camera_Front_Z" ]
-    #view_up:
-    #  Fixed: [ 0.0, 1.0, 0.0 ]
-
-    view_position: [ -3.4, 0.42, 0.07 ]
-    view_front: [ 0.99, -0.07, -0.07 ]
-    view_up: [ 0.0, 1.0, 0.0 ]
-
-    fovy: 45.0
-    znear: 0.1
-    zfar: 100.0
-
     models:
 
       # The vert_src_path and frag_src_path of the model will be used
@@ -170,15 +156,7 @@ context:
   frame_buffers:
     - { name: "scene buf", kind: Empty_Texture, format: RGBA_u8, image_path: "" }
 
-  sync_vars:
-    tracks: []
-
-      # - Camera_Pos_X: -5.0
-      # - Camera_Pos_Y: 4.0
-      # - Camera_Pos_Z: 10.0
-      # - Camera_Front_X: 0.5
-      # - Camera_Front_Y: -0.1
-      # - Camera_Front_Z: -0.5
+  sync_tracks_path: "./data/minimal/data/demo.rocket"
 
   # Leave empty. Will be populated with shader sources read from paths.
   shader_sources: []

@@ -290,7 +290,7 @@ impl DmoGfx {
 
     /// Update global view and projection matrix of the PolygonContext, and
     /// update individual model matrices.
-    pub fn update_polygon_context(&mut self)
+    pub fn update_polygon_context(&mut self) -> Result<(), RuntimeError>
     {
         use crate::sync_vars::BuiltIn::*;
 
@@ -316,9 +316,9 @@ impl DmoGfx {
                     ValueVec3::NOOP => {},
                     ValueVec3::Sync(x, y, z) => {
                         scene_object.position =
-                            Vector3::new(self.context.sync_vars.get_index(x as usize) as f32,
-                                         self.context.sync_vars.get_index(y as usize) as f32,
-                                         self.context.sync_vars.get_index(z as usize) as f32);
+                            Vector3::new(self.context.sync_vars.get_index(x as usize)? as f32,
+                                         self.context.sync_vars.get_index(y as usize)? as f32,
+                                         self.context.sync_vars.get_index(z as usize)? as f32);
                     },
                     ValueVec3::Fixed(x, y, z) => {
                         scene_object.position = Vector3::new(x, y, z);
@@ -329,9 +329,9 @@ impl DmoGfx {
                     ValueVec3::NOOP => {},
                     ValueVec3::Sync(x, y, z) => {
                         scene_object.euler_rotation =
-                            Vector3::new(to_radians(self.context.sync_vars.get_index(x as usize) as f32),
-                                         to_radians(self.context.sync_vars.get_index(y as usize) as f32),
-                                         to_radians(self.context.sync_vars.get_index(z as usize) as f32));
+                            Vector3::new(to_radians(self.context.sync_vars.get_index(x as usize)? as f32),
+                                         to_radians(self.context.sync_vars.get_index(y as usize)? as f32),
+                                         to_radians(self.context.sync_vars.get_index(z as usize)? as f32));
                     },
                     ValueVec3::Fixed(x, y, z) => {
                         scene_object.euler_rotation = Vector3::new(to_radians(x),
@@ -343,7 +343,7 @@ impl DmoGfx {
                 match scene_object.scale_var {
                     ValueFloat::NOOP => {},
                     ValueFloat::Sync(x) => {
-                        scene_object.scale = self.context.sync_vars.get_index(x as usize) as f32;
+                        scene_object.scale = self.context.sync_vars.get_index(x as usize)? as f32;
                     },
                     ValueFloat::Fixed(x) => {
                         scene_object.scale = x;
@@ -353,5 +353,7 @@ impl DmoGfx {
                 scene_object.update_model_matrix();
             }
         }
+
+        Ok(())
     }
 }

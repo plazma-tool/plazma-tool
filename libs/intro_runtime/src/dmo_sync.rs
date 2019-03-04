@@ -1,33 +1,40 @@
+use rocket_sync::SyncDevice;
+
 use crate::context_gfx::ContextGfx;
 use crate::error::RuntimeError;
 use crate::sync_vars::BuiltIn::*;
 
-/// Stub for syncing with Rocket later on
 pub struct DmoSync {
     pub device: SyncDevice,
 }
 
-/// Stub in place of rocket_sync::SyncDevice
-pub struct SyncDevice {
-    /// sync tracks (the vertical columns in the editor)
-    //pub tracks: SmallVec<[SyncTrack; 64]>,
-    /// rows per beat
-    pub rpb: u8,
-    /// beats per minute
-    pub bpm: f64,
-    /// rows per second
-    pub rps: f64,
-    pub is_paused: bool,
-    /// current row
-    pub row: u32,
-    /// current time in milliseconds
-    pub time: u32,
-}
-
 impl DmoSync {
     pub fn update_vars(&self, context: &mut ContextGfx) -> Result<(), RuntimeError> {
+
+        // idx 0 is Time
         context.sync_vars.set_builtin(Time, self.device.time as f64 / 1000.0);
 
+        // Get the Rocket track index for a given sync var idx and calculate the track's value.
+
+        // FIXME this is assuming Rocket device track idx = Sync var idx
+        //
+        // FIXME starting with idx 5 because Time, Screen_Width, Screen_Height, Window_Width,
+        // Window_Height shouldn't be in sync vars
+
+        for idx in 5..self.device.tracks.len() {
+            let x = self.device.tracks[idx].value_at(self.device.row);
+            context.sync_vars.set_index(idx, x)?;
+        }
+
+        //if track_idx > self.device.tracks.len() - 1 {
+        //    return Err(TrackIdxIsOutOfBounds);
+        //}
+
+        // view_position: [ -3.4, 0.42, 0.07 ]
+        // view_front: [ 0.99, -0.07, -0.07 ]
+        // view_up: [ 0.0, 1.0, 0.0 ]
+
+        /*
         context.sync_vars.set_builtin(Camera_Pos_X, context.camera.position.x as f64);
         context.sync_vars.set_builtin(Camera_Pos_Y, context.camera.position.y as f64);
         context.sync_vars.set_builtin(Camera_Pos_Z, context.camera.position.z as f64);
@@ -41,6 +48,7 @@ impl DmoSync {
         context.sync_vars.set_builtin(Fovy, context.camera.fovy_angle as f64);
         context.sync_vars.set_builtin(Znear, context.camera.clip_near as f64);
         context.sync_vars.set_builtin(Zfar, context.camera.clip_far as f64);
+        */
 
         Ok(())
     }
@@ -54,27 +62,4 @@ impl Default for DmoSync {
     }
 }
 
-impl SyncDevice {
-    pub fn new(bpm: f64, rpb: u8) -> SyncDevice {
-        SyncDevice {
-            //tracks: SmallVec::new(),
-            rpb: rpb,
-            bpm: bpm,
-            rps: rps(bpm, rpb),
-            is_paused: true,
-            row: 0,
-            time: 0,
-        }
-    }
-
-    pub fn set_row_from_time(&mut self) {
-        let r: f64 = (self.time as f64 / 1000.0) * self.rps + 0.5;
-        self.row = r as u32;
-    }
-}
-
-/// Calculate rows per second
-pub fn rps(bpm: f64, rpb: u8) -> f64 {
-    (bpm / 60.0) * (rpb as f64)
-}
 

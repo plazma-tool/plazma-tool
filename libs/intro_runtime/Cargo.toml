@@ -8,6 +8,7 @@ edition = "2018"
 gl = "0.11"
 smallvec = "0.6"
 #smallvec = { version = "0.6", default-features = false }
+rocket_sync = { path = "../rocket_sync" }
 intro_3d = { path = "../intro_3d" }
 
 [target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies]

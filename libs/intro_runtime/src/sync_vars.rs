@@ -1,5 +1,6 @@
 use smallvec::SmallVec;
 
+use crate::error::RuntimeError::{self, *};
 use crate::VAR_NUM;
 
 /// `SyncVars` provide methods to query the `f64` array for reserverd and named
@@ -29,22 +30,20 @@ impl Default for SyncVars {
 }
 
 impl SyncVars {
-    pub fn get_index(&self, idx: usize) -> f64 {
+    pub fn get_index(&self, idx: usize) -> Result<f64, RuntimeError> {
         if self.tracks.len() > idx {
-            self.tracks[idx].value
+            Ok(self.tracks[idx].value)
         } else {
-            // FIXME return error
-            println!("can't get out of track idx bounds");
-            0.0
+            Err(VarIdxIsOutOfBounds)
         }
     }
 
-    pub fn set_index(&mut self, idx: usize, value: f64) {
+    pub fn set_index(&mut self, idx: usize, value: f64) -> Result<(), RuntimeError> {
         if self.tracks.len() > idx {
             self.tracks[idx].value = value;
+            Ok(())
         } else {
-            // FIXME return error
-            println!("can't set out of track idx bounds");
+            Err(VarIdxIsOutOfBounds)
         }
     }
 
@@ -115,6 +114,7 @@ pub fn builtin_to_idx(name: BuiltIn) -> usize {
         Light_Quadratic_Falloff => 29,
         Light_Cutoff_Angle      => 30,
 
+        // first n is 0
         Custom(n)               => 31 + n,
     }
 }

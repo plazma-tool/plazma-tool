@@ -164,11 +164,9 @@ fn main() {
         state.set_is_paused(false);
     }
 
-    state.set_is_paused(false);
-
     render_loop(&window, &mut events_loop, &mut state, &mut rocket, client_receiver, server_sender);
 
-    println!("Render loop exited.");
+    info!("Render loop exited.");
 
     //add.do_send(ClientMessage("stop the client".to_string()));
 
@@ -300,12 +298,12 @@ fn render_loop(window: &GlWindow,
 
         match state.update_rocket(&mut rocket) {
             Ok(_) => {},
-            Err(e) => error!("{:?}", e),
+            Err(e) => error!("state.update_rocket() returned: {:?}", e),
         }
 
         match state.update_vars() {
             Ok(_) => {},
-            Err(e) => error!("{:?}", e),
+            Err(e) => error!("state.update_vars() returned: {:?}", e),
         }
 
         // In explore mode, override camera sync variables (calculated from the
@@ -471,7 +469,7 @@ fn render_loop(window: &GlWindow,
 
         match state.dmo_gfx.update_polygon_context() {
             Ok(_) => {},
-            Err(e) => error!("{:?}", e),
+            Err(e) => error!("update_polygon_context() returned: {:?}", e),
         };
 
         if !state.get_is_paused() || state.draw_anyway {

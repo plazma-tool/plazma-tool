@@ -21,7 +21,6 @@ use intro_runtime::polygon_scene::{PolygonScene, SceneObject};
 use intro_runtime::camera::Camera;
 use intro_runtime::mouse::MouseButton as Btn;
 use intro_runtime::types::{PixelFormat, ValueVec3, ValueFloat, BufferMapping, UniformMapping};
-use intro_runtime::error::RuntimeError;
 
 use rocket_sync::{SyncDevice, SyncTrack, TrackKey, code_to_key};
 use rocket_client::SyncClient;
@@ -563,6 +562,9 @@ impl PreviewState {
         self.track_names = track_names;
         self.track_name_to_idx = track_name_to_idx;
 
+        // Make sure there are as many sync vars as track names.
+        self.dmo_gfx.context.sync_vars.add_tracks_up_to(self.track_names.len());
+
         Ok(())
     }
 
@@ -610,7 +612,9 @@ impl PreviewState {
         PreviewState::build_timeline(&mut dmo_gfx, &dmo_data)?;
 
         self.dmo_gfx = dmo_gfx;
-        // after assigning new dmo_gfx
+
+        // Build track names after assigning the new dmo_gfx. Track names are stored in the
+        // PreviewState.
         self.build_track_names(&dmo_data)?;
 
         self.should_recompile = true;
@@ -760,11 +764,14 @@ impl PreviewState {
         Ok(())
     }
 
-    pub fn update_vars(&mut self) -> Result<(), RuntimeError> {
+    pub fn update_vars(&mut self) -> Result<(), Box<Error>> {
         // When playing, sync values from Rocket and
         // update the widget values to synced values.
         if !self.get_is_paused() {
-            self.dmo_gfx.update_vars()?;
+            match self.dmo_gfx.update_vars() {
+                Ok(_) => {},
+                Err(e) => return Err(Box::new(ToolError::Runtime(e, "".to_owned()))),
+            }
         }
 
         Ok(())

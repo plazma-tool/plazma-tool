@@ -19,20 +19,12 @@ impl DmoSync {
         // FIXME this is assuming Rocket device track idx = Sync var idx
         //
         // FIXME starting with idx 5 because Time, Screen_Width, Screen_Height, Window_Width,
-        // Window_Height shouldn't be in sync vars
+        // Window_Height shouldn't be set by Rocket tracks
 
         for idx in 5..self.device.tracks.len() {
             let x = self.device.tracks[idx].value_at(self.device.row);
             context.sync_vars.set_index(idx, x)?;
         }
-
-        //if track_idx > self.device.tracks.len() - 1 {
-        //    return Err(TrackIdxIsOutOfBounds);
-        //}
-
-        // view_position: [ -3.4, 0.42, 0.07 ]
-        // view_front: [ 0.99, -0.07, -0.07 ]
-        // view_up: [ 0.0, 1.0, 0.0 ]
 
         /*
         context.sync_vars.set_builtin(Camera_Pos_X, context.camera.position.x as f64);

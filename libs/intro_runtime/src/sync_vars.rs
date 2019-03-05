@@ -16,10 +16,18 @@ pub struct SyncTrack {
 
 impl Default for SyncVars {
     fn default() -> SyncVars {
+        // 31 tracks for 31 enum variants.
+        SyncVars::new(31)
+    }
+}
+
+impl SyncVars {
+    pub fn new(tracks_count: usize) -> SyncVars {
         let mut tracks: SmallVec<[SyncTrack; VAR_NUM]> = SmallVec::new();
 
-        // 31 tracks for 31 enum variants.
-        for _ in 0..32 {
+        // FIXME set the name of builtin tracks
+
+        for _ in 0 ..= tracks_count {
             tracks.push(SyncTrack {name: [0; 64], value: 0.0});
         }
 
@@ -27,9 +35,17 @@ impl Default for SyncVars {
             tracks: tracks,
         }
     }
-}
 
-impl SyncVars {
+    pub fn add_tracks_up_to(&mut self, tracks_count: usize) {
+        let n = tracks_count - self.tracks.len();
+        if n <= 0 {
+            return;
+        }
+        for _ in 0 ..= n {
+            self.tracks.push(SyncTrack {name: [0; 64], value: 0.0});
+        }
+    }
+
     pub fn get_index(&self, idx: usize) -> Result<f64, RuntimeError> {
         if self.tracks.len() > idx {
             Ok(self.tracks[idx].value)

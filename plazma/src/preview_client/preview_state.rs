@@ -765,15 +765,10 @@ impl PreviewState {
     }
 
     pub fn update_vars(&mut self) -> Result<(), Box<Error>> {
-        // When playing, sync values from Rocket and
-        // update the widget values to synced values.
-        if !self.get_is_paused() {
-            match self.dmo_gfx.update_vars() {
-                Ok(_) => {},
-                Err(e) => return Err(Box::new(ToolError::Runtime(e, "".to_owned()))),
-            }
+        match self.dmo_gfx.update_vars() {
+            Ok(_) => {},
+            Err(e) => return Err(Box::new(ToolError::Runtime(e, "".to_owned()))),
         }
-
         Ok(())
     }
 

@@ -9,7 +9,6 @@ pub mod quad_scene;
 pub mod polygon_scene;
 pub mod polygon_context;
 pub mod model;
-pub mod sync_vars;
 pub mod timeline;
 
 use intro_runtime::dmo_gfx::DmoGfx;

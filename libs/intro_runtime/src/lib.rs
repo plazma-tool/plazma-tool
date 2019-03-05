@@ -18,6 +18,7 @@ extern crate libc;
 
 extern crate gl;
 extern crate smallvec;
+extern crate rocket_sync;
 extern crate intro_3d;
 
 pub const VAR_NUM: usize = 2048;

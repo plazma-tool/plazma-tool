@@ -15,6 +15,8 @@ extern crate futures;
 
 extern crate glutin;
 
+extern crate rocket_client;
+extern crate rocket_sync;
 extern crate plazma;
 
 use std::thread::{self, sleep};
@@ -31,6 +33,7 @@ use futures::Future;
 use glutin::{GlWindow, GlContext, EventsLoop, Event, WindowEvent, ElementState};
 
 use intro_3d::Vector3;
+use rocket_client::SyncClient;
 
 use plazma::server_actor::{Sending, Receiving, MsgDataType};
 use plazma::preview_client::client_actor::{ClientActor, ClientMessage};
@@ -38,7 +41,8 @@ use plazma::preview_client::preview_state::PreviewState;
 use plazma::utils::file_to_string;
 
 fn main() {
-    std::env::set_var("RUST_LOG", "actix_web=info,plazma=info,preview_client=info");
+    //std::env::set_var("RUST_LOG", "actix_web=info,plazma=info,preview_client=info");
+    std::env::set_var("RUST_LOG", "actix_web=info,plazma=info,preview_client=info,rocket_client=info,rocket_sync=info");
     env_logger::init();
 
     let plazma_server_port = Arc::new(8080);
@@ -151,11 +155,18 @@ fn main() {
     // NOTE Must use window size for screen size as well
     state.build_dmo_gfx_from_yml_str(&text, true, wx, wy, wx, wy, None).unwrap();
 
-    state.set_is_paused(false);
+    let mut rocket: Option<SyncClient> = None;
+    state.build_rocket_connection(&mut rocket).unwrap();
 
-    render_loop(&window, &mut events_loop, &mut state, client_receiver, server_sender);
+    if rocket.is_some() {
+        state.set_is_paused(true);
+    } else {
+        state.set_is_paused(false);
+    }
 
-    println!("Render loop exited.");
+    render_loop(&window, &mut events_loop, &mut state, &mut rocket, client_receiver, server_sender);
+
+    info!("Render loop exited.");
 
     //add.do_send(ClientMessage("stop the client".to_string()));
 
@@ -167,6 +178,7 @@ fn main() {
 fn render_loop(window: &GlWindow,
                events_loop: &mut EventsLoop,
                state: &mut PreviewState,
+               mut rocket: &mut Option<SyncClient>,
                client_receiver: mpsc::Receiver<String>,
                server_sender: mpsc::Sender<String>) {
 
@@ -284,29 +296,22 @@ fn render_loop(window: &GlWindow,
 
         // 1. sync vars (time, camera, etc.)
 
-        /*
         match state.update_rocket(&mut rocket) {
             Ok(_) => {},
-            Err(e) => error!("{:?}", e),
+            Err(e) => error!("state.update_rocket() returned: {:?}", e),
         }
-         */
 
         match state.update_vars() {
             Ok(_) => {},
-            Err(e) => error!("{:?}", e),
+            Err(e) => error!("state.update_vars() returned: {:?}", e),
         }
 
         // In explore mode, override camera sync variables (calculated from the
         // sync tracks) with camera position (calculated from keys and mouse).
 
-        // FIXME camera sync tracks currently just reset to default zero coords so use the position
-        // and front vector values in PolygonContext usually reserved for explore mode camera
-
-        //if state.explore_mode {
-        //    state.dmo_gfx.context.set_camera_sync();
-        //}
-
-        state.dmo_gfx.context.set_camera_sync();
+        if state.explore_mode {
+            state.dmo_gfx.context.set_camera_sync();
+        }
 
         // 2. deal with events
 
@@ -347,6 +352,34 @@ fn render_loop(window: &GlWindow,
                                     // camera.
                                     if state.explore_mode {
                                         state.set_camera_from_context();
+                                    }
+                                },
+
+                                // pause time
+                                Space => if !pressed {
+                                    // Only when Rocket is not on. Otherwise it controls paused state.
+                                    if rocket.is_none() { state.toggle_paused(); }
+                                },
+
+                                // move time backwards 2s
+                                Left => if !pressed {
+                                    if rocket.is_none() {
+                                        state.move_time_ms(-2000);
+                                        match state.update_vars() {
+                                            Ok(_) => {},
+                                            Err(e) => error!("{:?}", e),
+                                        }
+                                    }
+                                },
+
+                                // move time forward 2s
+                                Right => if !pressed {
+                                    if rocket.is_none() {
+                                        state.move_time_ms(2000);
+                                        match state.update_vars() {
+                                            Ok(_) => {},
+                                            Err(e) => error!("{:?}", e),
+                                        }
                                     }
                                 },
 
@@ -427,15 +460,17 @@ fn render_loop(window: &GlWindow,
         // 3. move, update camera (only works in explore mode)
 
         state.update_camera_from_keys();
-        state.dmo_gfx.context.camera.update_view();// DEBUG
 
-        // 4. rebuild when assets change on disc
+        // 4. rebuild when assets change on disk
 
         // TODO
 
         // 5. draw if we are not paused or should draw anyway (e.g. assets changed)
 
-        state.dmo_gfx.update_polygon_context();
+        match state.dmo_gfx.update_polygon_context() {
+            Ok(_) => {},
+            Err(e) => error!("update_polygon_context() returned: {:?}", e),
+        };
 
         if !state.get_is_paused() || state.draw_anyway {
             state.draw();

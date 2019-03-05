@@ -1,5 +1,6 @@
 use smallvec::SmallVec;
 
+use crate::error::RuntimeError::{self, *};
 use crate::VAR_NUM;
 
 /// `SyncVars` provide methods to query the `f64` array for reserverd and named
@@ -15,10 +16,18 @@ pub struct SyncTrack {
 
 impl Default for SyncVars {
     fn default() -> SyncVars {
+        // 31 tracks for 31 enum variants.
+        SyncVars::new(31)
+    }
+}
+
+impl SyncVars {
+    pub fn new(tracks_count: usize) -> SyncVars {
         let mut tracks: SmallVec<[SyncTrack; VAR_NUM]> = SmallVec::new();
 
-        // 31 tracks for 31 enum variants.
-        for _ in 0..32 {
+        // FIXME set the name of builtin tracks
+
+        for _ in 0 ..= tracks_count {
             tracks.push(SyncTrack {name: [0; 64], value: 0.0});
         }
 
@@ -26,25 +35,31 @@ impl Default for SyncVars {
             tracks: tracks,
         }
     }
-}
 
-impl SyncVars {
-    pub fn get_index(&self, idx: usize) -> f64 {
-        if self.tracks.len() > idx {
-            self.tracks[idx].value
-        } else {
-            // FIXME return error
-            println!("can't get out of track idx bounds");
-            0.0
+    pub fn add_tracks_up_to(&mut self, tracks_count: usize) {
+        let n = tracks_count - self.tracks.len();
+        if n <= 0 {
+            return;
+        }
+        for _ in 0 ..= n {
+            self.tracks.push(SyncTrack {name: [0; 64], value: 0.0});
         }
     }
 
-    pub fn set_index(&mut self, idx: usize, value: f64) {
+    pub fn get_index(&self, idx: usize) -> Result<f64, RuntimeError> {
+        if self.tracks.len() > idx {
+            Ok(self.tracks[idx].value)
+        } else {
+            Err(VarIdxIsOutOfBounds)
+        }
+    }
+
+    pub fn set_index(&mut self, idx: usize, value: f64) -> Result<(), RuntimeError> {
         if self.tracks.len() > idx {
             self.tracks[idx].value = value;
+            Ok(())
         } else {
-            // FIXME return error
-            println!("can't set out of track idx bounds");
+            Err(VarIdxIsOutOfBounds)
         }
     }
 
@@ -115,6 +130,7 @@ pub fn builtin_to_idx(name: BuiltIn) -> usize {
         Light_Quadratic_Falloff => 29,
         Light_Cutoff_Angle      => 30,
 
+        // first n is 0
         Custom(n)               => 31 + n,
     }
 }

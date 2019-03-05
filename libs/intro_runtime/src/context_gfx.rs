@@ -5,8 +5,6 @@ use smallvec::SmallVec;
 
 use gl;
 
-use intro_3d::Vector3;
-
 use crate::polygon_context::PolygonContext;
 use crate::polygon_scene::PolygonScene;
 use crate::camera::Camera;
@@ -89,39 +87,14 @@ impl ContextGfx {
                -> ContextGfx
     {
         let camera = if let Some(c) = camera {
-            //c.aspect = window_width as f32 / window_height as f32;
-            //c.update_projection();
-            //c.update_view();
             c
         } else {
-            Camera::new(45.0,
-                        window_width as f32 / window_height as f32,
-                        Vector3::new(0.0, 0.0, 10.0),
-                        None,
-                        Vector3::new(0.0, 1.0, 0.0),
-                        0.0,
-                        90.0)
+            Camera::new_defaults(window_width as f32 / window_height as f32)
         };
 
         let mouse = Mouse::new(0.05);
 
         let mut sync_vars = SyncVars::default();
-
-        // FIXME is it necessary to update camera sync vars?
-
-        // sync_vars.set_builtin(Camera_Pos_X, camera.position.x as f64);
-        // sync_vars.set_builtin(Camera_Pos_Y, camera.position.y as f64);
-        // sync_vars.set_builtin(Camera_Pos_Z, camera.position.z as f64);
-        // sync_vars.set_builtin(Camera_Front_X, camera.front.x as f64);
-        // sync_vars.set_builtin(Camera_Front_Y, camera.front.y as f64);
-        // sync_vars.set_builtin(Camera_Front_Z, camera.front.z as f64);
-        // sync_vars.set_builtin(Camera_Up_X, camera.up.x as f64);
-        // sync_vars.set_builtin(Camera_Up_Y, camera.up.y as f64);
-        // sync_vars.set_builtin(Camera_Up_Z, camera.up.z as f64);
-
-        // sync_vars.set_builtin(Fovy, camera.fovy_angle as f64);
-        // sync_vars.set_builtin(Znear, camera.clip_near as f64);
-        // sync_vars.set_builtin(Zfar, camera.clip_far as f64);
 
         sync_vars.set_builtin(Time, time);
         sync_vars.set_builtin(Window_Width, window_width);

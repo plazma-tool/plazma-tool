@@ -8,6 +8,7 @@ extern crate actix_web;
 extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
+extern crate serde_xml;
 
 #[macro_use]
 extern crate log;

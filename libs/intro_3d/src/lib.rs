@@ -40,6 +40,10 @@ impl Vector3 {
         [self.x, self.y, self.z]
     }
 
+    pub fn clone(&self) -> Vector3 {
+        Vector3::new(self.x, self.y, self.z)
+    }
+
     /// Length.
     pub fn norm(&self) -> f32 {
         unsafe {

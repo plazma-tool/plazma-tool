@@ -295,54 +295,6 @@ pub enum BuiltIn {
     Light_Quadratic_Falloff,
     Light_Cutoff_Angle,
 
-    Custom(usize),
+    Custom(String),
 }
 
-pub fn builtin_to_idx(name: &BuiltIn) -> usize {
-    use self::BuiltIn::*;
-    match name {
-        Time                    => 0,
-
-        Window_Width            => 1,
-        Window_Height           => 2,
-
-        Screen_Width            => 3,
-        Screen_Height           => 4,
-
-        Camera_Pos_X            => 5,
-        Camera_Pos_Y            => 6,
-        Camera_Pos_Z            => 7,
-
-        Camera_Front_X          => 8,
-        Camera_Front_Y          => 9,
-        Camera_Front_Z          => 10,
-
-        Camera_Up_X             => 11,
-        Camera_Up_Y             => 12,
-        Camera_Up_Z             => 13,
-
-        Camera_LookAt_X         => 14,
-        Camera_LookAt_Y         => 15,
-        Camera_LookAt_Z         => 16,
-
-        Fovy                    => 17,
-        Znear                   => 18,
-        Zfar                    => 19,
-
-        Light_Pos_X             => 20,
-        Light_Pos_Y             => 21,
-        Light_Pos_Z             => 22,
-
-        Light_Dir_X             => 23,
-        Light_Dir_Y             => 24,
-        Light_Dir_Z             => 25,
-
-        Light_Strength          => 26,
-        Light_Constant_Falloff  => 27,
-        Light_Linear_Falloff    => 28,
-        Light_Quadratic_Falloff => 29,
-        Light_Cutoff_Angle      => 30,
-
-        Custom(n)               => 31 + n,
-    }
-}

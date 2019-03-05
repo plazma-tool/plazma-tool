@@ -14,7 +14,7 @@ color="ff4fb292" />
 	<track name="Camera_Pos_X" folded="0" muteKeyCount="0"
 color="ff4f71b2">
 		<key row="0" value="-3.400000" interpolation="1" />
-		<key row="30" value="-10.000000" interpolation="1" />
+		<key row="39" value="-20.000000" interpolation="1" />
 	</track>
 	<track name="Camera_Pos_Y" folded="0" muteKeyCount="0"
 color="ff8850b2">
@@ -262,7 +262,7 @@ color="00cccccc">
 	</track>
 	<track name="cube1#pos.x" folded="0" muteKeyCount="0"
 color="ff60b250">
-		<key row="0" value="1.000000" interpolation="0" />
+		<key row="0" value="4.000000" interpolation="1" />
 		<key row="300" value="-6.000000" interpolation="1" />
 	</track>
 	<track name="cube1#pos.y" folded="0" muteKeyCount="0"
@@ -272,7 +272,7 @@ color="ff60b250">
 	</track>
 	<track name="cube1#pos.z" folded="0" muteKeyCount="0"
 color="ff60b250">
-		<key row="0" value="-1.000000" interpolation="0" />
+		<key row="0" value="2.000000" interpolation="0" />
 		<key row="300" value="-8.000000" interpolation="1" />
 	</track>
 	<track name="cube1#rot.x" folded="0" muteKeyCount="0"

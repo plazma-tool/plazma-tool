@@ -43,7 +43,10 @@ context:
 
         - name: "cube one"
           position:
-            Fixed: [ 4.0, 0.0, 2.0 ]
+            Sync:
+              - Custom: "cube1#pos.x"
+              - Custom: "cube1#pos.y"
+              - Custom: "cube1#pos.z"
           euler_rotation:
             Fixed: [ 45.0, 0.0, 45.0 ]
           scale:

@@ -26,7 +26,6 @@ use rocket_sync::{SyncDevice, SyncTrack, TrackKey, code_to_key};
 use rocket_client::SyncClient;
 
 use crate::dmo_data::DmoData;
-use crate::dmo_data::builtin_to_idx;
 use crate::error::ToolError;
 use crate::utils::file_to_string;
 
@@ -138,7 +137,8 @@ impl PreviewState {
     }
 
     fn build_quad_scenes(dmo_gfx: &mut DmoGfx,
-                         dmo_data: &DmoData)
+                         dmo_data: &DmoData,
+                         track_name_to_idx: &BTreeMap<String, usize>)
                          -> Result<(), Box<Error>>
     {
         use crate::dmo_data as d;
@@ -156,25 +156,25 @@ impl PreviewState {
 
                     d::UniformMapping::Float(layout_idx, a) =>
                         UniformMapping::Float(*layout_idx,
-                                              d::builtin_to_idx(a) as u8),
+                                              builtin_to_idx(track_name_to_idx, a)? as u8),
 
                     d::UniformMapping::Vec2(layout_idx, a, b) =>
                         UniformMapping::Vec2(*layout_idx,
-                                             d::builtin_to_idx(a) as u8,
-                                             d::builtin_to_idx(b) as u8),
+                                             builtin_to_idx(track_name_to_idx, a)? as u8,
+                                             builtin_to_idx(track_name_to_idx, b)? as u8),
 
                     d::UniformMapping::Vec3(layout_idx, a, b, c) =>
                         UniformMapping::Vec3(*layout_idx,
-                                             d::builtin_to_idx(a) as u8,
-                                             d::builtin_to_idx(b) as u8,
-                                             d::builtin_to_idx(c) as u8),
+                                             builtin_to_idx(track_name_to_idx, a)? as u8,
+                                             builtin_to_idx(track_name_to_idx, b)? as u8,
+                                             builtin_to_idx(track_name_to_idx, c)? as u8),
 
                     d::UniformMapping::Vec4(layout_idx, a, b, c, d) =>
                         UniformMapping::Vec4(*layout_idx,
-                                             d::builtin_to_idx(a) as u8,
-                                             d::builtin_to_idx(b) as u8,
-                                             d::builtin_to_idx(c) as u8,
-                                             d::builtin_to_idx(d) as u8),
+                                             builtin_to_idx(track_name_to_idx, a)? as u8,
+                                             builtin_to_idx(track_name_to_idx, b)? as u8,
+                                             builtin_to_idx(track_name_to_idx, c)? as u8,
+                                             builtin_to_idx(track_name_to_idx, d)? as u8),
                 };
                 layout_to_vars.push(a);
             }
@@ -224,7 +224,8 @@ impl PreviewState {
     }
 
     fn build_polygon_context_and_scenes(dmo_gfx: &mut DmoGfx,
-                                        dmo_data: &DmoData)
+                                        dmo_data: &DmoData,
+                                        track_name_to_idx: &BTreeMap<String, usize>)
                                         -> Result<(), Box<Error>>
     {
         use crate::dmo_data as d;
@@ -271,9 +272,9 @@ impl PreviewState {
                     d::ValueVec3::Fixed(a, b, c) => ValueVec3::Fixed(*a, *b, *c),
 
                     d::ValueVec3::Sync(a, b, c) =>
-                        ValueVec3::Sync(builtin_to_idx(&a) as u8,
-                                        builtin_to_idx(&b) as u8,
-                                        builtin_to_idx(&c) as u8),
+                        ValueVec3::Sync(builtin_to_idx(track_name_to_idx, &a)? as u8,
+                                        builtin_to_idx(track_name_to_idx, &b)? as u8,
+                                        builtin_to_idx(track_name_to_idx, &c)? as u8),
                 };
 
                 scene_object.euler_rotation_var = match &obj_data.euler_rotation {
@@ -282,15 +283,15 @@ impl PreviewState {
                     d::ValueVec3::Fixed(a, b, c) => ValueVec3::Fixed(*a, *b, *c),
 
                     d::ValueVec3::Sync(a, b, c) =>
-                        ValueVec3::Sync(builtin_to_idx(&a) as u8,
-                                        builtin_to_idx(&b) as u8,
-                                        builtin_to_idx(&c) as u8),
+                        ValueVec3::Sync(builtin_to_idx(track_name_to_idx, &a)? as u8,
+                                        builtin_to_idx(track_name_to_idx, &b)? as u8,
+                                        builtin_to_idx(track_name_to_idx, &c)? as u8),
                 };
 
                 scene_object.scale_var = match &obj_data.scale {
                     d::ValueFloat::NOOP => ValueFloat::NOOP,
                     d::ValueFloat::Fixed(a) => ValueFloat::Fixed(*a),
-                    d::ValueFloat::Sync(a) => ValueFloat::Sync(builtin_to_idx(&a) as u8),
+                    d::ValueFloat::Sync(a) => ValueFloat::Sync(builtin_to_idx(track_name_to_idx, &a)? as u8),
                 };
 
                 for i in obj_data.layout_to_vars.iter() {
@@ -298,25 +299,25 @@ impl PreviewState {
                         d::UniformMapping::NOOP => UniformMapping::NOOP,
 
                         d::UniformMapping::Float(x, a) =>
-                            UniformMapping::Float(*x, builtin_to_idx(&a) as u8),
+                            UniformMapping::Float(*x, builtin_to_idx(track_name_to_idx, &a)? as u8),
 
                         d::UniformMapping::Vec2(x, a, b) =>
                             UniformMapping::Vec2(*x,
-                                                 builtin_to_idx(&a) as u8,
-                                                 builtin_to_idx(&b) as u8),
+                                                 builtin_to_idx(track_name_to_idx, &a)? as u8,
+                                                 builtin_to_idx(track_name_to_idx, &b)? as u8),
 
                         d::UniformMapping::Vec3(x, a, b, c) =>
                             UniformMapping::Vec3(*x,
-                                                 builtin_to_idx(&a) as u8,
-                                                 builtin_to_idx(&b) as u8,
-                                                 builtin_to_idx(&c) as u8),
+                                                 builtin_to_idx(track_name_to_idx, &a)? as u8,
+                                                 builtin_to_idx(track_name_to_idx, &b)? as u8,
+                                                 builtin_to_idx(track_name_to_idx, &c)? as u8),
 
                         d::UniformMapping::Vec4(x, a, b, c, d) =>
                             UniformMapping::Vec4(*x,
-                                                 builtin_to_idx(&a) as u8,
-                                                 builtin_to_idx(&b) as u8,
-                                                 builtin_to_idx(&c) as u8,
-                                                 builtin_to_idx(&d) as u8),
+                                                 builtin_to_idx(track_name_to_idx, &a)? as u8,
+                                                 builtin_to_idx(track_name_to_idx, &b)? as u8,
+                                                 builtin_to_idx(track_name_to_idx, &c)? as u8,
+                                                 builtin_to_idx(track_name_to_idx, &d)? as u8),
                     };
 
                     scene_object.layout_to_vars.push(m);
@@ -418,156 +419,6 @@ impl PreviewState {
         Ok(())
     }
 
-    pub fn build_track_names(&mut self,
-                             dmo_data: &DmoData)
-        -> Result<(), Box<Error>>
-    {
-        // Build the track names and their sync var indexes.
-
-        // First, add the names of the builtin tracks and record their indexes.
-
-        // TODO produce this list from the sync mod where builtins are known
-        let builtin_names: Vec<String> = vec![
-            "Time".to_owned(),
-            "Window_Width".to_owned(),
-            "Window_Height".to_owned(),
-            "Screen_Width".to_owned(),
-            "Screen_Height".to_owned(),
-            "Camera_Pos_X".to_owned(),
-            "Camera_Pos_Y".to_owned(),
-            "Camera_Pos_Z".to_owned(),
-            "Camera_Front_X".to_owned(),
-            "Camera_Front_Y".to_owned(),
-            "Camera_Front_Z".to_owned(),
-            "Camera_Up_X".to_owned(),
-            "Camera_Up_Y".to_owned(),
-            "Camera_Up_Z".to_owned(),
-            "Camera_LookAt_X".to_owned(),
-            "Camera_LookAt_Y".to_owned(),
-            "Camera_LookAt_Z".to_owned(),
-            "Fovy".to_owned(),
-            "Znear".to_owned(),
-            "Zfar".to_owned(),
-            "Light_Pos_X".to_owned(),
-            "Light_Pos_Y".to_owned(),
-            "Light_Pos_Z".to_owned(),
-            "Light_Dir_X".to_owned(),
-            "Light_Dir_Y".to_owned(),
-            "Light_Dir_Z".to_owned(),
-            "Light_Strength".to_owned(),
-            "Light_Constant_Falloff".to_owned(),
-            "Light_Linear_Falloff".to_owned(),
-            "Light_Quadratic_Falloff".to_owned(),
-            "Light_Cutoff_Angle".to_owned(),
-            ];
-
-        let mut track_names: Vec<String> = Vec::new();
-        let mut track_name_to_idx: BTreeMap<String, usize> = BTreeMap::new();
-
-        for (idx, name) in builtin_names.iter().enumerate() {
-            track_names.push(name.clone());
-            track_name_to_idx.insert(name.clone(), idx);
-        }
-
-        // Then add the list of custom track names, defined in the rocket xml file, the path of
-        // which the user has defined in the demo YAML.
-
-        // Read the Rocket XML and add tracks.
-
-        let p: PathBuf = PathBuf::from(&dmo_data.context.sync_tracks_path);
-        let text = if p.exists() && p.is_file() {
-            file_to_string(&p)?
-        } else {
-            // TODO should not we simply stop if the file was not found?
-            String::from(EMPTY_ROCKET)
-        };
-
-        let tracks_data: Element = serde_xml::from_str(&text)?;
-        let bpm: f64;
-        let rpb: u8;
-        let tracks: Vec<Element>;
-
-        match tracks_data.members {
-            Content::Members(ref x) => {
-                let tt = x.get("tracks").ok_or("missing 'tracks'")?;
-                let ref e: Element = tt[0];
-
-                let tt = e.attributes.get("beatsPerMin").ok_or("missing 'beatsPerMin'")?;
-                let bpm_s = tt[0].to_owned();
-                bpm = bpm_s.parse()?;
-
-                let tt = e.attributes.get("rowsPerBeat").ok_or("missing 'rowsPerBeat'")?;
-                let rpb_s = tt[0].to_owned();
-                rpb = rpb_s.parse()?;
-
-                match e.members {
-                    Content::Members(ref x) => {
-                        let a = x.get("track").ok_or("missing 'track'")?;
-                        tracks = a.to_vec();
-                    },
-                    _ => return Err(From::from("no members in 'track'")),
-                }
-            },
-            _ => return Err(From::from("no members in 'tracks'")),
-        }
-
-        // new sync device
-        let mut sync_device = SyncDevice::new(bpm, rpb);
-
-        // add tracks and keys
-        for t in tracks.iter() {
-
-            let mut sync_track: SyncTrack = SyncTrack::new();
-
-            match t.members {
-                Content::Members(ref track) => {
-                    let keys = track.get("key").ok_or("missing 'key'")?;
-
-                    for k in keys.iter() {
-                        let a = k.attributes.get("row").ok_or("missing 'row'")?;
-                        let row: u32 = a[0].parse()?;
-
-                        let a = k.attributes.get("value").ok_or("missing 'value'")?;
-                        let value: f32 = a[0].parse()?;
-
-                        let a = k.attributes.get("interpolation").ok_or("missing 'interpolation'")?;
-                        let key_type: u8 = a[0].parse()?;
-
-                        let key = TrackKey{
-                            row: row,
-                            value: value,
-                            key_type: code_to_key(key_type),
-                        };
-
-                        sync_track.add_key(key);
-                    }
-                },
-                _ => {},
-            }
-
-            sync_device.tracks.push(sync_track);
-        }
-
-        // add track names to list and index
-        let start_idx = track_names.len();
-
-        for (idx, track) in tracks.iter().enumerate() {
-            let n = track.attributes.get("name").ok_or("missing 'name'")?;
-            track_names.push(n[0].clone());
-            track_name_to_idx.insert(n[0].clone(), start_idx + idx);
-        }
-
-        // Assign the new products
-        self.dmo_gfx.sync.device = sync_device;
-        self.track_names = track_names;
-        self.track_name_to_idx = track_name_to_idx;
-
-        // Make sure there are as many sync vars as track names.
-        self.dmo_gfx.context.sync_vars.add_tracks_up_to(self.track_names.len());
-
-        Ok(())
-    }
-
     pub fn build_rocket_connection(&mut self, rocket: &mut Option<SyncClient>) -> Result<(), Box<Error>> {
 
         *rocket = match SyncClient::new("localhost:1338") {
@@ -604,18 +455,18 @@ impl PreviewState {
                                                               screen_height,
                                                               camera);
 
+        let (track_names, track_name_to_idx) = build_track_names(&mut dmo_gfx, &dmo_data)?;
+
         PreviewState::build_shader_sources(&mut dmo_gfx, &dmo_data);
         PreviewState::build_settings(&mut dmo_gfx, &dmo_data);
         PreviewState::build_frame_buffers(&mut dmo_gfx, &dmo_data)?;
-        PreviewState::build_quad_scenes(&mut dmo_gfx, &dmo_data)?;
-        PreviewState::build_polygon_context_and_scenes(&mut dmo_gfx, &dmo_data)?;
+        PreviewState::build_quad_scenes(&mut dmo_gfx, &dmo_data, &track_name_to_idx)?;
+        PreviewState::build_polygon_context_and_scenes(&mut dmo_gfx, &dmo_data, &track_name_to_idx)?;
         PreviewState::build_timeline(&mut dmo_gfx, &dmo_data)?;
 
+        self.track_names = track_names;
+        self.track_name_to_idx = track_name_to_idx;
         self.dmo_gfx = dmo_gfx;
-
-        // Build track names after assigning the new dmo_gfx. Track names are stored in the
-        // PreviewState.
-        self.build_track_names(&dmo_data)?;
 
         self.should_recompile = true;
         self.draw_anyway = true;
@@ -968,7 +819,212 @@ impl PreviewState {
         }
         self.dmo_gfx.context.camera.update_view();
     }
+
 }
+
+fn builtin_to_idx(track_name_to_idx: &BTreeMap<String, usize>,
+                  name: &crate::dmo_data::BuiltIn)
+    -> Result<usize, Box<Error>>
+{
+    use crate::dmo_data::BuiltIn::*;
+    match name {
+        Time                    => Ok(0),
+
+        Window_Width            => Ok(1),
+        Window_Height           => Ok(2),
+
+        Screen_Width            => Ok(3),
+        Screen_Height           => Ok(4),
+
+        Camera_Pos_X            => Ok(5),
+        Camera_Pos_Y            => Ok(6),
+        Camera_Pos_Z            => Ok(7),
+
+        Camera_Front_X          => Ok(8),
+        Camera_Front_Y          => Ok(9),
+        Camera_Front_Z          => Ok(10),
+
+        Camera_Up_X             => Ok(11),
+        Camera_Up_Y             => Ok(12),
+        Camera_Up_Z             => Ok(13),
+
+        Camera_LookAt_X         => Ok(14),
+        Camera_LookAt_Y         => Ok(15),
+        Camera_LookAt_Z         => Ok(16),
+
+        Fovy                    => Ok(17),
+        Znear                   => Ok(18),
+        Zfar                    => Ok(19),
+
+        Light_Pos_X             => Ok(20),
+        Light_Pos_Y             => Ok(21),
+        Light_Pos_Z             => Ok(22),
+
+        Light_Dir_X             => Ok(23),
+        Light_Dir_Y             => Ok(24),
+        Light_Dir_Z             => Ok(25),
+
+        Light_Strength          => Ok(26),
+        Light_Constant_Falloff  => Ok(27),
+        Light_Linear_Falloff    => Ok(28),
+        Light_Quadratic_Falloff => Ok(29),
+        Light_Cutoff_Angle      => Ok(30),
+
+        Custom(name)               => {
+            match track_name_to_idx.get(name) {
+                Some(n) => Ok(*n),
+                None => Err(From::from(format!{"Track not found: {}", name})),
+            }
+        },
+    }
+}
+
+fn build_track_names(dmo_gfx: &mut DmoGfx,
+                     dmo_data: &DmoData)
+    -> Result<(Vec<String>, BTreeMap<String, usize>), Box<Error>>
+{
+    // Build the track names and their sync var indexes.
+
+    // First, add the names of the builtin tracks and record their indexes.
+
+    // TODO produce this list from the sync mod where builtins are known
+    let builtin_names: Vec<String> = vec![
+        "Time".to_owned(),
+        "Window_Width".to_owned(),
+        "Window_Height".to_owned(),
+        "Screen_Width".to_owned(),
+        "Screen_Height".to_owned(),
+        "Camera_Pos_X".to_owned(),
+        "Camera_Pos_Y".to_owned(),
+        "Camera_Pos_Z".to_owned(),
+        "Camera_Front_X".to_owned(),
+        "Camera_Front_Y".to_owned(),
+        "Camera_Front_Z".to_owned(),
+        "Camera_Up_X".to_owned(),
+        "Camera_Up_Y".to_owned(),
+        "Camera_Up_Z".to_owned(),
+        "Camera_LookAt_X".to_owned(),
+        "Camera_LookAt_Y".to_owned(),
+        "Camera_LookAt_Z".to_owned(),
+        "Fovy".to_owned(),
+        "Znear".to_owned(),
+        "Zfar".to_owned(),
+        "Light_Pos_X".to_owned(),
+        "Light_Pos_Y".to_owned(),
+        "Light_Pos_Z".to_owned(),
+        "Light_Dir_X".to_owned(),
+        "Light_Dir_Y".to_owned(),
+        "Light_Dir_Z".to_owned(),
+        "Light_Strength".to_owned(),
+        "Light_Constant_Falloff".to_owned(),
+        "Light_Linear_Falloff".to_owned(),
+        "Light_Quadratic_Falloff".to_owned(),
+        "Light_Cutoff_Angle".to_owned(),
+        ];
+
+    let mut track_names: Vec<String> = Vec::new();
+    let mut track_name_to_idx: BTreeMap<String, usize> = BTreeMap::new();
+
+    for (idx, name) in builtin_names.iter().enumerate() {
+        track_names.push(name.clone());
+        track_name_to_idx.insert(name.clone(), idx);
+    }
+
+    // Then add the list of custom track names, defined in the rocket xml file, the path of
+    // which the user has defined in the demo YAML.
+
+    // Read the Rocket XML and add tracks.
+
+    let p: PathBuf = PathBuf::from(&dmo_data.context.sync_tracks_path);
+    let text = if p.exists() && p.is_file() {
+        file_to_string(&p)?
+    } else {
+        // TODO should not we simply stop if the file was not found?
+        String::from(EMPTY_ROCKET)
+    };
+
+    let tracks_data: Element = serde_xml::from_str(&text)?;
+    let bpm: f64;
+    let rpb: u8;
+    let tracks: Vec<Element>;
+
+    match tracks_data.members {
+        Content::Members(ref x) => {
+            let tt = x.get("tracks").ok_or("missing 'tracks'")?;
+            let ref e: Element = tt[0];
+
+            let tt = e.attributes.get("beatsPerMin").ok_or("missing 'beatsPerMin'")?;
+            let bpm_s = tt[0].to_owned();
+            bpm = bpm_s.parse()?;
+
+            let tt = e.attributes.get("rowsPerBeat").ok_or("missing 'rowsPerBeat'")?;
+            let rpb_s = tt[0].to_owned();
+            rpb = rpb_s.parse()?;
+
+            match e.members {
+                Content::Members(ref x) => {
+                    let a = x.get("track").ok_or("missing 'track'")?;
+                    tracks = a.to_vec();
+                },
+                _ => return Err(From::from("no members in 'track'")),
+            }
+        },
+        _ => return Err(From::from("no members in 'tracks'")),
+    }
+
+    // new sync device
+    let mut sync_device = SyncDevice::new(bpm, rpb);
+
+    // add tracks and keys
+    for t in tracks.iter() {
+
+        let mut sync_track: SyncTrack = SyncTrack::new();
+
+        match t.members {
+            Content::Members(ref track) => {
+                let keys = track.get("key").ok_or("missing 'key'")?;
+
+                for k in keys.iter() {
+                    let a = k.attributes.get("row").ok_or("missing 'row'")?;
+                    let row: u32 = a[0].parse()?;
+
+                    let a = k.attributes.get("value").ok_or("missing 'value'")?;
+                    let value: f32 = a[0].parse()?;
+
+                    let a = k.attributes.get("interpolation").ok_or("missing 'interpolation'")?;
+                    let key_type: u8 = a[0].parse()?;
+
+                    let key = TrackKey{
+                        row: row,
+                        value: value,
+                        key_type: code_to_key(key_type),
+                    };
+
+                    sync_track.add_key(key);
+                }
+            },
+            _ => {},
+        }
+
+        sync_device.tracks.push(sync_track);
+    }
+
+    // add track names to list and index
+    for (idx, track) in tracks.iter().enumerate() {
+        let n = track.attributes.get("name").ok_or("missing 'name'")?;
+        track_names.push(n[0].clone());
+        track_name_to_idx.insert(n[0].clone(), idx);
+    }
+
+    // Assign the new product
+    dmo_gfx.sync.device = sync_device;
+
+    // Make sure there are as many sync vars as track names.
+    dmo_gfx.context.sync_vars.add_tracks_up_to(track_names.len());
+
+    Ok((track_names, track_name_to_idx))
+}
+
 
 const EMPTY_ROCKET: &'static str = r#"
 <?xml version="1.0" encoding="utf-8"?>

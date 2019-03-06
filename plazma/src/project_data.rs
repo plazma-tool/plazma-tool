@@ -20,7 +20,7 @@ impl ProjectData {
 
         let project_root = demo_yml_path.parent().ok_or("missing demo yml parent")?;
 
-        let dmo_data = DmoData::new_from_yml_str(&text, true)?;
+        let dmo_data = DmoData::new_from_yml_str(&text, true, true)?;
 
         // TODO optimize for the same shader being used at different scenes
 

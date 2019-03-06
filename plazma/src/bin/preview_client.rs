@@ -153,7 +153,7 @@ fn main() {
     let text: String = file_to_string(&demo_yml_path).unwrap();
 
     // NOTE Must use window size for screen size as well
-    state.build_dmo_gfx_from_yml_str(&text, true, wx, wy, wx, wy, None).unwrap();
+    state.build_dmo_gfx_from_yml_str(&text, true, true, wx, wy, wx, wy, None).unwrap();
 
     let mut rocket: Option<SyncClient> = None;
     state.build_rocket_connection(&mut rocket).unwrap();
@@ -217,7 +217,7 @@ fn render_loop(window: &GlWindow,
                         // NOTE The original aspect when first created has to be preserved, so
                         // passing screen sizes only, which are the size of the window when it was
                         // first created.
-                        match state.build_dmo_gfx_from_yml_str(&message.data, false,
+                        match state.build_dmo_gfx_from_yml_str(&message.data, false, false,
                                                                sx, sy, sx, sy,
                                                                Some(camera))
                         {

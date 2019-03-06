@@ -17,6 +17,9 @@ extern crate env_logger;
 extern crate gl;
 extern crate glutin;
 
+extern crate image;
+extern crate tobj;
+
 extern crate smallvec;
 extern crate intro_runtime;
 extern crate intro_3d;

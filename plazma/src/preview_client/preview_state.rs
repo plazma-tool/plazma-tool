@@ -110,6 +110,7 @@ impl PreviewState {
     pub fn build_dmo_gfx_from_yml_str(&mut self,
                                       yml_str: &str,
                                       read_shader_paths: bool,
+                                      read_image_paths: bool,
                                       window_width: f64,
                                       window_height: f64,
                                       screen_width: f64,
@@ -117,7 +118,7 @@ impl PreviewState {
                                       camera: Option<Camera>)
         -> Result<(), Box<Error>>
     {
-        let dmo_data: DmoData = DmoData::new_from_yml_str(&yml_str, read_shader_paths)?;
+        let dmo_data: DmoData = DmoData::new_from_yml_str(&yml_str, read_shader_paths, read_image_paths)?;
         let mut dmo_gfx: DmoGfx = DmoGfx::new_with_dimensions(window_width,
                                                               window_height,
                                                               screen_width,
@@ -127,6 +128,7 @@ impl PreviewState {
         let (track_names, track_name_to_idx) = build_track_names(&mut dmo_gfx, &dmo_data)?;
 
         build_shader_sources(&mut dmo_gfx, &dmo_data);
+        build_image_sources(&mut dmo_gfx, &dmo_data);
         build_settings(&mut dmo_gfx, &dmo_data);
         build_frame_buffers(&mut dmo_gfx, &dmo_data)?;
         build_quad_scenes(&mut dmo_gfx, &dmo_data, &track_name_to_idx)?;
@@ -704,6 +706,35 @@ fn build_shader_sources(dmo_gfx: &mut DmoGfx,
     }
 }
 
+fn build_image_sources(dmo_gfx: &mut DmoGfx,
+                       dmo_data: &DmoData)
+{
+    use intro_runtime::types as r;
+    use crate::dmo_data::context_data as d;
+
+    for i in dmo_data.context.image_sources.iter() {
+        let format = match i.format {
+            d::PixelFormat::NOOP => r::PixelFormat::NOOP,
+            d::PixelFormat::RED_u8 => r::PixelFormat::RED_u8,
+            d::PixelFormat::RGB_u8 => r::PixelFormat::RGB_u8,
+            d::PixelFormat::RGBA_u8 => r::PixelFormat::RGBA_u8,
+        };
+
+        let mut image_gfx = r::Image {
+            width: i.width,
+            height: i.height,
+            format: format,
+            raw_pixels: SmallVec::new(),
+        };
+
+        for x in i.raw_pixels.iter() {
+            image_gfx.raw_pixels.push(*x);
+        }
+
+        dmo_gfx.context.images.push(image_gfx);
+    }
+}
+
 fn build_settings(dmo_gfx: &mut DmoGfx,
                   dmo_data: &DmoData)
 {
@@ -726,10 +757,15 @@ fn build_frame_buffers(dmo_gfx: &mut DmoGfx,
     let mut frame_buffers: SmallVec<[FrameBuffer; 64]> = SmallVec::new();
 
     for fb in dmo_data.context.frame_buffers.iter() {
+        let mut has_image = false;
+
         let kind = match fb.kind {
             d::BufferKind::NOOP => BufferKind::NOOP,
             d::BufferKind::Empty_Texture => BufferKind::Empty_Texture,
-            d::BufferKind::Image_Texture => BufferKind::Image_Texture,
+            d::BufferKind::Image_Texture => {
+                has_image = true;
+                BufferKind::Image_Texture
+            },
         };
 
         let format = match fb.format {
@@ -739,7 +775,12 @@ fn build_frame_buffers(dmo_gfx: &mut DmoGfx,
             d::PixelFormat::RGBA_u8 => PixelFormat::RGBA_u8,
         };
 
-        frame_buffers.push(FrameBuffer::new(kind, format, None));
+        if has_image {
+            let image_data_idx = dmo_data.context.index.get_image_index(&fb.image_path)?;
+            frame_buffers.push(FrameBuffer::new(kind, format, Some(image_data_idx)));
+        } else {
+            frame_buffers.push(FrameBuffer::new(kind, format, None));
+        }
     }
 
     dmo_gfx.context.frame_buffers = frame_buffers;

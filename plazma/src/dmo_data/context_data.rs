@@ -7,6 +7,7 @@ use crate::dmo_data::data_index::DataIndex;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ContextData {
+
     /// Do both serialize and deserialize on `.shader_sources[]`.
     ///
     /// Deserializing from YAML file: shader sources will have to be declared in the file, but can
@@ -23,7 +24,10 @@ pub struct ContextData {
     /// Serializing it is also necessary for sending DmoData to the browser UI and OpenGL preview
     /// client, so that the index mapping between server and client can stay the same.
     pub shader_sources: Vec<String>,
-    // TODO images
+
+    #[serde(skip_serializing, skip_deserializing)]
+    pub image_sources: Vec<Image>,
+
     pub frame_buffers: Vec<FrameBuffer>,
 
     pub quad_scenes: Vec<QuadScene>,
@@ -35,6 +39,8 @@ pub struct ContextData {
 
     pub sync_tracks_path: String,
 
+    /// Do serialize, so that paths and array index data can be used on the server.
+    ///
     /// Don't deserialize, the index doesn't have to be included in the YAML file and doesn't have to be
     /// sent by the server to the client.
     ///
@@ -45,7 +51,7 @@ pub struct ContextData {
 }
 
 impl ContextData {
-    pub fn build_index(&mut self, read_shader_paths: bool) -> Result<(), Box<Error>>
+    pub fn build_index(&mut self, read_shader_paths: bool, read_image_paths: bool) -> Result<(), Box<Error>>
     {
         // First, empty any existing index data.
         self.index = DataIndex::new();
@@ -55,7 +61,7 @@ impl ContextData {
         }
 
         for (idx, buffer) in self.frame_buffers.iter().enumerate() {
-            self.index.add_frame_buffer(buffer, idx)?;
+            self.index.add_frame_buffer(buffer, idx, read_image_paths, &mut self.image_sources)?;
         }
 
         for (idx, model) in self.polygon_context.models.iter().enumerate() {
@@ -74,6 +80,7 @@ impl Default for ContextData {
     fn default() -> ContextData {
         ContextData {
             shader_sources: vec![],
+            image_sources: vec![],
             frame_buffers: vec![],
             quad_scenes: vec![],
             polygon_scenes: vec![],
@@ -91,7 +98,15 @@ pub struct FrameBuffer {
     pub name: String,
     pub kind: BufferKind,
     pub format: PixelFormat,
-    // image_data: ...
+    pub image_path: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Image {
+    pub width: u32,
+    pub height: u32,
+    pub format: PixelFormat,
+    pub raw_pixels: Vec<u8>,
 }
 
 impl FrameBuffer {
@@ -100,6 +115,7 @@ impl FrameBuffer {
             name: "RESULT_IMAGE".to_string(),
             kind: BufferKind::Empty_Texture,
             format: PixelFormat::RGBA_u8,
+            image_path: "".to_owned(),
         }
     }
 }
@@ -112,7 +128,7 @@ pub enum BufferKind {
     Image_Texture,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub enum PixelFormat {
     NOOP,
     RED_u8,

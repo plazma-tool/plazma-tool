@@ -24,6 +24,7 @@ pub struct ContextGfx {
 
     /// 1kb x 64 shaders on the stack, larger shaders or more of them on the heap.
     pub shader_sources: SmallVec<[SmallVec<[u8; 1024]>; 64]>,
+    // TODO rename to image_sources
     pub images: SmallVec<[Image; 4]>,
     pub frame_buffers: SmallVec<[FrameBuffer; 64]>,
 

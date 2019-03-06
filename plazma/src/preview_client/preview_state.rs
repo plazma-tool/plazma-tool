@@ -88,337 +88,6 @@ impl PreviewState {
         Ok(state)
     }
 
-    fn build_settings(dmo_gfx: &mut DmoGfx,
-                      dmo_data: &DmoData)
-    {
-        let settings = Settings {
-            start_full_screen: dmo_data.settings.start_full_screen,
-            audio_play_on_start: dmo_data.settings.audio_play_on_start,
-            mouse_sensitivity: dmo_data.settings.mouse_sensitivity,
-            movement_sensitivity: dmo_data.settings.movement_sensitivity,
-            total_length: dmo_data.settings.total_length,
-        };
-        dmo_gfx.settings = settings;
-    }
-
-    fn build_frame_buffers(dmo_gfx: &mut DmoGfx,
-                           dmo_data: &DmoData)
-                           -> Result<(), Box<Error>>
-    {
-        use crate::dmo_data::context_data as d;
-
-        let mut frame_buffers: SmallVec<[FrameBuffer; 64]> = SmallVec::new();
-
-        for fb in dmo_data.context.frame_buffers.iter() {
-            let kind = match fb.kind {
-                d::BufferKind::NOOP => BufferKind::NOOP,
-                d::BufferKind::Empty_Texture => BufferKind::Empty_Texture,
-                d::BufferKind::Image_Texture => BufferKind::Image_Texture,
-            };
-
-            let format = match fb.format {
-                d::PixelFormat::NOOP => PixelFormat::NOOP,
-                d::PixelFormat::RED_u8 => PixelFormat::RED_u8,
-                d::PixelFormat::RGB_u8 => PixelFormat::RGB_u8,
-                d::PixelFormat::RGBA_u8 => PixelFormat::RGBA_u8,
-            };
-
-            frame_buffers.push(FrameBuffer::new(kind, format, None));
-        }
-
-        dmo_gfx.context.frame_buffers = frame_buffers;
-
-        match dmo_gfx.create_frame_buffers() {
-            Ok(_) => {},
-            Err(e) => return Err(Box::new(ToolError::Runtime(e, "".to_owned())))
-        }
-
-        Ok(())
-    }
-
-    fn build_quad_scenes(dmo_gfx: &mut DmoGfx,
-                         dmo_data: &DmoData,
-                         track_name_to_idx: &BTreeMap<String, usize>)
-                         -> Result<(), Box<Error>>
-    {
-        use crate::dmo_data as d;
-
-        dmo_gfx.context.quad_scenes = SmallVec::new();
-
-        for q in dmo_data.context.quad_scenes.iter()
-        {
-            let mut layout_to_vars: SmallVec<[UniformMapping; 64]> = SmallVec::new();
-            let mut binding_to_buffers: SmallVec<[BufferMapping; 64]> = SmallVec::new();
-
-            for i in q.layout_to_vars.iter() {
-                let a = match i {
-                    d::UniformMapping::NOOP => UniformMapping::NOOP,
-
-                    d::UniformMapping::Float(layout_idx, a) =>
-                        UniformMapping::Float(*layout_idx,
-                                              builtin_to_idx(track_name_to_idx, a)? as u8),
-
-                    d::UniformMapping::Vec2(layout_idx, a, b) =>
-                        UniformMapping::Vec2(*layout_idx,
-                                             builtin_to_idx(track_name_to_idx, a)? as u8,
-                                             builtin_to_idx(track_name_to_idx, b)? as u8),
-
-                    d::UniformMapping::Vec3(layout_idx, a, b, c) =>
-                        UniformMapping::Vec3(*layout_idx,
-                                             builtin_to_idx(track_name_to_idx, a)? as u8,
-                                             builtin_to_idx(track_name_to_idx, b)? as u8,
-                                             builtin_to_idx(track_name_to_idx, c)? as u8),
-
-                    d::UniformMapping::Vec4(layout_idx, a, b, c, d) =>
-                        UniformMapping::Vec4(*layout_idx,
-                                             builtin_to_idx(track_name_to_idx, a)? as u8,
-                                             builtin_to_idx(track_name_to_idx, b)? as u8,
-                                             builtin_to_idx(track_name_to_idx, c)? as u8,
-                                             builtin_to_idx(track_name_to_idx, d)? as u8),
-                };
-                layout_to_vars.push(a);
-            }
-
-            for i in q.binding_to_buffers.iter() {
-                let a = match i {
-                    d::BufferMapping::NOOP => BufferMapping::NOOP,
-
-                    d::BufferMapping::Sampler2D(layout_idx, buffer_name) => {
-                        let buffer_idx = dmo_data.context.index.get_buffer_index(&buffer_name)?;
-                        BufferMapping::Sampler2D(*layout_idx, buffer_idx as u8)
-                    },
-                };
-                binding_to_buffers.push(a);
-            }
-
-            let vert_src_idx = dmo_data.context.index.get_shader_index(&q.vert_src_path)?;
-            let frag_src_idx = dmo_data.context.index.get_shader_index(&q.frag_src_path)?;
-
-            dmo_gfx
-                .context
-                .add_quad_scene(vert_src_idx,
-                                frag_src_idx,
-                                layout_to_vars,
-                                binding_to_buffers);
-        }
-
-        let mut err_msg_buf = [32 as u8; ERR_MSG_LEN];
-
-        match dmo_gfx.create_quads(&mut err_msg_buf) {
-            Ok(_) => {},
-            Err(e) => {
-                let msg = String::from_utf8(err_msg_buf.to_vec())?;
-                return Err(Box::new(ToolError::Runtime(e, msg)));
-            }
-        }
-
-        Ok(())
-    }
-
-    fn build_shader_sources(dmo_gfx: &mut DmoGfx,
-                            dmo_data: &DmoData)
-    {
-        for i in dmo_data.context.shader_sources.iter() {
-            dmo_gfx.context.shader_sources.push(SmallVec::from_slice(i.as_bytes()));
-        }
-    }
-
-    fn build_polygon_context_and_scenes(dmo_gfx: &mut DmoGfx,
-                                        dmo_data: &DmoData,
-                                        track_name_to_idx: &BTreeMap<String, usize>)
-                                        -> Result<(), Box<Error>>
-    {
-        use crate::dmo_data as d;
-
-        // Create a PolygonContext and add models.
-
-        let aspect = dmo_gfx.context.get_window_aspect();
-
-        // Setting the aspect is enough. Camera view vectors, fovy, etc. will be set in the sync
-        // vars by calculating the track values defined in the Rocket XML.
-
-        dmo_gfx.context.camera = Camera::new_defaults(aspect as f32);
-        dmo_gfx.context.polygon_context = PolygonContext::new_defaults(aspect as f32);
-
-        dmo_data.add_models_to(dmo_gfx)?;
-
-        // Create correcponding OpenGL objects.
-
-        let mut err_msg_buf = [32 as u8; ERR_MSG_LEN];
-
-        match dmo_gfx.create_models(&mut err_msg_buf) {
-            Ok(_) => {},
-            Err(e) => {
-                let msg = String::from_utf8(err_msg_buf.to_vec())?;
-                return Err(Box::new(ToolError::Runtime(e, msg)));
-            }
-        }
-
-        // PolygonContext is ready.
-
-        // Add PolygonScenes.
-
-        for (_idx, scene) in dmo_data.context.polygon_scenes.iter().enumerate() {
-
-            let mut polygon_scene = PolygonScene::default();
-
-            for obj_data in scene.scene_objects.iter() {
-                let mut scene_object = SceneObject::default();
-                scene_object.model_idx = dmo_data.context.index.get_model_index(&obj_data.name)?;
-
-                scene_object.position_var = match &obj_data.position {
-                    d::ValueVec3::NOOP => ValueVec3::NOOP,
-
-                    d::ValueVec3::Fixed(a, b, c) => ValueVec3::Fixed(*a, *b, *c),
-
-                    d::ValueVec3::Sync(a, b, c) =>
-                        ValueVec3::Sync(builtin_to_idx(track_name_to_idx, &a)? as u8,
-                                        builtin_to_idx(track_name_to_idx, &b)? as u8,
-                                        builtin_to_idx(track_name_to_idx, &c)? as u8),
-                };
-
-                scene_object.euler_rotation_var = match &obj_data.euler_rotation {
-                    d::ValueVec3::NOOP => ValueVec3::NOOP,
-
-                    d::ValueVec3::Fixed(a, b, c) => ValueVec3::Fixed(*a, *b, *c),
-
-                    d::ValueVec3::Sync(a, b, c) =>
-                        ValueVec3::Sync(builtin_to_idx(track_name_to_idx, &a)? as u8,
-                                        builtin_to_idx(track_name_to_idx, &b)? as u8,
-                                        builtin_to_idx(track_name_to_idx, &c)? as u8),
-                };
-
-                scene_object.scale_var = match &obj_data.scale {
-                    d::ValueFloat::NOOP => ValueFloat::NOOP,
-                    d::ValueFloat::Fixed(a) => ValueFloat::Fixed(*a),
-                    d::ValueFloat::Sync(a) => ValueFloat::Sync(builtin_to_idx(track_name_to_idx, &a)? as u8),
-                };
-
-                for i in obj_data.layout_to_vars.iter() {
-                    let m = match i {
-                        d::UniformMapping::NOOP => UniformMapping::NOOP,
-
-                        d::UniformMapping::Float(x, a) =>
-                            UniformMapping::Float(*x, builtin_to_idx(track_name_to_idx, &a)? as u8),
-
-                        d::UniformMapping::Vec2(x, a, b) =>
-                            UniformMapping::Vec2(*x,
-                                                 builtin_to_idx(track_name_to_idx, &a)? as u8,
-                                                 builtin_to_idx(track_name_to_idx, &b)? as u8),
-
-                        d::UniformMapping::Vec3(x, a, b, c) =>
-                            UniformMapping::Vec3(*x,
-                                                 builtin_to_idx(track_name_to_idx, &a)? as u8,
-                                                 builtin_to_idx(track_name_to_idx, &b)? as u8,
-                                                 builtin_to_idx(track_name_to_idx, &c)? as u8),
-
-                        d::UniformMapping::Vec4(x, a, b, c, d) =>
-                            UniformMapping::Vec4(*x,
-                                                 builtin_to_idx(track_name_to_idx, &a)? as u8,
-                                                 builtin_to_idx(track_name_to_idx, &b)? as u8,
-                                                 builtin_to_idx(track_name_to_idx, &c)? as u8,
-                                                 builtin_to_idx(track_name_to_idx, &d)? as u8),
-                    };
-
-                    scene_object.layout_to_vars.push(m);
-                }
-
-                for i in obj_data.binding_to_buffers.iter() {
-                    let m = match i {
-
-                        d::BufferMapping::NOOP => BufferMapping::NOOP,
-
-                        d::BufferMapping::Sampler2D(layout_idx, name) => {
-                            let buffer_idx = dmo_data.context.index.get_buffer_index(&name)?;
-                            BufferMapping::Sampler2D(*layout_idx, buffer_idx as u8)
-                        },
-
-                    };
-
-                    scene_object.binding_to_buffers.push(m);
-                }
-
-                match dmo_gfx.compile_model_shaders(scene_object.model_idx, &mut err_msg_buf) {
-                    Ok(_) => {},
-                    Err(e) => {
-                        let msg = String::from_utf8(err_msg_buf.to_vec())?;
-                        return Err(Box::new(ToolError::Runtime(e, msg)));
-                    }
-                }
-
-                polygon_scene.scene_objects.push(scene_object);
-            }
-
-            dmo_gfx.context.polygon_scenes.push(polygon_scene);
-        }
-
-        Ok(())
-    }
-
-    fn build_timeline(dmo_gfx: &mut DmoGfx,
-                      dmo_data: &DmoData)
-                      -> Result<(), Box<Error>>
-    {
-        use crate::dmo_data::timeline::DrawOp as D;
-        use intro_runtime::timeline::DrawOp as G;
-
-        dmo_gfx.timeline = Timeline::new();
-
-        for track in dmo_data.timeline.tracks.iter() {
-            let mut track_gfx = TimeTrack {
-                scene_blocks: SmallVec::new(),
-            };
-
-            for block in track.scene_blocks.iter() {
-                let mut ops: SmallVec<[G; 32]> = SmallVec::new();
-
-                for i in block.draw_ops.iter() {
-                    let o = match i {
-                        D::NOOP => G::NOOP,
-
-                        D::Draw_Quad_Scene(name) => {
-                            let idx = dmo_data.context.index.get_quad_scene_index(name)?;
-                            G::Draw_Quad_Scene(idx)
-                        },
-
-                        D::Draw_Poly_Scene(name) => {
-                            let idx = dmo_data.context.index.get_polygon_scene_index(name)?;
-                            G::Draw_Poly_Scene(idx)
-                        },
-
-                        D::Clear(r, g, b, a) => G::Clear(*r, *g, *b, *a),
-
-                        D::Target_Buffer(name) => {
-                            let idx = dmo_data.context.index.get_buffer_index(name)?;
-                            G::Target_Buffer(idx)
-                        },
-
-                        D::Target_Buffer_Default => G::Target_Buffer_Default,
-
-                        D::Profile(name) => {
-                            let idx = dmo_data.context.index.get_profile_index(name)?;
-                            G::Profile(idx)
-                        },
-                    };
-
-                    ops.push(o);
-                }
-
-                let block_gfx = SceneBlock {
-                    start: block.start,
-                    end: block.end,
-                    draw_ops: ops,
-                };
-
-                track_gfx.scene_blocks.push(block_gfx);
-            }
-
-            dmo_gfx.timeline.tracks.push(track_gfx);
-        }
-
-        Ok(())
-    }
-
     pub fn build_rocket_connection(&mut self, rocket: &mut Option<SyncClient>) -> Result<(), Box<Error>> {
 
         *rocket = match SyncClient::new("localhost:1338") {
@@ -441,6 +110,7 @@ impl PreviewState {
     pub fn build_dmo_gfx_from_yml_str(&mut self,
                                       yml_str: &str,
                                       read_shader_paths: bool,
+                                      read_image_paths: bool,
                                       window_width: f64,
                                       window_height: f64,
                                       screen_width: f64,
@@ -448,7 +118,7 @@ impl PreviewState {
                                       camera: Option<Camera>)
         -> Result<(), Box<Error>>
     {
-        let dmo_data: DmoData = DmoData::new_from_yml_str(&yml_str, read_shader_paths)?;
+        let dmo_data: DmoData = DmoData::new_from_yml_str(&yml_str, read_shader_paths, read_image_paths)?;
         let mut dmo_gfx: DmoGfx = DmoGfx::new_with_dimensions(window_width,
                                                               window_height,
                                                               screen_width,
@@ -457,12 +127,13 @@ impl PreviewState {
 
         let (track_names, track_name_to_idx) = build_track_names(&mut dmo_gfx, &dmo_data)?;
 
-        PreviewState::build_shader_sources(&mut dmo_gfx, &dmo_data);
-        PreviewState::build_settings(&mut dmo_gfx, &dmo_data);
-        PreviewState::build_frame_buffers(&mut dmo_gfx, &dmo_data)?;
-        PreviewState::build_quad_scenes(&mut dmo_gfx, &dmo_data, &track_name_to_idx)?;
-        PreviewState::build_polygon_context_and_scenes(&mut dmo_gfx, &dmo_data, &track_name_to_idx)?;
-        PreviewState::build_timeline(&mut dmo_gfx, &dmo_data)?;
+        build_shader_sources(&mut dmo_gfx, &dmo_data);
+        build_image_sources(&mut dmo_gfx, &dmo_data);
+        build_settings(&mut dmo_gfx, &dmo_data);
+        build_frame_buffers(&mut dmo_gfx, &dmo_data)?;
+        build_quad_scenes(&mut dmo_gfx, &dmo_data, &track_name_to_idx)?;
+        build_polygon_context_and_scenes(&mut dmo_gfx, &dmo_data, &track_name_to_idx)?;
+        build_timeline(&mut dmo_gfx, &dmo_data)?;
 
         self.track_names = track_names;
         self.track_name_to_idx = track_name_to_idx;
@@ -819,7 +490,6 @@ impl PreviewState {
         }
         self.dmo_gfx.context.camera.update_view();
     }
-
 }
 
 fn builtin_to_idx(track_name_to_idx: &BTreeMap<String, usize>,
@@ -1009,6 +679,9 @@ fn build_track_names(dmo_gfx: &mut DmoGfx,
         sync_device.tracks.push(sync_track);
     }
 
+    // FIXME This only works without a start_idx when the Rocket XML already contains the builtin
+    // tracks. Recognize the case when these are missing and use start_idx = track_names.len().
+
     // add track names to list and index
     for (idx, track) in tracks.iter().enumerate() {
         let n = track.attributes.get("name").ok_or("missing 'name'")?;
@@ -1025,6 +698,375 @@ fn build_track_names(dmo_gfx: &mut DmoGfx,
     Ok((track_names, track_name_to_idx))
 }
 
+fn build_shader_sources(dmo_gfx: &mut DmoGfx,
+                        dmo_data: &DmoData)
+{
+    for i in dmo_data.context.shader_sources.iter() {
+        dmo_gfx.context.shader_sources.push(SmallVec::from_slice(i.as_bytes()));
+    }
+}
+
+fn build_image_sources(dmo_gfx: &mut DmoGfx,
+                       dmo_data: &DmoData)
+{
+    use intro_runtime::types as r;
+    use crate::dmo_data::context_data as d;
+
+    for i in dmo_data.context.image_sources.iter() {
+        let format = match i.format {
+            d::PixelFormat::NOOP => r::PixelFormat::NOOP,
+            d::PixelFormat::RED_u8 => r::PixelFormat::RED_u8,
+            d::PixelFormat::RGB_u8 => r::PixelFormat::RGB_u8,
+            d::PixelFormat::RGBA_u8 => r::PixelFormat::RGBA_u8,
+        };
+
+        let mut image_gfx = r::Image {
+            width: i.width,
+            height: i.height,
+            format: format,
+            raw_pixels: SmallVec::new(),
+        };
+
+        for x in i.raw_pixels.iter() {
+            image_gfx.raw_pixels.push(*x);
+        }
+
+        dmo_gfx.context.images.push(image_gfx);
+    }
+}
+
+fn build_settings(dmo_gfx: &mut DmoGfx,
+                  dmo_data: &DmoData)
+{
+    let settings = Settings {
+        start_full_screen: dmo_data.settings.start_full_screen,
+        audio_play_on_start: dmo_data.settings.audio_play_on_start,
+        mouse_sensitivity: dmo_data.settings.mouse_sensitivity,
+        movement_sensitivity: dmo_data.settings.movement_sensitivity,
+        total_length: dmo_data.settings.total_length,
+    };
+    dmo_gfx.settings = settings;
+}
+
+fn build_frame_buffers(dmo_gfx: &mut DmoGfx,
+                       dmo_data: &DmoData)
+    -> Result<(), Box<Error>>
+{
+    use crate::dmo_data::context_data as d;
+
+    let mut frame_buffers: SmallVec<[FrameBuffer; 64]> = SmallVec::new();
+
+    for fb in dmo_data.context.frame_buffers.iter() {
+        let mut has_image = false;
+
+        let kind = match fb.kind {
+            d::BufferKind::NOOP => BufferKind::NOOP,
+            d::BufferKind::Empty_Texture => BufferKind::Empty_Texture,
+            d::BufferKind::Image_Texture => {
+                has_image = true;
+                BufferKind::Image_Texture
+            },
+        };
+
+        let format = match fb.format {
+            d::PixelFormat::NOOP => PixelFormat::NOOP,
+            d::PixelFormat::RED_u8 => PixelFormat::RED_u8,
+            d::PixelFormat::RGB_u8 => PixelFormat::RGB_u8,
+            d::PixelFormat::RGBA_u8 => PixelFormat::RGBA_u8,
+        };
+
+        if has_image {
+            let image_data_idx = dmo_data.context.index.get_image_index(&fb.image_path)?;
+            frame_buffers.push(FrameBuffer::new(kind, format, Some(image_data_idx)));
+        } else {
+            frame_buffers.push(FrameBuffer::new(kind, format, None));
+        }
+    }
+
+    dmo_gfx.context.frame_buffers = frame_buffers;
+
+    match dmo_gfx.create_frame_buffers() {
+        Ok(_) => {},
+        Err(e) => return Err(Box::new(ToolError::Runtime(e, "".to_owned())))
+    }
+
+    Ok(())
+}
+
+fn build_quad_scenes(dmo_gfx: &mut DmoGfx,
+                     dmo_data: &DmoData,
+                     track_name_to_idx: &BTreeMap<String, usize>)
+    -> Result<(), Box<Error>>
+{
+    use crate::dmo_data as d;
+
+    dmo_gfx.context.quad_scenes = SmallVec::new();
+
+    for q in dmo_data.context.quad_scenes.iter()
+    {
+        let mut layout_to_vars: SmallVec<[UniformMapping; 64]> = SmallVec::new();
+        let mut binding_to_buffers: SmallVec<[BufferMapping; 64]> = SmallVec::new();
+
+        for i in q.layout_to_vars.iter() {
+            let a = match i {
+                d::UniformMapping::NOOP => UniformMapping::NOOP,
+
+                d::UniformMapping::Float(layout_idx, a) =>
+                    UniformMapping::Float(*layout_idx,
+                                          builtin_to_idx(track_name_to_idx, a)? as u8),
+
+                                          d::UniformMapping::Vec2(layout_idx, a, b) =>
+                                              UniformMapping::Vec2(*layout_idx,
+                                                                   builtin_to_idx(track_name_to_idx, a)? as u8,
+                                                                   builtin_to_idx(track_name_to_idx, b)? as u8),
+
+                                                                   d::UniformMapping::Vec3(layout_idx, a, b, c) =>
+                                                                       UniformMapping::Vec3(*layout_idx,
+                                                                                            builtin_to_idx(track_name_to_idx, a)? as u8,
+                                                                                            builtin_to_idx(track_name_to_idx, b)? as u8,
+                                                                                            builtin_to_idx(track_name_to_idx, c)? as u8),
+
+                                                                                            d::UniformMapping::Vec4(layout_idx, a, b, c, d) =>
+                                                                                                UniformMapping::Vec4(*layout_idx,
+                                                                                                                     builtin_to_idx(track_name_to_idx, a)? as u8,
+                                                                                                                     builtin_to_idx(track_name_to_idx, b)? as u8,
+                                                                                                                     builtin_to_idx(track_name_to_idx, c)? as u8,
+                                                                                                                     builtin_to_idx(track_name_to_idx, d)? as u8),
+            };
+            layout_to_vars.push(a);
+        }
+
+        for i in q.binding_to_buffers.iter() {
+            let a = match i {
+                d::BufferMapping::NOOP => BufferMapping::NOOP,
+
+                d::BufferMapping::Sampler2D(layout_idx, buffer_name) => {
+                    let buffer_idx = dmo_data.context.index.get_buffer_index(&buffer_name)?;
+                    BufferMapping::Sampler2D(*layout_idx, buffer_idx as u8)
+                },
+            };
+            binding_to_buffers.push(a);
+        }
+
+        let vert_src_idx = dmo_data.context.index.get_shader_index(&q.vert_src_path)?;
+        let frag_src_idx = dmo_data.context.index.get_shader_index(&q.frag_src_path)?;
+
+        dmo_gfx
+            .context
+            .add_quad_scene(vert_src_idx,
+                            frag_src_idx,
+                            layout_to_vars,
+                            binding_to_buffers);
+    }
+
+    let mut err_msg_buf = [32 as u8; ERR_MSG_LEN];
+
+    match dmo_gfx.create_quads(&mut err_msg_buf) {
+        Ok(_) => {},
+        Err(e) => {
+            let msg = String::from_utf8(err_msg_buf.to_vec())?;
+            return Err(Box::new(ToolError::Runtime(e, msg)));
+        }
+    }
+
+    Ok(())
+}
+
+fn build_polygon_context_and_scenes(dmo_gfx: &mut DmoGfx,
+                                    dmo_data: &DmoData,
+                                    track_name_to_idx: &BTreeMap<String, usize>)
+    -> Result<(), Box<Error>>
+{
+    use crate::dmo_data as d;
+
+    // Create a PolygonContext and add models.
+
+    let aspect = dmo_gfx.context.get_window_aspect();
+
+    // Setting the aspect is enough. Camera view vectors, fovy, etc. will be set in the sync
+    // vars by calculating the track values defined in the Rocket XML.
+
+    dmo_gfx.context.camera = Camera::new_defaults(aspect as f32);
+    dmo_gfx.context.polygon_context = PolygonContext::new_defaults(aspect as f32);
+
+    dmo_data.add_models_to(dmo_gfx)?;
+
+    // Create correcponding OpenGL objects.
+
+    let mut err_msg_buf = [32 as u8; ERR_MSG_LEN];
+
+    match dmo_gfx.create_models(&mut err_msg_buf) {
+        Ok(_) => {},
+        Err(e) => {
+            let msg = String::from_utf8(err_msg_buf.to_vec())?;
+            return Err(Box::new(ToolError::Runtime(e, msg)));
+        }
+    }
+
+    // PolygonContext is ready.
+
+    // Add PolygonScenes.
+
+    for (_idx, scene) in dmo_data.context.polygon_scenes.iter().enumerate() {
+
+        let mut polygon_scene = PolygonScene::default();
+
+        for obj_data in scene.scene_objects.iter() {
+            let mut scene_object = SceneObject::default();
+            scene_object.model_idx = dmo_data.context.index.get_model_index(&obj_data.name)?;
+
+            scene_object.position_var = match &obj_data.position {
+                d::ValueVec3::NOOP => ValueVec3::NOOP,
+
+                d::ValueVec3::Fixed(a, b, c) => ValueVec3::Fixed(*a, *b, *c),
+
+                d::ValueVec3::Sync(a, b, c) =>
+                    ValueVec3::Sync(builtin_to_idx(track_name_to_idx, &a)? as u8,
+                    builtin_to_idx(track_name_to_idx, &b)? as u8,
+                    builtin_to_idx(track_name_to_idx, &c)? as u8),
+            };
+
+            scene_object.euler_rotation_var = match &obj_data.euler_rotation {
+                d::ValueVec3::NOOP => ValueVec3::NOOP,
+
+                d::ValueVec3::Fixed(a, b, c) => ValueVec3::Fixed(*a, *b, *c),
+
+                d::ValueVec3::Sync(a, b, c) =>
+                    ValueVec3::Sync(builtin_to_idx(track_name_to_idx, &a)? as u8,
+                    builtin_to_idx(track_name_to_idx, &b)? as u8,
+                    builtin_to_idx(track_name_to_idx, &c)? as u8),
+            };
+
+            scene_object.scale_var = match &obj_data.scale {
+                d::ValueFloat::NOOP => ValueFloat::NOOP,
+                d::ValueFloat::Fixed(a) => ValueFloat::Fixed(*a),
+                d::ValueFloat::Sync(a) => ValueFloat::Sync(builtin_to_idx(track_name_to_idx, &a)? as u8),
+            };
+
+            for i in obj_data.layout_to_vars.iter() {
+                let m = match i {
+                    d::UniformMapping::NOOP => UniformMapping::NOOP,
+
+                    d::UniformMapping::Float(x, a) =>
+                        UniformMapping::Float(*x, builtin_to_idx(track_name_to_idx, &a)? as u8),
+
+                        d::UniformMapping::Vec2(x, a, b) =>
+                            UniformMapping::Vec2(*x,
+                                                 builtin_to_idx(track_name_to_idx, &a)? as u8,
+                                                 builtin_to_idx(track_name_to_idx, &b)? as u8),
+
+                                                 d::UniformMapping::Vec3(x, a, b, c) =>
+                                                     UniformMapping::Vec3(*x,
+                                                                          builtin_to_idx(track_name_to_idx, &a)? as u8,
+                                                                          builtin_to_idx(track_name_to_idx, &b)? as u8,
+                                                                          builtin_to_idx(track_name_to_idx, &c)? as u8),
+
+                                                                          d::UniformMapping::Vec4(x, a, b, c, d) =>
+                                                                              UniformMapping::Vec4(*x,
+                                                                                                   builtin_to_idx(track_name_to_idx, &a)? as u8,
+                                                                                                   builtin_to_idx(track_name_to_idx, &b)? as u8,
+                                                                                                   builtin_to_idx(track_name_to_idx, &c)? as u8,
+                                                                                                   builtin_to_idx(track_name_to_idx, &d)? as u8),
+                };
+
+                scene_object.layout_to_vars.push(m);
+            }
+
+            for i in obj_data.binding_to_buffers.iter() {
+                let m = match i {
+
+                    d::BufferMapping::NOOP => BufferMapping::NOOP,
+
+                    d::BufferMapping::Sampler2D(layout_idx, name) => {
+                        let buffer_idx = dmo_data.context.index.get_buffer_index(&name)?;
+                        BufferMapping::Sampler2D(*layout_idx, buffer_idx as u8)
+                    },
+
+                };
+
+                scene_object.binding_to_buffers.push(m);
+            }
+
+            match dmo_gfx.compile_model_shaders(scene_object.model_idx, &mut err_msg_buf) {
+                Ok(_) => {},
+                Err(e) => {
+                    let msg = String::from_utf8(err_msg_buf.to_vec())?;
+                    return Err(Box::new(ToolError::Runtime(e, msg)));
+                }
+            }
+
+            polygon_scene.scene_objects.push(scene_object);
+        }
+
+        dmo_gfx.context.polygon_scenes.push(polygon_scene);
+    }
+
+    Ok(())
+}
+
+fn build_timeline(dmo_gfx: &mut DmoGfx,
+                  dmo_data: &DmoData)
+    -> Result<(), Box<Error>>
+{
+    use crate::dmo_data::timeline::DrawOp as D;
+    use intro_runtime::timeline::DrawOp as G;
+
+    dmo_gfx.timeline = Timeline::new();
+
+    for track in dmo_data.timeline.tracks.iter() {
+        let mut track_gfx = TimeTrack {
+            scene_blocks: SmallVec::new(),
+        };
+
+        for block in track.scene_blocks.iter() {
+            let mut ops: SmallVec<[G; 32]> = SmallVec::new();
+
+            for i in block.draw_ops.iter() {
+                let o = match i {
+                    D::NOOP => G::NOOP,
+
+                    D::Draw_Quad_Scene(name) => {
+                        let idx = dmo_data.context.index.get_quad_scene_index(name)?;
+                        G::Draw_Quad_Scene(idx)
+                    },
+
+                    D::Draw_Poly_Scene(name) => {
+                        let idx = dmo_data.context.index.get_polygon_scene_index(name)?;
+                        G::Draw_Poly_Scene(idx)
+                    },
+
+                    D::Clear(r, g, b, a) => G::Clear(*r, *g, *b, *a),
+
+                    D::Target_Buffer(name) => {
+                        let idx = dmo_data.context.index.get_buffer_index(name)?;
+                        G::Target_Buffer(idx)
+                    },
+
+                    D::Target_Buffer_Default => G::Target_Buffer_Default,
+
+                    D::Profile(name) => {
+                        let idx = dmo_data.context.index.get_profile_index(name)?;
+                        G::Profile(idx)
+                    },
+                };
+
+                ops.push(o);
+            }
+
+            let block_gfx = SceneBlock {
+                start: block.start,
+                end: block.end,
+                draw_ops: ops,
+            };
+
+            track_gfx.scene_blocks.push(block_gfx);
+        }
+
+        dmo_gfx.timeline.tracks.push(track_gfx);
+    }
+
+    Ok(())
+}
 
 const EMPTY_ROCKET: &'static str = r#"
 <?xml version="1.0" encoding="utf-8"?>

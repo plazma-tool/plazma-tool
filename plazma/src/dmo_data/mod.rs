@@ -44,11 +44,11 @@ impl Default for DmoData {
 }
 
 impl DmoData {
-    pub fn new_from_yml_str(text: &str, read_shader_paths: bool) -> Result<DmoData, Box<Error>>
+    pub fn new_from_yml_str(text: &str, read_shader_paths: bool, read_image_paths: bool) -> Result<DmoData, Box<Error>>
     {
         let mut dmo_data: DmoData = serde_yaml::from_str(text)?;
         dmo_data.ensure_implicit_builtins();
-        dmo_data.context.build_index(read_shader_paths)?;
+        dmo_data.context.build_index(read_shader_paths, read_image_paths)?;
         Ok(dmo_data)
     }
 

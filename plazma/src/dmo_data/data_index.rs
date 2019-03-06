@@ -2,12 +2,14 @@ use std::error::Error;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-use crate::dmo_data::context_data::FrameBuffer;
+use crate::dmo_data::context_data::{FrameBuffer, Image, PixelFormat};
 use crate::dmo_data::quad_scene::QuadScene;
 use crate::dmo_data::polygon_scene::PolygonScene;
 use crate::dmo_data::model::Model;
 use crate::error::ToolError;
 use crate::utils::file_to_string;
+
+use image::{self, GenericImageView};
 
 #[derive(Serialize, Debug)]
 pub struct DataIndex {
@@ -15,14 +17,15 @@ pub struct DataIndex {
     shader_paths: Vec<String>,
     shader_path_to_idx: BTreeMap<String, usize>,
 
+    image_paths: Vec<String>,
+    image_path_to_idx: BTreeMap<String, usize>,
+    image_path_to_format: BTreeMap<String, PixelFormat>,
+
     pub obj_paths: Vec<String>,
-    //pub image_paths: Vec<String>,
     pub quad_scene_name_to_idx: BTreeMap<String, usize>,
     pub polygon_scene_name_to_idx: BTreeMap<String, usize>,
     pub model_name_to_idx: BTreeMap<String, usize>,
     pub obj_path_to_idx: BTreeMap<String, usize>,
-    //pub image_path_to_idx: BTreeMap<String, u8>,
-    //pub image_path_to_format: BTreeMap<String, TrPixelFormat>,
     pub buffer_name_to_idx: BTreeMap<String, usize>,
 }
 
@@ -30,6 +33,7 @@ impl DataIndex {
     pub fn new() -> DataIndex {
         DataIndex {
             shader_paths: vec![],
+            image_paths: vec![],
             obj_paths: vec![],
             quad_scene_name_to_idx: BTreeMap::new(),
             polygon_scene_name_to_idx: BTreeMap::new(),
@@ -37,6 +41,8 @@ impl DataIndex {
             shader_path_to_idx: BTreeMap::new(),
             obj_path_to_idx: BTreeMap::new(),
             buffer_name_to_idx: BTreeMap::new(),
+            image_path_to_idx: BTreeMap::new(),
+            image_path_to_format: BTreeMap::new(),
         }
     }
 
@@ -106,7 +112,7 @@ impl DataIndex {
             return Ok(());
         }
 
-        self.add_shader_path_and_index(path);
+        self.add_shader_path_to_index(path);
 
         if read_shader_path {
             let src = file_to_string(&PathBuf::from(path))?;
@@ -116,17 +122,63 @@ impl DataIndex {
         return Ok(());
     }
 
-    pub fn add_frame_buffer(&mut self, buffer: &FrameBuffer, idx: usize) -> Result<(), Box<Error>> {
+    pub fn add_frame_buffer(&mut self,
+                            buffer: &FrameBuffer,
+                            idx: usize,
+                            read_image_path: bool,
+                            image_sources: &mut Vec<Image>)
+        -> Result<(), Box<Error>>
+        {
+
         if self.buffer_name_to_idx.contains_key(&buffer.name) {
             return Err(Box::new(ToolError::NameAlreadyExists));
         }
 
         self.buffer_name_to_idx.insert(buffer.name.to_string(), idx);
 
+        // TODO should error if buffer is not Empty_Texture but path.len() == 0
+        if buffer.image_path.len() > 0 {
+            self.add_image_path_format_to_index(&buffer.image_path, buffer.format.clone());
+
+            if read_image_path {
+                let p = PathBuf::from(&buffer.image_path);
+                let image_data = image::open(&p)?;
+                let (width, height) = image_data.dimensions();
+
+                let f = self.image_path_to_format.get(&buffer.image_path.clone()).ok_or("bad image path name")?;
+                let mut new_image = Image {
+                    width: width,
+                    height: height,
+                    format: *f,
+                    raw_pixels: vec![],
+                };
+
+                for x in image_data.raw_pixels().iter() {
+                    new_image.raw_pixels.push(*x);
+                }
+
+                image_sources.push(new_image);
+            }
+        }
+
         Ok(())
     }
 
-    pub fn add_shader_path_and_index(&mut self, path: &str) {
+    pub fn add_image_path_format_to_index(&mut self, path: &str, format: PixelFormat) {
+        // Ensure path doesn't already exist. The BTreeMap would just overwrite
+        // it, but the `image_paths[]` would accumulate duplicates.
+        if self.image_path_to_idx.contains_key(path) {
+            return;
+        }
+
+        self.image_paths.push(path.to_owned());
+        let idx = self.image_paths.len() - 1;
+        self.image_path_to_idx.insert(path.to_owned(), idx);
+
+        self.image_path_to_format.insert(path.to_owned(), format);
+    }
+
+    pub fn add_shader_path_to_index(&mut self, path: &str) {
         // Ensure path doesn't already exist. The BTreeMap would just overwrite
         // it, but the `shader_paths[]` would accumulate duplicates.
         if self.shader_path_to_idx.contains_key(path) {
@@ -140,6 +192,11 @@ impl DataIndex {
 
     pub fn get_shader_index(&self, path: &str) -> Result<usize, Box<Error>> {
         let idx = self.shader_path_to_idx.get(path).ok_or(format!{"no such shader path: {}", path})?;
+        Ok(*idx)
+    }
+
+    pub fn get_image_index(&self, path: &str) -> Result<usize, Box<Error>> {
+        let idx = self.image_path_to_idx.get(path).ok_or(format!{"no such image path: {}", path})?;
         Ok(*idx)
     }
 

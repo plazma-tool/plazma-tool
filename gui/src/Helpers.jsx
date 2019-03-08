@@ -1,7 +1,13 @@
 export const CurrentPage = {
     Settings: 1,
-    ContextShader: 2,
-    Timeline: 3,
+    Shaders: 2,
+    Framebuffers: 3,
+    QuadScenes: 4,
+    PolygonScenes: 5,
+    Images: 6,
+    Models: 7,
+    Timeline: 8,
+    SyncTracks: 9,
 };
 
 export function getVec3ValuesFromCode(code, re) {

@@ -24,7 +24,7 @@ export class DmoSettingsMenu extends React.Component {
 // Requires props:
 // - dmoData
 // - onChangeLift
-export class DmoSettingsForm extends React.Component {
+export class DmoSettingsPage extends React.Component {
     constructor(props) {
         super(props);
         this.onChangeLocal = this.onChangeLocal.bind(this);

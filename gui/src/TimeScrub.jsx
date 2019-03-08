@@ -41,7 +41,7 @@ class TimeSlider extends React.Component {
 // - currentTime
 // - totalLength
 // - onChangeLift
-export class DmoTimeScrub extends React.Component {
+export class TimeScrub extends React.Component {
     constructor(props) {
         super(props);
         this.onChangeLocal = this.onChangeLocal.bind(this);

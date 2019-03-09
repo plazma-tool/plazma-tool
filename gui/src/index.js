@@ -1,9 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import '../node_modules/bulma/css/bulma.css';
 import '../node_modules/@fortawesome/fontawesome-free/js/all.js';
 import '../node_modules/rc-slider/assets/index.css';
-import './index.css';
+import './index.scss';
 import App from './App';
 import * as serviceWorker from './serviceWorker';
 

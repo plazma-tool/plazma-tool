@@ -1,15 +1,15 @@
 import React from 'react';
 import { Menu } from 'bloomer';
 
-import { DmoSettingsMenu } from './DmoSettings';
-//import { DmoFramebuffersMenu } from './DmoFramebuffers';
-//import { DmoQuadScenesMenu } from './DmoQuadScenes';
-//import { DmoPolygonScenesMenu } from './DmoPolygonScenes';
 import { DmoShadersMenu } from './DmoShaders';
-//import { DmoImagesMenu } from './DmoImages';
-//import { DmoModelsMenu } from './DmoModels';
-//import { DmoTimelineMenu } from './DmoTimeline';
-//import { DmoSyncTracksMenu } from './DmoSyncTracks';
+import { DmoFramebuffersMenu } from './DmoFramebuffers';
+import { DmoQuadScenesMenu } from './DmoQuadScenes';
+import { DmoPolygonScenesMenu } from './DmoPolygonScenes';
+import { DmoImagesMenu } from './DmoImages';
+import { DmoModelsMenu } from './DmoModels';
+import { DmoTimelineMenu } from './DmoTimeline';
+import { DmoSyncTracksMenu } from './DmoSyncTracks';
+import { DmoSettingsMenu } from './DmoSettings';
 
 // Requires props:
 // - dmoData
@@ -31,18 +31,57 @@ export class Sidebar extends React.Component {
 
         return (
             <Menu>
+                <DmoShadersMenu
+                    dmoData={this.props.dmoData}
+                    currentPage={this.props.currentPage}
+                    currentIndex={this.props.currentShaderIndex}
+                    onClickLift={this.props.onClick_DmoShadersMenu}
+                    onChangeLift={this.props.onChange_DmoShadersMenu}
+                />
+
+                <DmoFramebuffersMenu
+                    //dmoData={this.props.dmoData}
+                    currentPage={this.props.currentPage}
+                    //currentIndex={this.props.currentFramebufferIndex}// TODO
+                    onClickLift={this.props.onClick_DmoFramebuffersMenu}
+                    //onChangeLift={this.props.onChange_DmoFramebuffersMenu}// TODO
+                />
+
+                <DmoQuadScenesMenu
+                    currentPage={this.props.currentPage}
+                    onClickLift={this.props.onClick_DmoQuadScenesMenu}
+                />
+
+                <DmoPolygonScenesMenu
+                    currentPage={this.props.currentPage}
+                    onClickLift={this.props.onClick_DmoPolygonScenesMenu}
+                />
+
+                <DmoImagesMenu
+                    currentPage={this.props.currentPage}
+                    onClickLift={this.props.onClick_DmoImagesMenu}
+                />
+
+                <DmoModelsMenu
+                    currentPage={this.props.currentPage}
+                    onClickLift={this.props.onClick_DmoModelsMenu}
+                />
+
+                <DmoTimelineMenu
+                    currentPage={this.props.currentPage}
+                    onClickLift={this.props.onClick_DmoTimelineMenu}
+                />
+
+                <DmoSyncTracksMenu
+                    currentPage={this.props.currentPage}
+                    onClickLift={this.props.onClick_DmoSyncTracksMenu}
+                />
+
                 <DmoSettingsMenu
                     currentPage={this.props.currentPage}
                     onClickLift={this.props.onClick_DmoSettingsMenu}
                 />
 
-                <DmoShadersMenu
-                    dmoData={this.props.dmoData}
-                    currentIndex={this.props.currentShaderIndex}
-                    currentPage={this.props.currentPage}
-                    onClickLift={this.props.onClick_DmoShadersMenu}
-                    onChangeLift={this.props.onChange_DmoShadersMenu}
-                />
             </Menu>
         );
     }

@@ -1,19 +1,24 @@
 import React, { Component } from 'react';
 //import * as ReactDOM from 'react-dom';
-import { Container, Columns, Column } from 'bloomer';
+import { Columns, Column } from 'bloomer';
 
 import { Toolbar } from './Toolbar';
 import { Sidebar } from './Sidebar';
 import { TimeScrub } from './TimeScrub';
 
-import { DmoSettingsPage } from './DmoSettings';// TODO rename to 'SettingsPage'
+import { SettingsPage } from './DmoSettings';
 import { ShadersPage } from './DmoShaders';
+import { FramebuffersPage } from './DmoFramebuffers';
+import { QuadScenesPage } from './DmoQuadScenes.jsx';
+import { PolygonScenesPage } from './DmoPolygonScenes.jsx';
+import { ImagesPage } from './DmoImages.jsx';
+import { ModelsPage } from './DmoModels.jsx';
+import { TimelinePage } from './DmoTimeline.jsx';
+import { SyncTracksPage } from './DmoSyncTracks.jsx';
 
 import { CurrentPage } from './Helpers';
 
 import './App.css';
-
-//import logo from './logo.svg';
 
 const PLAZMA_SERVER_PORT = 8080;
 
@@ -43,7 +48,16 @@ class App extends Component {
         this.onEditorChange = this.onEditorChange.bind(this);
 
         this.onDmoShadersMenuChange = this.onDmoShadersMenuChange.bind(this);
-        this.onDmoSettingsFormChange = this.onDmoSettingsFormChange.bind(this);
+
+        this.onChange_SettingsPage = this.onChange_SettingsPage.bind(this);
+        this.onChange_ShadersPage = this.onChange_ShadersPage.bind(this);
+        this.onChange_FramebuffersPage = this.onChange_FramebuffersPage.bind(this);
+        this.onChange_QuadScenesPage = this.onChange_QuadScenesPage.bind(this);
+        this.onChange_PolygonScenesPage = this.onChange_PolygonScenesPage.bind(this);
+        this.onChange_ImagesPage = this.onChange_ImagesPage.bind(this);
+        this.onChange_ModelsPage = this.onChange_ModelsPage.bind(this);
+        this.onChange_TimelinePage = this.onChange_TimelinePage.bind(this);
+        this.onChange_SyncTracksPage = this.onChange_SyncTracksPage.bind(this);
 
         this.onTimeScrubChange = this.onTimeScrubChange.bind(this);
 
@@ -140,7 +154,7 @@ class App extends Component {
         });
     }
 
-    onDmoSettingsFormChange(msg)
+    onChange_SettingsPage(msg)
     {
         if (msg.data_type === 'SetSettings') {
             this.setState({ settings: msg.data });
@@ -151,6 +165,46 @@ class App extends Component {
         };
         console.log('Sending server: SetSettings');
         this.state.socket.send(JSON.stringify(server_msg));
+    }
+
+    onChange_ShadersPage(msg)
+    {
+        console.log("TODO: implement onChange_ShadersPage(msg)");
+    }
+
+    onChange_FramebuffersPage(msg)
+    {
+        console.log("TODO: implement onChange_FramebuffersPage(msg)");
+    }
+
+    onChange_QuadScenesPage(msg)
+    {
+        console.log("TODO: implement onChange_QuadScenesPage(msg)");
+    }
+
+    onChange_PolygonScenesPage(msg)
+    {
+        console.log("TODO: implement onChange_PolygonScenesPage(msg)");
+    }
+
+    onChange_ImagesPage(msg)
+    {
+        console.log("TODO: implement onChange_ImagesPage(msg)");
+    }
+
+    onChange_ModelsPage(msg)
+    {
+        console.log("TODO: implement onChange_ModelsPage(msg)");
+    }
+
+    onChange_TimelinePage(msg)
+    {
+        console.log("TODO: implement onChange_TimelinePage(msg)");
+    }
+
+    onChange_SyncTracksPage(msg)
+    {
+        console.log("TODO: implement onChange_SyncTracksPage(msg)");
     }
 
     onTimeScrubChange(msg)
@@ -204,40 +258,103 @@ class App extends Component {
     render()
     {
         let page;
-        switch (this.state.current_page) {
-            case CurrentPage.Settings:
-                if (this.state.dmo_data === null) {
-                    page = <div><p>DmoData is empty.</p></div>;
-                } else {
+        if (this.state.dmo_data === null) {
+
+            page = <div><p>DmoData is empty.</p></div>;
+
+        } else {
+
+            switch (this.state.current_page) {
+
+                case CurrentPage.Settings:
                     page =
-                        <DmoSettingsPage
+                        <SettingsPage
                             dmoData={this.state.dmo_data}
-                            onChangeLift={this.onDmoSettingsFormChange}
+                            onChangeLift={this.onChange_SettingsPage}
                         />;
-                }
-                break;
-            case CurrentPage.Shaders:
-                page =
-                    <ShadersPage
-                        editorContent={this.state.editor_content}
-                        onChange_PlazmaMonaco={this.onEditorChange}
-                        onChange_ColorPickerColumns={this.onColorPickerChange}
-                        onChange_PositionSlidersColumns={this.onPositionSlidersChange}
-                        onChange_SliderColumns={this.onColorPickerChange}
-                    />
-                break;
-            default:
-                page =
-                    <div>
-                        <p>no page</p>
-                    </div>;
-        };
+                    break;
+
+                case CurrentPage.Shaders:
+                    page =
+                        <ShadersPage
+                            editorContent={this.state.editor_content}
+                            onChange_PlazmaMonaco={this.onEditorChange}
+                            onChange_ColorPickerColumns={this.onColorPickerChange}
+                            onChange_PositionSlidersColumns={this.onPositionSlidersChange}
+                            onChange_SliderColumns={this.onColorPickerChange}
+                        />
+                        break;
+
+                case CurrentPage.Framebuffers:
+                    page =
+                        <FramebuffersPage
+                            dmoData={this.state.dmo_data}
+                            onChangeLift={this.onChange_FramebuffersPage}
+                        />;
+                    break;
+
+                case CurrentPage.QuadScenes:
+                    page =
+                        <QuadScenesPage
+                            dmoData={this.state.dmo_data}
+                            onChangeLift={this.onChange_QuadScenesPage}
+                        />;
+                    break;
+
+                case CurrentPage.PolygonScenes:
+                    page =
+                        <PolygonScenesPage
+                            dmoData={this.state.dmo_data}
+                            onChangeLift={this.onChange_PolygonScenesPage}
+                        />;
+                    break;
+
+                case CurrentPage.Images:
+                    page =
+                        <ImagesPage
+                            dmoData={this.state.dmo_data}
+                            onChangeLift={this.onChange_ImagesPage}
+                        />;
+                    break;
+
+                case CurrentPage.Models:
+                    page =
+                        <ModelsPage
+                            dmoData={this.state.dmo_data}
+                            onChangeLift={this.onChange_ModelsPage}
+                        />;
+                    break;
+
+                case CurrentPage.Timeline:
+                    page =
+                        <TimelinePage
+                            dmoData={this.state.dmo_data}
+                            onChangeLift={this.onChange_TimelinePage}
+                        />;
+                    break;
+
+                case CurrentPage.SyncTracks:
+                    page =
+                        <SyncTracksPage
+                            dmoData={this.state.dmo_data}
+                            onChangeLift={this.onChange_SyncTracksPage}
+                        />;
+                    break;
+
+                default:
+                    page =
+                        <div>
+                            <p>no page</p>
+                        </div>;
+            };
+
+        }
 
         return (
             <div className="App">
-                <Container>
-                    <Toolbar />
-                </Container>
+
+                <Toolbar />
+
                 <Columns>
                     <Column isSize={{default: 1}}>
                         <Sidebar
@@ -246,8 +363,15 @@ class App extends Component {
                             currentShaderIndex={this.state.current_shader_index}
 
                             onClick_DmoSettingsMenu={() => this.setState({ current_page: CurrentPage.Settings })}
-
+                            onClick_DmoFramebuffersMenu={() => this.setState({ current_page: CurrentPage.Framebuffers })}
+                            onClick_DmoQuadScenesMenu={() => this.setState({ current_page: CurrentPage.QuadScenes })}
+                            onClick_DmoPolygonScenesMenu={() => this.setState({ current_page: CurrentPage.PolygonScenes })}
                             onClick_DmoShadersMenu={() => this.setState({ current_page: CurrentPage.Shaders })}
+                            onClick_DmoImagesMenu={() => this.setState({ current_page: CurrentPage.Images })}
+                            onClick_DmoModelsMenu={() => this.setState({ current_page: CurrentPage.Models })}
+                            onClick_DmoTimelineMenu={() => this.setState({ current_page: CurrentPage.Timeline })}
+                            onClick_DmoSyncTracksMenu={() => this.setState({ current_page: CurrentPage.SyncTracks })}
+
                             onChange_DmoShadersMenu={this.onDmoShadersMenuChange}
                         />
                     </Column>
@@ -255,13 +379,13 @@ class App extends Component {
                         {page}
                     </Column>
                 </Columns>
-                <Container>
-                    <TimeScrub
-                        dmoData={this.state.dmo_data}
-                        currentTime={this.state.current_time}
-                        onChangeLift={this.onTimeScrubChange}
-                    />
-                </Container>
+
+                <TimeScrub
+                    dmoData={this.state.dmo_data}
+                    currentTime={this.state.current_time}
+                    onChangeLift={this.onTimeScrubChange}
+                />
+
             </div>
         );
     }

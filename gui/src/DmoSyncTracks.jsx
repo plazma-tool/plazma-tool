@@ -5,16 +5,16 @@ import { CurrentPage } from './Helpers';
 // Requires props:
 // - currentPage
 // - onClickLift
-export class DmoTimelineMenu extends React.Component {
+export class DmoSyncTracksMenu extends React.Component {
     render() {
         let color = "";
-        if (this.props.currentPage === CurrentPage.Timeline) {
+        if (this.props.currentPage === CurrentPage.SyncTracks) {
             color = "primary";
         }
 
         return (
             <div onClick={this.props.onClickLift}>
-                <Title tag='h1' hasTextColor={color}>Timeline</Title>
+                <Title tag='h1' hasTextColor={color}>SyncTracks</Title>
             </div>
         );
     }
@@ -23,7 +23,7 @@ export class DmoTimelineMenu extends React.Component {
 // Requires props:
 // - dmoData
 // - onChangeLift
-export class TimelinePage extends React.Component {
+export class SyncTracksPage extends React.Component {
     constructor(props) {
         super(props);
         this.onChangeLocal = this.onChangeLocal.bind(this);

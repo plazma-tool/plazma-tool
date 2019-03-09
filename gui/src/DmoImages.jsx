@@ -5,16 +5,16 @@ import { CurrentPage } from './Helpers';
 // Requires props:
 // - currentPage
 // - onClickLift
-export class DmoTimelineMenu extends React.Component {
+export class DmoImagesMenu extends React.Component {
     render() {
         let color = "";
-        if (this.props.currentPage === CurrentPage.Timeline) {
+        if (this.props.currentPage === CurrentPage.Images) {
             color = "primary";
         }
 
         return (
             <div onClick={this.props.onClickLift}>
-                <Title tag='h1' hasTextColor={color}>Timeline</Title>
+                <Title tag='h1' hasTextColor={color}>Images</Title>
             </div>
         );
     }
@@ -23,7 +23,7 @@ export class DmoTimelineMenu extends React.Component {
 // Requires props:
 // - dmoData
 // - onChangeLift
-export class TimelinePage extends React.Component {
+export class ImagesPage extends React.Component {
     constructor(props) {
         super(props);
         this.onChangeLocal = this.onChangeLocal.bind(this);
@@ -58,4 +58,3 @@ export class TimelinePage extends React.Component {
         );
     }
 }
-

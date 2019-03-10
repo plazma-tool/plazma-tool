@@ -1,22 +1,20 @@
 import React from 'react';
-import { Title, Field, Label, Control, Input, Checkbox } from 'bloomer';
+import { Panel, PanelHeading, Field, Label, Control, Input, Checkbox } from 'bloomer';
 import { CurrentPage } from './Helpers';
-
-// TODO Click on the label shows the settings form in the main panel.
 
 // Requires props:
 // - currentPage
 // - onClickLift
-export class DmoSettingsMenu extends React.Component {
+export class DmoSettingsPanel extends React.Component {
     render() {
         let color = "";
         if (this.props.currentPage === CurrentPage.Settings) {
             color = "primary";
         }
         return (
-            <Title tag='h1' hasTextColor={color} onClick={this.props.onClickLift}>
-                Settings
-            </Title>
+            <Panel onClick={this.props.onClickLift}>
+                <PanelHeading hasTextColor={color}>Settings</PanelHeading>
+            </Panel>
         );
     }
 }

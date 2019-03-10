@@ -1,5 +1,5 @@
 import React from 'react';
-import { Columns, Column, Title, MenuList, MenuLink } from 'bloomer';
+import { Panel, PanelBlock, PanelIcon, PanelHeading, Columns, Column } from 'bloomer';
 import { CurrentPage } from './Helpers';
 
 import MonacoEditor from 'react-monaco-editor';
@@ -40,7 +40,7 @@ function pathBasename(path) {
 // - currentPage
 // - onChangeLift
 // - onClickLift
-export class DmoShadersMenu extends React.Component {
+export class DmoShadersPanel extends React.Component {
     constructor(props) {
         super(props);
         this.onChangeLocal = this.onChangeLocal.bind(this);
@@ -59,20 +59,25 @@ export class DmoShadersMenu extends React.Component {
         let pathLinks = paths.map((i) => {
             let path_full = i[0];
             let path_index = i[1];
-            let link;
+            let is_active = false;
+            let color = "";
 
             if (path_index === this.props.currentIndex) {
-                link = <MenuLink isActive>{pathBasename(path_full)}</MenuLink>
-            } else {
-                link = <MenuLink>{pathBasename(path_full)}</MenuLink>
-            };
+                is_active = true;
+                color = "primary";
+            }
+
             return (
-                <li
+                <PanelBlock
                     key={path_full}
+                    isActive={is_active}
+                    hasTextColor={color}
                     onClick={() => this.onChangeLocal(path_index)}
+                    style={{ border: "none" }}
                 >
-                    {link}
-                </li>
+                    <PanelIcon className="fa fa-code" />
+                    {pathBasename(path_full)}
+                </PanelBlock>
             );
         });
 
@@ -82,12 +87,10 @@ export class DmoShadersMenu extends React.Component {
         }
 
         return (
-            <div onClick={this.props.onClickLift}>
-                <Title tag='h1' hasTextColor={color}>Shaders</Title>
-                <MenuList>
-                    {pathLinks}
-                </MenuList>
-            </div>
+            <Panel onClick={this.props.onClickLift}>
+                <PanelHeading hasTextColor={color}>Shaders</PanelHeading>
+                {pathLinks}
+            </Panel>
         );
     }
 }

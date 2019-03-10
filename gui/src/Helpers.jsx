@@ -1,3 +1,5 @@
+
+// No index 0, to avoid == problems.
 export const CurrentPage = {
     Settings: 1,
     Shaders: 2,
@@ -8,6 +10,7 @@ export const CurrentPage = {
     Models: 7,
     Timeline: 8,
     SyncTracks: 9,
+    Library: 10,
 };
 
 export function getVec3ValuesFromCode(code, re) {

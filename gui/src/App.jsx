@@ -9,16 +9,17 @@ import { TimeScrub } from './TimeScrub';
 import { SettingsPage } from './DmoSettings';
 import { ShadersPage } from './DmoShaders';
 import { FramebuffersPage } from './DmoFramebuffers';
-import { QuadScenesPage } from './DmoQuadScenes.jsx';
-import { PolygonScenesPage } from './DmoPolygonScenes.jsx';
-import { ImagesPage } from './DmoImages.jsx';
-import { ModelsPage } from './DmoModels.jsx';
-import { TimelinePage } from './DmoTimeline.jsx';
-import { SyncTracksPage } from './DmoSyncTracks.jsx';
+import { QuadScenesPage } from './DmoQuadScenes';
+import { PolygonScenesPage } from './DmoPolygonScenes';
+import { ImagesPage } from './DmoImages';
+import { ModelsPage } from './DmoModels';
+import { TimelinePage } from './DmoTimeline';
+import { SyncTracksPage } from './DmoSyncTracks';
 
+import { LibraryPage } from './Library';
 import { CurrentPage } from './Helpers';
 
-import './App.css';
+import './App.scss';
 
 const PLAZMA_SERVER_PORT = 8080;
 
@@ -341,6 +342,14 @@ class App extends Component {
                         />;
                     break;
 
+                case CurrentPage.Library:
+                    page =
+                        <LibraryPage
+                            dmoData={this.state.dmo_data}
+                            onChangeLift={this.onChange_LibraryPage}
+                        />;
+                    break;
+
                 default:
                     page =
                         <div>
@@ -353,10 +362,12 @@ class App extends Component {
         return (
             <div className="App">
 
-                <Toolbar />
+                <Toolbar
+                    onClick_Library={() => this.setState({ current_page: CurrentPage.Library })}
+                />
 
                 <Columns>
-                    <Column isSize={{default: 1}}>
+                    <Column isSize={{default: 2}}>
                         <Sidebar
                             dmoData={this.state.dmo_data}
                             currentPage={this.state.current_page}

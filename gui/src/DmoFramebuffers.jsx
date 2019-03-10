@@ -1,11 +1,11 @@
 import React from 'react';
-import { Title, Field, Label, Control, Input } from 'bloomer';
+import { Field, Label, Control, Input, Panel, PanelHeading } from 'bloomer';
 import { CurrentPage } from './Helpers';
 
 // Requires props:
 // - currentPage
 // - onClickLift
-export class DmoFramebuffersMenu extends React.Component {
+export class DmoFramebuffersPanel extends React.Component {
     render() {
         let color = "";
         if (this.props.currentPage === CurrentPage.Framebuffers) {
@@ -13,9 +13,9 @@ export class DmoFramebuffersMenu extends React.Component {
         }
 
         return (
-            <div onClick={this.props.onClickLift}>
-                <Title tag='h1' hasTextColor={color}>Framebuffers</Title>
-            </div>
+            <Panel onClick={this.props.onClickLift}>
+                <PanelHeading hasTextColor={color}>Framebuffers</PanelHeading>
+            </Panel>
         );
     }
 }

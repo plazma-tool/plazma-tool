@@ -1,15 +1,37 @@
 import React from 'react';
-import { Menu } from 'bloomer';
+import { Menu, Button, Icon } from 'bloomer';
 
-import { DmoShadersMenu } from './DmoShaders';
-import { DmoFramebuffersMenu } from './DmoFramebuffers';
-import { DmoQuadScenesMenu } from './DmoQuadScenes';
-import { DmoPolygonScenesMenu } from './DmoPolygonScenes';
-import { DmoImagesMenu } from './DmoImages';
-import { DmoModelsMenu } from './DmoModels';
-import { DmoTimelineMenu } from './DmoTimeline';
-import { DmoSyncTracksMenu } from './DmoSyncTracks';
-import { DmoSettingsMenu } from './DmoSettings';
+import { DmoShadersPanel } from './DmoShaders';
+import { DmoFramebuffersPanel } from './DmoFramebuffers';
+import { DmoQuadScenesPanel } from './DmoQuadScenes';
+import { DmoPolygonScenesPanel } from './DmoPolygonScenes';
+import { DmoImagesPanel } from './DmoImages';
+import { DmoModelsPanel } from './DmoModels';
+import { DmoTimelinePanel } from './DmoTimeline';
+import { DmoSyncTracksPanel } from './DmoSyncTracks';
+import { DmoSettingsPanel } from './DmoSettings';
+
+// Requires props:
+// - isActive
+// - text
+// - onClickLift
+export class SidebarButton extends React.Component {
+    render() {
+        let color = "";
+        if (this.props.isActive) {
+            color = "primary";
+        }
+
+        return (
+            <div onClick={this.props.onClickLift}>
+                <Button hasTextColor={color} isColor="dark" className="is-fullwidth" >
+                    <Icon className="fa fa-bolt" />
+                    <span>{this.props.text}</span>
+                </Button>
+            </div>
+        );
+    }
+}
 
 // Requires props:
 // - dmoData
@@ -30,8 +52,8 @@ export class Sidebar extends React.Component {
     render() {
 
         return (
-            <Menu>
-                <DmoShadersMenu
+            <div id="sidebar">
+                <DmoShadersPanel
                     dmoData={this.props.dmoData}
                     currentPage={this.props.currentPage}
                     currentIndex={this.props.currentShaderIndex}
@@ -39,7 +61,7 @@ export class Sidebar extends React.Component {
                     onChangeLift={this.props.onChange_DmoShadersMenu}
                 />
 
-                <DmoFramebuffersMenu
+                <DmoFramebuffersPanel
                     //dmoData={this.props.dmoData}
                     currentPage={this.props.currentPage}
                     //currentIndex={this.props.currentFramebufferIndex}// TODO
@@ -47,42 +69,41 @@ export class Sidebar extends React.Component {
                     //onChangeLift={this.props.onChange_DmoFramebuffersMenu}// TODO
                 />
 
-                <DmoQuadScenesMenu
+                <DmoQuadScenesPanel
                     currentPage={this.props.currentPage}
                     onClickLift={this.props.onClick_DmoQuadScenesMenu}
                 />
 
-                <DmoPolygonScenesMenu
+                <DmoPolygonScenesPanel
                     currentPage={this.props.currentPage}
                     onClickLift={this.props.onClick_DmoPolygonScenesMenu}
                 />
 
-                <DmoImagesMenu
+                <DmoImagesPanel
                     currentPage={this.props.currentPage}
                     onClickLift={this.props.onClick_DmoImagesMenu}
                 />
 
-                <DmoModelsMenu
+                <DmoModelsPanel
                     currentPage={this.props.currentPage}
                     onClickLift={this.props.onClick_DmoModelsMenu}
                 />
 
-                <DmoTimelineMenu
+                <DmoTimelinePanel
                     currentPage={this.props.currentPage}
                     onClickLift={this.props.onClick_DmoTimelineMenu}
                 />
 
-                <DmoSyncTracksMenu
+                <DmoSyncTracksPanel
                     currentPage={this.props.currentPage}
                     onClickLift={this.props.onClick_DmoSyncTracksMenu}
                 />
 
-                <DmoSettingsMenu
+                <DmoSettingsPanel
                     currentPage={this.props.currentPage}
                     onClickLift={this.props.onClick_DmoSettingsMenu}
                 />
-
-            </Menu>
+            </div>
         );
     }
 }

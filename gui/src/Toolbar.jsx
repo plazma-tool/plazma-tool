@@ -18,7 +18,7 @@ export class Toolbar extends React.Component {
     render()
     {
         return (
-            <Navbar style={{ borderBottom: 'solid 1px #00D1B2', margin: '0' }}>
+            <Navbar style={{ marginBottom: '10px' }}>
 
                 <NavbarBrand>
                     <NavbarItem>
@@ -39,7 +39,7 @@ export class Toolbar extends React.Component {
                         <NavbarItem>
                             <Field isGrouped>
                                 <Control>
-                                    <Button>
+                                    <Button onClick={this.props.onClick_Library}>
                                         <Icon className="fa fa-th-list" />
                                         {/* <span>Library</span> */}
                                     </Button>

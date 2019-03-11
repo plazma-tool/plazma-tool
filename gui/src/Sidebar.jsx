@@ -1,5 +1,7 @@
+// @flow
 import React from 'react';
-import { Menu, Button, Icon } from 'bloomer';
+//import { Menu, Button, Icon } from 'bloomer';
+import type { DmoData } from './Helpers';
 
 import { DmoShadersPanel } from './DmoShaders';
 import { DmoFramebuffersPanel } from './DmoFramebuffers';
@@ -11,45 +13,32 @@ import { DmoTimelinePanel } from './DmoTimeline';
 import { DmoSyncTracksPanel } from './DmoSyncTracks';
 import { DmoSettingsPanel } from './DmoSettings';
 
-// Requires props:
-// - isActive
-// - text
-// - onClickLift
-export class SidebarButton extends React.Component {
-    render() {
-        let color = "";
-        if (this.props.isActive) {
-            color = "primary";
-        }
+type S_Props = {
+    dmoData: ?DmoData,
+    currentPage: number,
+    currentShaderIndex: number,
+    onClick_DmoSettingsMenu: () => void,
+    onClick_DmoFramebuffersMenu: () => void,
+    onClick_DmoQuadScenesMenu: () => void,
+    onClick_DmoPolygonScenesMenu: () => void,
+    onClick_DmoShadersMenu: () => void,
+    onClick_DmoImagesMenu: () => void,
+    onClick_DmoModelsMenu: () => void,
+    onClick_DmoTimelineMenu: () => void,
+    onClick_DmoSyncTracksMenu: () => void,
+    onChange_DmoShadersMenu: (idx: number) => void,
+};
 
-        return (
-            <div onClick={this.props.onClickLift}>
-                <Button hasTextColor={color} isColor="dark" className="is-fullwidth" >
-                    <Icon className="fa fa-bolt" />
-                    <span>{this.props.text}</span>
-                </Button>
-            </div>
-        );
-    }
-}
-
-// Requires props:
-// - dmoData
-// - currentPage
-// - currentShaderIndex
-// - onClick_DmoSettingsMenu
-// - onClick_DmoShadersMenu
-// - onChange_DmoShadersMenu
-export class Sidebar extends React.Component {
-    /*
-    constructor(props) {
-        super(props);
-
-        this.state = {};
-    }
-    */
+export class Sidebar extends React.Component<S_Props> {
 
     render() {
+        if (this.props.dmoData === null || typeof this.props.dmoData === 'undefined') {
+
+            return (
+                <div><p>dmoData is empty</p></div>
+            );
+
+        } else {
 
         return (
             <div id="sidebar">
@@ -105,5 +94,6 @@ export class Sidebar extends React.Component {
                 />
             </div>
         );
+        }
     }
 }

@@ -1,11 +1,15 @@
+// @flow
 import React from 'react';
 import { Panel, PanelHeading, Field, Label, Control, Input } from 'bloomer';
 import { CurrentPage } from './Helpers';
+import type { ServerMsg, DmoData, InputEvent } from './Helpers';
 
-// Requires props:
-// - currentPage
-// - onClickLift
-export class DmoTimelinePanel extends React.Component {
+type DTP_Props = {
+    currentPage: number,
+    onClickLift: () => void,
+};
+
+export class DmoTimelinePanel extends React.Component<DTP_Props> {
     render() {
         let color = "";
         if (this.props.currentPage === CurrentPage.Timeline) {
@@ -20,20 +24,17 @@ export class DmoTimelinePanel extends React.Component {
     }
 }
 
-// Requires props:
-// - dmoData
-// - onChangeLift
-export class TimelinePage extends React.Component {
-    constructor(props) {
-        super(props);
-        this.onChangeLocal = this.onChangeLocal.bind(this);
-    }
+type TP_Props = {
+    dmoData: DmoData,
+    onChangeLift: (ServerMsg) => void,
+};
 
-    onChangeLocal(e) {
-        let data = {};
+export class TimelinePage extends React.Component<TP_Props> {
+
+    onChangeLocal = (e: InputEvent) => {
         let msg = {
             data_type: 'TODO: compose the message',
-            data: data,
+            data: '',
         };
         this.props.onChangeLift(msg);
     }

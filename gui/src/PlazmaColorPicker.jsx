@@ -1,12 +1,16 @@
+// @flow
 import React from 'react';
 import { Columns, Column  } from 'bloomer';
 import { SketchPicker } from 'react-color';
 import { numToStrPad, getVec3ValuesFromCode } from './Helpers';
+import type { InputEvent } from './Helpers';
 
-// Requires props:
-// - code
-// - onChangeLift
-export class ColorPickerColumns extends React.Component {
+type CPC_Props = {
+    code: string,
+    onChangeLift: (newCodeValue: string) => void,
+};
+
+export class ColorPickerColumns extends React.Component<CPC_Props> {
     render() {
         let values = getColorValuesFromCode(this.props.code);
         let pickers = values.map((color, idx) => {
@@ -29,27 +33,30 @@ export class ColorPickerColumns extends React.Component {
     }
 }
 
-// Requires props:
-// - code
-// - color: { name: "name", rgba: { r: 0, g: 0, b: 0, a: 0 } }
-// - onChangeLift
-class PlazmaColorPicker extends React.Component {
-    constructor(props) {
-        super(props);
-        this.onChangeLocal = this.onChangeLocal.bind(this);
-        this.onChangeColor = this.onChangeColor.bind(this);
-    }
+type RgbaValue = { r: number, g: number, b: number, a: number };
+type RgbValue = { r: number, g: number, b: number };
 
-    onChangeLocal(newColorValue) {
+type Color = { name: string, rgba: RgbaValue };
+type SketchPickerColor = { name: string, rgb: { r: number, g: number, b: number } };
+
+type PCP_Props = {
+    code: string,
+    onChangeLift: (newCodeValue: string) => void,
+    color: Color,
+};
+
+class PlazmaColorPicker extends React.Component<PCP_Props> {
+
+    onChangeLocal = (newColorValue: SketchPickerColor) => {
         let newCodeValue = replaceColorValueInCode(newColorValue, this.props.code);
         this.props.onChangeLift(newCodeValue);
     }
 
-    onChangeColor(color, event) {
-        let c = this.props.color;
-        let newColorValue = {
+    onChangeColor = (color: SketchPickerColor, event: InputEvent) => {
+        let c: Color = this.props.color;
+        let newColorValue: SketchPickerColor = {
             name: c.name,
-            rgba: color.rgb,
+            rgb: color.rgb,
         };
         this.onChangeLocal(newColorValue);
     }
@@ -68,25 +75,25 @@ class PlazmaColorPicker extends React.Component {
     }
 }
 
-function rgbToVec3(col) {
+function rgbToVec3(col: RgbValue | RgbaValue): string {
     let vec = [ col.r, col.g, col.b ].map((i) => {
         return numToStrPad(Number((i / 255)));
     });
     return 'vec3(' + vec[0] + ', ' + vec[1] + ', ' + vec[2] + ')';
 }
 
-function replaceColorValueInCode(newColorValue, code) {
+function replaceColorValueInCode(newColorValue: SketchPickerColor, code: string): string {
     const c = newColorValue;
     let re_color = new RegExp('(vec3 +' + c.name + ' *= *)vec3\\([^\\)]+\\)(; *\\/\\/ *!! color *$)', 'gm');
-    let newCodeValue = code.replace(re_color, '$1' + rgbToVec3(c.rgba) + '$2');
+    let newCodeValue = code.replace(re_color, '$1' + rgbToVec3(c.rgb) + '$2');
     return newCodeValue;
 }
 
-function getColorValuesFromCode(code) {
+function getColorValuesFromCode(code: string): Color[] {
     let re_color = /vec3 +([^ ]+) *= *vec3\(([^)]+)\); *\/\/ *!! color *$/gm;
     let v = getVec3ValuesFromCode(code, re_color);
     let values = v.map((val) => {
-        return {
+        let c: Color = {
             name: val.name,
             rgba: {
                 r: Math.floor(val.vec[0] * 255),
@@ -95,6 +102,7 @@ function getColorValuesFromCode(code) {
                 a: 1.0,
             }
         };
+        return c;
     });
     return values;
 }

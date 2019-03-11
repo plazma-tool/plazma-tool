@@ -1,11 +1,15 @@
+// @flow
 import React from 'react';
 import { Panel, PanelHeading, Field, Label, Control, Input, Checkbox } from 'bloomer';
 import { CurrentPage } from './Helpers';
+import type { ServerMsg, DmoData, InputEvent } from './Helpers';
 
-// Requires props:
-// - currentPage
-// - onClickLift
-export class DmoSettingsPanel extends React.Component {
+type DSP_Props = {
+    currentPage: number,
+    onClickLift: () => void,
+};
+
+export class DmoSettingsPanel extends React.Component<DSP_Props> {
     render() {
         let color = "";
         if (this.props.currentPage === CurrentPage.Settings) {
@@ -19,31 +23,29 @@ export class DmoSettingsPanel extends React.Component {
     }
 }
 
-// Requires props:
-// - dmoData
-// - onChangeLift
-export class SettingsPage extends React.Component {
-    constructor(props) {
-        super(props);
-        this.onChangeLocal = this.onChangeLocal.bind(this);
-    }
+type SP_Props = {
+    dmoData: DmoData,
+    onChangeLift: (ServerMsg) => void,
+};
 
-    onChangeLocal(e) {
+export class SettingsPage extends React.Component<SP_Props> {
+
+    onChangeLocal = (e: InputEvent) => {
         let s = this.props.dmoData.settings;
-        switch(e.target.type) {
+        switch(e.currentTarget.type) {
             case 'number':
-                s[e.target.name] = Number(e.target.value);
+                s[e.currentTarget.name] = Number(e.currentTarget.value);
                 break;
             case 'checkbox':
-                s[e.target.name] = e.target.checked;
+                s[e.currentTarget.name] = e.currentTarget.checked;
                 break;
             default:
-                s[e.target.name] = e.target.value;
+                s[e.currentTarget.name] = e.currentTarget.value;
         }
 
-        let msg = {
+        let msg: ServerMsg = {
             data_type: 'SetSettings',
-            data: s,
+            data: JSON.stringify(s),
         };
         this.props.onChangeLift(msg);
     }

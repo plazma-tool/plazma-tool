@@ -1,11 +1,15 @@
+// @flow
 import React from 'react';
 import { Panel, PanelHeading, Field, Label, Control, Input } from 'bloomer';
 import { CurrentPage } from './Helpers';
+import type { ServerMsg, DmoData, InputEvent } from './Helpers';
 
-// Requires props:
-// - currentPage
-// - onClickLift
-export class DmoImagesPanel extends React.Component {
+type DIP_Props = {
+    currentPage: number,
+    onClickLift: () => void,
+};
+
+export class DmoImagesPanel extends React.Component<DIP_Props> {
     render() {
         let color = "";
         if (this.props.currentPage === CurrentPage.Images) {
@@ -20,20 +24,17 @@ export class DmoImagesPanel extends React.Component {
     }
 }
 
-// Requires props:
-// - dmoData
-// - onChangeLift
-export class ImagesPage extends React.Component {
-    constructor(props) {
-        super(props);
-        this.onChangeLocal = this.onChangeLocal.bind(this);
-    }
+type IP_Props = {
+    dmoData: DmoData,
+    onChangeLift: (ServerMsg) => void,
+};
 
-    onChangeLocal(e) {
-        let data = {};
-        let msg = {
+export class ImagesPage extends React.Component<IP_Props> {
+
+    onChangeLocal = (e: InputEvent) => {
+        let msg: ServerMsg = {
             data_type: 'TODO: compose the message',
-            data: data,
+            data: '',
         };
         this.props.onChangeLift(msg);
     }

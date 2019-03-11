@@ -1,11 +1,15 @@
+// @flow
 import React from 'react';
 import { Panel, PanelHeading, Field, Label, Control, Input } from 'bloomer';
 import { CurrentPage } from './Helpers';
+import type { ServerMsg, DmoData, InputEvent } from './Helpers';
 
-// Requires props:
-// - currentPage
-// - onClickLift
-export class DmoSyncTracksPanel extends React.Component {
+type DSTP_Props = {
+    currentPage: number,
+    onClickLift: () => void,
+};
+
+export class DmoSyncTracksPanel extends React.Component<DSTP_Props> {
     render() {
         let color = "";
         if (this.props.currentPage === CurrentPage.SyncTracks) {
@@ -20,20 +24,17 @@ export class DmoSyncTracksPanel extends React.Component {
     }
 }
 
-// Requires props:
-// - dmoData
-// - onChangeLift
-export class SyncTracksPage extends React.Component {
-    constructor(props) {
-        super(props);
-        this.onChangeLocal = this.onChangeLocal.bind(this);
-    }
+type STP_Props = {
+    dmoData: DmoData,
+    onChangeLift: (ServerMsg) => void,
+};
 
-    onChangeLocal(e) {
-        let data = {};
-        let msg = {
+export class SyncTracksPage extends React.Component<STP_Props> {
+
+    onChangeLocal = (e: InputEvent) => {
+        let msg: ServerMsg = {
             data_type: 'TODO: compose the message',
-            data: data,
+            data: '',
         };
         this.props.onChangeLift(msg);
     }

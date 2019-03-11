@@ -1,3 +1,4 @@
+// @flow
 import React from 'react';
 
 import logo from './idea.svg';
@@ -5,8 +6,16 @@ import logo from './idea.svg';
 import { Field, Control, Button, Navbar, NavbarBrand, NavbarItem, Icon, NavbarBurger, NavbarMenu,
     NavbarStart, NavbarEnd, NavbarLink, NavbarDropdown, NavbarDivider } from 'bloomer';
 
-export class Toolbar extends React.Component {
-    constructor(props)
+type T_Props = {
+    onClick_Library: () => void,
+};
+
+type T_State= {
+    isActive: bool,
+};
+
+export class Toolbar extends React.Component<T_Props, T_State> {
+    constructor(props: T_Props)
     {
         super(props);
 
@@ -14,6 +23,8 @@ export class Toolbar extends React.Component {
             isActive: false,
         };
     }
+
+    onClickNav = () => {}
 
     render()
     {

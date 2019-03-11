@@ -1,6 +1,8 @@
+// @flow
 import React from 'react';
 import { Panel, PanelBlock, PanelIcon, PanelHeading, Columns, Column } from 'bloomer';
 import { CurrentPage } from './Helpers';
+import type { DmoData } from './Helpers';
 
 import MonacoEditor from 'react-monaco-editor';
 import { ColorPickerColumns } from './PlazmaColorPicker';
@@ -11,7 +13,7 @@ import { SliderColumns } from './PlazmaSlider';
 // tree. Selecting a shader opens it in the editor.
 
 /*
-function getShaderIndex(dmoData, selectedPath) {
+function getShaderIndex(dmoData: DmoData, selectedPath: string) {
     if (dmoData === null) {
         return 0;
     }
@@ -30,35 +32,33 @@ function getShaderIndex(dmoData, selectedPath) {
 }
 */
 
-function pathBasename(path) {
+function pathBasename(path: string) {
     return path.replace(/.*\//, '')
 }
 
-// Requires props:
-// - dmoData
-// - currentIndex
-// - currentPage
-// - onChangeLift
-// - onClickLift
-export class DmoShadersPanel extends React.Component {
-    constructor(props) {
-        super(props);
-        this.onChangeLocal = this.onChangeLocal.bind(this);
-    }
+type DSP_Props = {
+    dmoData: DmoData,
+    currentPage: number,
+    currentIndex: number,
+    onClickLift: () => void,
+    onChangeLift: (idx: number) => void,
+};
 
-    onChangeLocal(currentIndex) {
+export class DmoShadersPanel extends React.Component<DSP_Props> {
+
+    onChangeLocal = (currentIndex: number) => {
         this.props.onChangeLift(currentIndex);
     }
 
     render() {
-        let paths = [];
+        let paths: Array<[string, mixed]> = [];
         if (this.props.dmoData !== null) {
             paths = Object.entries(this.props.dmoData.context.index.shader_path_to_idx);
         };
 
-        let pathLinks = paths.map((i) => {
-            let path_full = i[0];
-            let path_index = i[1];
+        let pathLinks = paths.map((i: [string, mixed]) => {
+            let path_full: string = i[0];
+            let path_index: number = Number(i[1]);
             let is_active = false;
             let color = "";
 
@@ -95,9 +95,15 @@ export class DmoShadersPanel extends React.Component {
     }
 }
 
-// Requires props:
-// - editorContent
-export class ShadersPage extends React.Component {
+type SP_Props = {
+    editorContent: string,
+    onChange_PlazmaMonaco: (newValue: string, e: MessageEvent) => void,
+    onChange_ColorPickerColumns: (newValue: string) => void,
+    onChange_PositionSlidersColumns: (newValue: string) => void,
+    onChange_SliderColumns: (newValue: string) => void,
+};
+
+export class ShadersPage extends React.Component<SP_Props> {
     render() {
         return(
             <div>
@@ -134,7 +140,13 @@ function UndoRedoButton(props) {
     );
 }
 
-class PlazmaMonacoToolbar extends React.Component {
+type PMT_Props = {
+    editor: MonacoEditor,
+    undoDisabled: bool,
+    redoDisabled: bool,
+};
+
+class PlazmaMonacoToolbar extends React.Component<PMT_Props> {
 
     undoAction(editor) {
         if (editor) {
@@ -169,27 +181,39 @@ class PlazmaMonacoToolbar extends React.Component {
     }
 }
 
-// Requires props:
-// - editorContent
-// - onChangeLift
-class PlazmaMonaco extends React.Component {
+type PM_Props = {
+    editorContent: string,
+    onChangeLift: (newValue: string, e: MessageEvent) => void,
+};
+
+type PM_State = {
+    editor: MonacoEditor,
+    modelVersions: {
+        initialVersion: number,
+        currentVersion: number,
+        lastVersion: number,
+    },
+    undoDisabled: bool,
+    redoDisabled: bool,
+};
+
+class PlazmaMonaco extends React.Component<PM_Props, PM_State> {
     constructor(props) {
         super(props);
 
         this.state = {
             editor: null,
-            modelVersions: null,
+            modelVersions: {
+                initialVersion: 0,
+                currentVersion: 0,
+                lastVersion: 0,
+            },
             undoDisabled: true,
             redoDisabled: true,
         };
-
-        this.editorDidMount = this.editorDidMount.bind(this);
-        this.onResize = this.onResize.bind(this);
-        this.onChangeLocal = this.onChangeLocal.bind(this);
-        this.updateVersions = this.updateVersions.bind(this);
     }
 
-    editorDidMount(editor, monaco) {
+    editorDidMount = (editor, monaco) => {
         let id = editor.getModel().getAlternativeVersionId();
         let modelVersions = {
             initialVersion: id,
@@ -211,12 +235,12 @@ class PlazmaMonaco extends React.Component {
         editor.setPosition({ lineNumber: 1, column: 1 });
     }
 
-    onChangeLocal(newValue, e) {
+    onChangeLocal = (newValue, e) => {
         this.props.onChangeLift(newValue, e);
         this.updateVersions();
     }
 
-    onResize() {
+    onResize = () => {
         this.state.editor.layout({height: 0, width: 0});
         this.state.editor.layout();
     }
@@ -224,7 +248,7 @@ class PlazmaMonaco extends React.Component {
     // FIXME: redo is disabled before the last action is restored (last edit
     // can't be restored).
 
-    updateVersions() {
+    updateVersions = () => {
         if (!this.state.modelVersions) {
             return;
         }

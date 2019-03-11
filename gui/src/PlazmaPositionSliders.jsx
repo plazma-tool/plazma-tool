@@ -1,18 +1,20 @@
+// @flow
 import React from 'react';
 import { Column  } from 'bloomer';
 import Slider from 'rc-slider';
 import { numToStrPad, getVec3ValuesFromCode } from './Helpers';
 
-// Requires props:
-// - code
-// - onChangeLift
-export class PositionSlidersColumns extends React.Component {
-    constructor(props) {
-        super(props);
-        this.onChangeLocal = this.onChangeLocal.bind(this);
-    }
+type XyzValue = { x: number, y: number, z: number };
+type Position = { name: string, xyz: XyzValue };
 
-    onChangeLocal(newPositionValue) {
+type PSC_Props = {
+    code: string,
+    onChangeLift: (newCodeValue: string) => void,
+};
+
+export class PositionSlidersColumns extends React.Component<PSC_Props> {
+
+    onChangeLocal = (newPositionValue: Position) => {
         let newCodeValue = replacePositionValueInCode(newPositionValue, this.props.code);
         this.props.onChangeLift(newCodeValue);
     }
@@ -36,10 +38,12 @@ export class PositionSlidersColumns extends React.Component {
     }
 }
 
-// Requires props:
-// - position: { name: "name", xyz: { x: 0.0, y: 0.0, z: 0.0 } }
-// - onChangeLift
-class PlazmaPositionSliders extends React.Component {
+type PPS_Props = {
+    position: Position,
+    onChangeLift: (newPositionValue: Position) => void,
+};
+
+class PlazmaPositionSliders extends React.Component<PPS_Props> {
     render() {
         let p = this.props.position;
         return (
@@ -54,29 +58,20 @@ class PlazmaPositionSliders extends React.Component {
     }
 }
 
-// Requires props:
-// - position: { name: "name", xyz: { x: 0.0, y: 0.0, z: 0.0 } }
-// - onChangeLift
-class PositionSliders extends React.Component {
-    constructor(props) {
-        super(props);
-        this.onChangeX = this.onChangeX.bind(this);
-        this.onChangeY = this.onChangeY.bind(this);
-        this.onChangeZ = this.onChangeZ.bind(this);
-    }
+class PositionSliders extends React.Component<PPS_Props> {
 
-    onChangeX(x) {
+    onChangeX = (x: number) => {
         let xyz = this.props.position.xyz;
         xyz.x = x;
 
-        let newPositionValue = {
+        let newPositionValue: Position = {
             name: this.props.position.name,
             xyz: xyz,
         };
         this.props.onChangeLift(newPositionValue);
     }
 
-    onChangeY(y) {
+    onChangeY = (y: number) => {
         let xyz = this.props.position.xyz;
         xyz.y = y;
 
@@ -87,7 +82,7 @@ class PositionSliders extends React.Component {
         this.props.onChangeLift(newPositionValue);
     }
 
-    onChangeZ(z) {
+    onChangeZ = (z: number) => {
         let xyz = this.props.position.xyz;
         xyz.z = z;
 
@@ -132,18 +127,18 @@ class PositionSliders extends React.Component {
     }
 }
 
-export function xyzToVec3(pos) {
+export function xyzToVec3(pos: XyzValue): string {
     let vec = [ pos.x, pos.y, pos.z ].map((i) => {
         return numToStrPad(Number(i / 1000));
     });
     return 'vec3(' + vec[0] + ', ' + vec[1] + ', ' + vec[2] + ')';
 }
 
-function getPositionValuesFromCode(code) {
+function getPositionValuesFromCode(code: string): Position[] {
     let re_position = /vec3 +([^ ]+) *= *vec3\(([^)]+)\); *\/\/ *!! position *$/gm;
     let v = getVec3ValuesFromCode(code, re_position);
-    let values = v.map((val) => {
-        return {
+    let values: Position[] = v.map((val) => {
+        let a: Position = {
             name: val.name,
             xyz: {
                 x: Math.floor(val.vec[0] * 1000),
@@ -151,11 +146,12 @@ function getPositionValuesFromCode(code) {
                 z: Math.floor(val.vec[2] * 1000),
             }
         };
+        return a;
     });
     return values;
 }
 
-function replacePositionValueInCode(newPositionValue, code) {
+function replacePositionValueInCode(newPositionValue: Position, code: string): string {
     const p = newPositionValue;
     let re_position = new RegExp('(vec3 +' + p.name + ' *= *)vec3\\([^\\)]+\\)(; *\\/\\/ *!! position *$)', 'gm');
     let newCodeValue = code.replace(re_position, '$1' + xyzToVec3(p.xyz) + '$2');

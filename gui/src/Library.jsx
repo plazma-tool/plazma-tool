@@ -1,24 +1,23 @@
+// @flow
 import React from 'react';
 
 import { Column, Columns, Title, Content, Card, CardHeader, CardHeaderTitle, CardHeaderIcon,
     CardImage, CardContent, Icon, Media, MediaContent, MediaLeft, Image, Subtitle } from 'bloomer';
 
-import { CurrentPage } from './Helpers';
+//import { CurrentPage } from './Helpers';
+import type { ServerMsg, DmoData, InputEvent } from './Helpers';
 
-// Requires props:
-// - dmoData
-// - onChangeLift
-export class LibraryPage extends React.Component {
-    constructor(props) {
-        super(props);
-        this.onChangeLocal = this.onChangeLocal.bind(this);
-    }
+type LP_Props = {
+    dmoData: DmoData,
+    onChangeLift: (ServerMsg) => void,
+};
 
-    onChangeLocal(e) {
-        let data = {};
+export class LibraryPage extends React.Component<LP_Props> {
+
+    onChangeLocal = (e: InputEvent) => {
         let msg = {
             data_type: 'TODO: compose the message',
-            data: data,
+            data: '',
         };
         this.props.onChangeLift(msg);
     }

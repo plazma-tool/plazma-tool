@@ -1,3 +1,4 @@
+// @flow
 import React, { Component } from 'react';
 //import * as ReactDOM from 'react-dom';
 import { Columns, Column } from 'bloomer';
@@ -18,57 +19,38 @@ import { SyncTracksPage } from './DmoSyncTracks';
 
 import { LibraryPage } from './Library';
 import { CurrentPage } from './Helpers';
-
-import './App.scss';
+import type { ServerMsg, DmoData } from './Helpers';
 
 const PLAZMA_SERVER_PORT = 8080;
 
-class App extends Component {
-    constructor(props)
+type AppState = {
+    socket: ?WebSocket,
+    dmo_data: ?DmoData,
+    editor_content: string,
+    current_page: number,
+    current_shader_index: number,
+    current_time: number,
+    sentUpdateSinceChange: bool,
+    updateTimerId: number,
+    getDmoTimeTimerId: number,
+};
+
+class App extends Component<{}, AppState> {
+    constructor(props: {})
     {
         super(props);
 
-        // TODO add a new attribute to select what is displayed in the main
-        // panel.
-
-        // NOTE No 0 index to avoid == problems.
         this.state = {
             socket: null,
             dmo_data: null,
-            editor_content: null,
+            editor_content: "",
             current_page: CurrentPage.Shaders,
-            current_shader_index: null,
+            current_shader_index: 0,
             current_time: 0.0,
             sentUpdateSinceChange: false,
+            updateTimerId: 0,
+            getDmoTimeTimerId: 0,
         };
-
-        this.updateTimerId = null;
-        this.getDmoTimeTimerId = null;
-
-        this.sendUpdatedContent = this.sendUpdatedContent.bind(this);
-        this.onEditorChange = this.onEditorChange.bind(this);
-
-        this.onDmoShadersMenuChange = this.onDmoShadersMenuChange.bind(this);
-
-        this.onChange_SettingsPage = this.onChange_SettingsPage.bind(this);
-        this.onChange_ShadersPage = this.onChange_ShadersPage.bind(this);
-        this.onChange_FramebuffersPage = this.onChange_FramebuffersPage.bind(this);
-        this.onChange_QuadScenesPage = this.onChange_QuadScenesPage.bind(this);
-        this.onChange_PolygonScenesPage = this.onChange_PolygonScenesPage.bind(this);
-        this.onChange_ImagesPage = this.onChange_ImagesPage.bind(this);
-        this.onChange_ModelsPage = this.onChange_ModelsPage.bind(this);
-        this.onChange_TimelinePage = this.onChange_TimelinePage.bind(this);
-        this.onChange_SyncTracksPage = this.onChange_SyncTracksPage.bind(this);
-
-        this.onTimeScrubChange = this.onTimeScrubChange.bind(this);
-
-        this.onColorPickerChange = this.onColorPickerChange.bind(this);
-        this.onPositionSlidersChange = this.onPositionSlidersChange.bind(this);
-
-        this.handleSocketOpen = this.handleSocketOpen.bind(this);
-        this.handleSocketMessage = this.handleSocketMessage.bind(this);
-        this.sendDmoData = this.sendDmoData.bind(this);
-        this.getDmoTime = this.getDmoTime.bind(this);
     }
 
     componentDidMount()
@@ -78,38 +60,47 @@ class App extends Component {
         socket.addEventListener('open', this.handleSocketOpen);
         socket.addEventListener('message', this.handleSocketMessage);
 
-        this.updateTimerId = window.setInterval(this.sendDmoData, 1000);
-        this.getDmoTimeTimerId = window.setInterval(this.getDmoTime, 500);
-
         this.setState({
+            updateTimerId: window.setInterval(this.sendDmoData, 1000),
+            getDmoTimeTimerId: window.setInterval(this.getDmoTime, 500),
             socket: socket,
         });
     }
 
     componentWillUnmount()
     {
-        window.clearInterval(this.updateTimerId);
+        window.clearInterval(this.state.updateTimerId);
     }
 
-    handleSocketOpen(event)
+    handleSocketOpen = (event: MessageEvent) =>
     {
         // Request DmoData from server.
-        let msg = {
+        let msg: ServerMsg = {
             data_type: 'FetchDmo',
             data: '',
         };
-        this.state.socket.send(JSON.stringify(msg));
+        this.sendMsgOnSocket(msg);
         this.setState({
             sentUpdateSinceChange: true,
         });
     }
 
-    handleSocketMessage(event)
+    sendMsgOnSocket = (msg: ServerMsg) =>
     {
-        var msg = JSON.parse(event.data);
-        switch (msg.data_type ) {
+        if (this.state.socket !== null && typeof this.state.socket !== 'undefined') {
+            this.state.socket.send(JSON.stringify(msg));
+        }
+    }
+
+    handleSocketMessage = (event: MessageEvent) =>
+    {
+        let msg: ServerMsg = { data_type: 'NoOp', data: '' };
+        if (typeof event.data === 'string') {
+            msg = JSON.parse(event.data);
+        }
+        switch (msg.data_type) {
             case 'SetDmo':
-                let d = JSON.parse(msg.data);
+                let d: DmoData = JSON.parse(msg.data);
 
                 let idx = this.state.current_shader_index;
                 let frag_src = d.context.shader_sources[idx];
@@ -118,7 +109,7 @@ class App extends Component {
                 break;
 
             case 'SetDmoTime':
-                let time = JSON.parse(msg.data);
+                let time: number = JSON.parse(msg.data);
                 this.setState({ current_time: time });
                 break;
 
@@ -130,7 +121,7 @@ class App extends Component {
         }
     }
 
-    sendUpdatedContent(newValue)
+    sendUpdatedContent = (newValue: string) =>
     {
         if (this.state.dmo_data) {
             let d = this.state.dmo_data;
@@ -147,119 +138,126 @@ class App extends Component {
         });
     }
 
-    onDmoShadersMenuChange(idx)
+    onDmoShadersMenuChange = (idx: number) =>
     {
-        this.setState({
-            current_shader_index: idx,
-            editor_content: this.state.dmo_data.context.shader_sources[idx],
-        });
+        if (this.state.dmo_data !== null && typeof this.state.dmo_data !== 'undefined') {
+            this.setState({
+                current_shader_index: idx,
+                editor_content: this.state.dmo_data.context.shader_sources[idx],
+            });
+        }
     }
 
-    onChange_SettingsPage(msg)
+    onChange_SettingsPage = (msg: ServerMsg) =>
     {
         if (msg.data_type === 'SetSettings') {
-            this.setState({ settings: msg.data });
+            if (this.state.dmo_data !== null && typeof this.state.dmo_data !== 'undefined') {
+                let d = this.state.dmo_data;
+                d.settings = JSON.parse(msg.data);
+                this.setState({ dmo_data: d });
+            }
         }
-        let server_msg = {
-            data_type: 'SetSettings',
-            data: JSON.stringify(msg.data),
-        };
         console.log('Sending server: SetSettings');
-        this.state.socket.send(JSON.stringify(server_msg));
+        this.sendMsgOnSocket(msg);
     }
 
-    onChange_ShadersPage(msg)
+    onChange_ShadersPage = (msg: ServerMsg) =>
     {
         console.log("TODO: implement onChange_ShadersPage(msg)");
     }
 
-    onChange_FramebuffersPage(msg)
+    onChange_FramebuffersPage = (msg: ServerMsg) =>
     {
         console.log("TODO: implement onChange_FramebuffersPage(msg)");
     }
 
-    onChange_QuadScenesPage(msg)
+    onChange_QuadScenesPage = (msg: ServerMsg) =>
     {
         console.log("TODO: implement onChange_QuadScenesPage(msg)");
     }
 
-    onChange_PolygonScenesPage(msg)
+    onChange_PolygonScenesPage = (msg: ServerMsg) =>
     {
         console.log("TODO: implement onChange_PolygonScenesPage(msg)");
     }
 
-    onChange_ImagesPage(msg)
+    onChange_ImagesPage = (msg: ServerMsg) =>
     {
         console.log("TODO: implement onChange_ImagesPage(msg)");
     }
 
-    onChange_ModelsPage(msg)
+    onChange_ModelsPage = (msg: ServerMsg) =>
     {
         console.log("TODO: implement onChange_ModelsPage(msg)");
     }
 
-    onChange_TimelinePage(msg)
+    onChange_TimelinePage = (msg: ServerMsg) =>
     {
         console.log("TODO: implement onChange_TimelinePage(msg)");
     }
 
-    onChange_SyncTracksPage(msg)
+    onChange_SyncTracksPage = (msg: ServerMsg) =>
     {
         console.log("TODO: implement onChange_SyncTracksPage(msg)");
     }
 
-    onTimeScrubChange(msg)
+    onChange_LibraryPage = (msg: ServerMsg) =>
+    {
+        console.log("TODO: implement onChange_LibraryPage(msg)");
+    }
+
+    onTimeScrubChange = (msg: ServerMsg) =>
     {
         if (msg.data_type === 'SetDmoTime') {
             console.log('Sending server SetDmoTime');
             this.setState({ current_time: Number(msg.data) });
             msg.data = String(msg.data);
-            this.state.socket.send(JSON.stringify(msg));
+            this.sendMsgOnSocket(msg);
         }
     }
 
-    onEditorChange(newValue, e)
+    onEditorChange = (newValue: string, e: MessageEvent) =>
     {
         this.sendUpdatedContent(newValue);
     }
 
-    onColorPickerChange(newValue)
+    onColorPickerChange = (newValue: string) =>
     {
         this.sendUpdatedContent(newValue);
     }
 
-    onPositionSlidersChange(newValue)
+    onPositionSlidersChange = (newValue: string) =>
     {
         this.sendUpdatedContent(newValue);
     }
 
-    sendDmoData()
+    sendDmoData = () =>
     {
         if (this.state.sentUpdateSinceChange) {
             return;
         } else if (this.state.socket) {
-            let msg = {
+            let msg: ServerMsg = {
                 data_type: 'SetDmo',
                 data: JSON.stringify(this.state.dmo_data),
             };
             console.log('Sending server: SetDmo');
-            this.state.socket.send(JSON.stringify(msg));
+            this.sendMsgOnSocket(msg);
             this.setState({
                 sentUpdateSinceChange: true,
             });
         }
     }
 
-    getDmoTime()
+    getDmoTime = () =>
     {
-        let msg = { data_type: 'GetDmoTime', data: '' };
-        this.state.socket.send(JSON.stringify(msg));
+        let msg: ServerMsg = { data_type: 'GetDmoTime', data: '' };
+        this.sendMsgOnSocket(msg);
     }
 
     render()
     {
         let page;
-        if (this.state.dmo_data === null) {
+        if (this.state.dmo_data === null || typeof this.state.dmo_data === 'undefined') {
 
             page = <div><p>DmoData is empty.</p></div>;
 

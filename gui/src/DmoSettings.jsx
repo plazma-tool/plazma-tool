@@ -1,6 +1,6 @@
 // @flow
 import React from 'react';
-import { Panel, PanelHeading, Field, Label, Control, Input, Checkbox } from 'bloomer';
+import { FieldBody, Column, Columns, Panel, PanelHeading, Field, Label, Control, Input, Checkbox } from 'bloomer';
 import { CurrentPage } from './Helpers';
 import type { ServerMsg, DmoData, InputEvent } from './Helpers';
 
@@ -52,69 +52,74 @@ export class SettingsPage extends React.Component<SP_Props> {
 
     render() {
         return (
-            <div>
+            <Columns>
+                <Column>
 
-              <Field>
-                <Label>Mouse sensitivity</Label>
-                <Control>
-                    <Input
-                        name='mouse_sensitivity'
-                        value={this.props.dmoData.settings.mouse_sensitivity}
-                        type="number" min="0.0" step="0.1"
-                        onChange={this.onChangeLocal}
-                    />
-                </Control>
-              </Field>
+                    <Field>
+                        <Label>Mouse sensitivity</Label>
+                        <Control>
+                            <Input
+                                name='mouse_sensitivity'
+                                value={this.props.dmoData.settings.mouse_sensitivity}
+                                type="number" min="0.0" step="0.1"
+                                onChange={this.onChangeLocal}
+                            />
+                        </Control>
+                    </Field>
 
-              <Field>
-                <Label>Movement sensitivity</Label>
-                <Control>
-                    <Input
-                        name='movement_sensitivity'
-                        value={this.props.dmoData.settings.movement_sensitivity}
-                        type="number" min="0.0" step="0.1"
-                        onChange={this.onChangeLocal}
-                    />
-                </Control>
-              </Field>
+                    <Field>
+                        <Label>Movement sensitivity</Label>
+                        <Control>
+                            <Input
+                                name='movement_sensitivity'
+                                value={this.props.dmoData.settings.movement_sensitivity}
+                                type="number" min="0.0" step="0.1"
+                                onChange={this.onChangeLocal}
+                            />
+                        </Control>
+                    </Field>
 
-              <Field>
-                <Label>Total length</Label>
-                <Control>
-                    <Input
-                        name='total_length'
-                        value={this.props.dmoData.settings.total_length}
-                        type="number" min="0.0" step="1.0"
-                        onChange={this.onChangeLocal}
-                    />
-                </Control>
-              </Field>
+                </Column>
+                <Column>
 
-              <Field>
-                <Control>
-                    <Checkbox
-                        name='start_full_screen'
-                        checked={this.props.dmoData.settings.start_full_screen}
-                        onChange={this.onChangeLocal}
-                    >
-                        Start full screen
-                    </Checkbox>
-                </Control>
-              </Field>
+                    <Field>
+                        <Label>Total length</Label>
+                        <Control>
+                            <Input
+                                name='total_length'
+                                value={this.props.dmoData.settings.total_length}
+                                type="number" min="0.0" step="1.0"
+                                onChange={this.onChangeLocal}
+                            />
+                        </Control>
+                    </Field>
 
-              <Field>
-                <Control>
-                    <Checkbox
-                        name='audio_play_on_start'
-                        checked={this.props.dmoData.settings.audio_play_on_start}
-                        onChange={this.onChangeLocal}
-                    >
-                        Play audio on start
-                    </Checkbox>
-                </Control>
-              </Field>
+                    <Field>
+                        <Control>
+                            <Checkbox
+                                name='start_full_screen'
+                                checked={this.props.dmoData.settings.start_full_screen}
+                                onChange={this.onChangeLocal}
+                            >
+                                Start full screen
+                            </Checkbox>
+                        </Control>
+                    </Field>
 
-            </div>
+                    <Field>
+                        <Control>
+                            <Checkbox
+                                name='audio_play_on_start'
+                                checked={this.props.dmoData.settings.audio_play_on_start}
+                                onChange={this.onChangeLocal}
+                            >
+                                Play audio on start
+                            </Checkbox>
+                        </Control>
+                    </Field>
+
+                </Column>
+            </Columns>
         );
     }
 }

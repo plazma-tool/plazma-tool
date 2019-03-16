@@ -31,11 +31,12 @@ type AppState = {
     current_shader_index: number,
     current_time: number,
     sentUpdateSinceChange: bool,
-    updateTimerId: number,
-    getDmoTimeTimerId: number,
 };
 
 class App extends Component<{}, AppState> {
+    updateTimerId: number;
+    getDmoTimeTimerId: number;
+
     constructor(props: {})
     {
         super(props);
@@ -48,8 +49,6 @@ class App extends Component<{}, AppState> {
             current_shader_index: 0,
             current_time: 0.0,
             sentUpdateSinceChange: false,
-            updateTimerId: 0,
-            getDmoTimeTimerId: 0,
         };
     }
 
@@ -61,15 +60,16 @@ class App extends Component<{}, AppState> {
         socket.addEventListener('message', this.handleSocketMessage);
 
         this.setState({
-            updateTimerId: window.setInterval(this.sendDmoData, 1000),
-            getDmoTimeTimerId: window.setInterval(this.getDmoTime, 500),
             socket: socket,
         });
+
+        this.updateTimerId = window.setInterval(this.sendDmoData, 1000);
+        this.getDmoTimeTimerId = window.setInterval(this.getDmoTime, 500);
     }
 
     componentWillUnmount()
     {
-        window.clearInterval(this.state.updateTimerId);
+        window.clearInterval(this.updateTimerId);
     }
 
     handleSocketOpen = (event: MessageEvent) =>

@@ -1,8 +1,8 @@
 // @flow
 import React from 'react';
-import { Panel, PanelHeading, Field, Label, Control, Input } from 'bloomer';
+import { Table, Panel, PanelHeading, Field, Label, Control, Input } from 'bloomer';
 import { CurrentPage } from './Helpers';
-import type { ServerMsg, DmoData, InputEvent } from './Helpers';
+import type { ServerMsg, DmoData, InputEvent, PixelFormat } from './Helpers';
 
 type DIP_Props = {
     currentPage: number,
@@ -24,6 +24,25 @@ export class DmoImagesPanel extends React.Component<DIP_Props> {
     }
 }
 
+type II_Props = {
+    idx: number,
+    format: PixelFormat,
+    path: string,
+};
+
+export class ImageItem extends React.Component<II_Props> {
+    render()
+    {
+        return(
+            <tr>
+                <td>{this.props.idx}</td>
+                <td>{this.props.format}</td>
+                <td>{this.props.path}</td>
+            </tr>
+        );
+    }
+}
+
 type IP_Props = {
     dmoData: DmoData,
     onChangeLift: (ServerMsg) => void,
@@ -40,22 +59,27 @@ export class ImagesPage extends React.Component<IP_Props> {
     }
 
     render() {
+        let images = this.props.dmoData.context.index.image_paths.map((i) => {
+            let path = i;
+            let idx = this.props.dmoData.context.index.image_path_to_idx[path];
+            let format = this.props.dmoData.context.index.image_path_to_format[path];
+
+            return (<ImageItem path={path} idx={idx} format={format} />);
+        });
+
         return (
-            <div>
-
-              <Field>
-                <Label>Mouse sensitivity</Label>
-                <Control>
-                    <Input
-                        name='mouse_sensitivity'
-                        value={this.props.dmoData.settings.mouse_sensitivity}
-                        type="number" min="0.0" step="0.1"
-                        onChange={this.onChangeLocal}
-                    />
-                </Control>
-              </Field>
-
-            </div>
+            <Table>
+                <thead>
+                    <tr>
+                        <th>idx</th>
+                        <th>format</th>
+                        <th>path</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {images}
+                </tbody>
+            </Table>
         );
     }
 }

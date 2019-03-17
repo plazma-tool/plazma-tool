@@ -31,9 +31,6 @@ type QSI_Props = {
 class QuadSceneItem extends React.Component<QSI_Props> {
     render()
     {
-        //console.log('layout_to_vars');
-        //console.log(this.props.data.layout_to_vars);
-
         let layout_to_vars = this.props.data.layout_to_vars.map((i) => {
             let fields = "";
 

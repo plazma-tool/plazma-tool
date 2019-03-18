@@ -33,12 +33,39 @@ pub struct DmoData {
     pub timeline: Timeline,
 }
 
+pub struct ProjectData {
+    /// Path to the demo YAML project description. Paths to asset files (shaders, images, etc.) in
+    /// the YAML are stored as relative to the YAML's folder.
+    pub dmo_yml_path: PathBuf,
+
+    /// The folder from which the demo YAML was read from.
+    pub project_root: PathBuf,
+
+    // /// The deserialized value of the YAML since the last read. Can be used to find what has
+    // /// changed when selecively rebuilding parts of the DmoGfx after detecting that the YAML files
+    // /// was modified on the disk.
+    // pub dmo_yml_value: Value,
+
+    // /// The deserialized value of the demo either after reading from YAML or receiving it from the
+    // /// server.
+    // pub dmo_data: DmoData,
+}
+
 impl Default for DmoData {
     fn default() -> DmoData {
         DmoData {
             settings: Settings::default(),
             context: ContextData::default(),
             timeline: Timeline::default(),
+        }
+    }
+}
+
+impl Default for ProjectData {
+    fn default() -> ProjectData {
+        ProjectData {
+            dmo_yml_path: PathBuf::default(),
+            project_root: PathBuf::default(),
         }
     }
 }

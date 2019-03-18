@@ -25,7 +25,7 @@ use intro_runtime::types::{PixelFormat, ValueVec3, ValueFloat, BufferMapping, Un
 use rocket_sync::{SyncDevice, SyncTrack, TrackKey, code_to_key};
 use rocket_client::SyncClient;
 
-use crate::dmo_data::DmoData;
+use crate::dmo_data::{DmoData, ProjectData};
 use crate::error::ToolError;
 use crate::utils::file_to_string;
 
@@ -50,6 +50,8 @@ pub struct PreviewState {
     pub track_names: Vec<String>,
     /// Mapping the track names to variable indexes in `dmo_gfx.sync_vars`.
     pub track_name_to_idx: BTreeMap<String, usize>,
+
+    pub project_data: ProjectData,
 }
 
 impl PreviewState {
@@ -83,6 +85,8 @@ impl PreviewState {
 
             track_names: Vec::new(),
             track_name_to_idx: BTreeMap::new(),
+
+            project_data: ProjectData::default(),
         };
 
         Ok(state)

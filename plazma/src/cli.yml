@@ -1,7 +1,7 @@
 name: Plazma
 version: "0.1.0"
 author: gambhiro
-about: "Default action starts the application: server thread, app window and OpenGL preview window."
+about: "Plazma Shader Tool"
 
 args:
   - port:

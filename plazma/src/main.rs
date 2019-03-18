@@ -19,7 +19,6 @@ extern crate rocket_client;
 extern crate rocket_sync;
 extern crate plazma;
 
-//use std::env;
 use std::thread;
 use clap::App;
 

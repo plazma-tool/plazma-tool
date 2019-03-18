@@ -68,7 +68,7 @@ pub fn process_cli_args(matches: clap::ArgMatches)
         plazma_server_port: Arc::new(server_port),
         start_server: true,
         start_webview: true,
-        start_preview: true,
+        start_preview: false,// FIXME fix blocking and start preview window as well
     };
 
     if let Some(_) = matches.subcommand_matches("server") {

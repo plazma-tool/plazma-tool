@@ -1,53 +1,53 @@
 name: Plazma
-version: 0.1.0
-author: @gambhiro
-about: Default action starts the application: server thread, app window and OpenGL preview window.
+version: "0.1.0"
+author: gambhiro
+about: "Default action starts the application: server thread, app window and OpenGL preview window."
 
 args:
   - port:
-      help: Server port.
+      help: "Server port."
       long: port
       value_name: PORT
-      default_value: 8080
+      default_value: "8080"
       required: false
       takes_value: true
 
 subcommands:
 
   - server:
-      about: Start only the server (without the app window).
+      about: "Start only the server (without the app window)."
 
   - preview:
-      about: Open a demo project in an OpenGL preview window. Use the flag options to specify the path to the demo project. If no project path is given, a minimal example demo will start.
+      about: "Open a demo project in an OpenGL preview window. Use the flag options to specify the path to the demo project. If no project path is given, a minimal example demo will start."
       args:
 
         - yml:
-            help: YAML file to read, located at project root folder of the demo.
+            help: "YAML file to read, located at project root folder of the demo."
             long: yml
             value_name: FILE
             required: false
             takes_value: true
 
         - dmo:
-            help: DMO project file, an all-in-one binary format.
+            help: "DMO project file, an all-in-one binary format."
             long: dmo
             value_name: FILE
             required: false
             takes_value: true
 
   - yml-to-dmo:
-      about: Read in a project from its YAML file and write an all-in-one DMO format file.
+      about: "Read in a project from its YAML file and write an all-in-one DMO format file."
       args:
 
         - yml:
-            help: YAML file to read, located at project root folder of the demo.
+            help: "YAML file to read, located at project root folder of the demo."
             long: yml
             value_name: FILE
             required: false
             takes_value: true
 
         - dmo:
-            help: DMO project file, an all-in-one binary format.
+            help: "DMO project file, an all-in-one binary format."
             long: dmo
             value_name: FILE
             required: false

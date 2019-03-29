@@ -1,8 +1,9 @@
 use std::path::PathBuf;
 use std::error::Error;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, mpsc};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
+use std::process::{Command, Child};
 
 use rand::Rng;
 
@@ -10,6 +11,7 @@ use actix_web::ws;
 use actix_web::actix::*;
 
 use crate::project_data::ProjectData;
+use crate::app::AppInfo;
 
 /// How often heartbeat pings are sent
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
@@ -35,17 +37,27 @@ const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
 /// passed back to the server as messages. Server passes messages on to the
 /// PreviewClient, which rebuilds OpenGL objects if necessary.
 pub struct ServerState {
+    pub app_info: AppInfo,
+    pub webview_sender: mpsc::Sender<String>,
     pub project_data: ProjectData,
     pub clients: HashMap<usize, Addr<ServerActor>>,
+    pub preview_child: Option<Child>,
 }
 
 pub type ServerStateWrap = Arc<Mutex<ServerState>>;
 
 impl ServerState {
-    pub fn new(demo_yml_path: &PathBuf) -> Result<ServerState, Box<Error>> {
+    pub fn new(app_info: AppInfo,
+               webview_sender: mpsc::Sender<String>,
+               demo_yml_path: &PathBuf)
+        -> Result<ServerState, Box<Error>>
+    {
         let state = ServerState {
+            app_info: app_info,
+            webview_sender: webview_sender,
             project_data: ProjectData::new(&demo_yml_path)?,
             clients: HashMap::new(),
+            preview_child: None,
         };
 
         Ok(state)
@@ -69,7 +81,7 @@ impl Actor for ServerActor {
         {
             let addr = ctx.address();
             let mut state = ctx.state().lock().expect("Can't lock ServerState.");
-            println!("Adding client: {}", self.client_id);
+            info!("Adding client: {}", self.client_id);
             state.clients.insert(self.client_id, addr);
         }
 
@@ -79,7 +91,7 @@ impl Actor for ServerActor {
     /// Remove client from list.
     fn stopping(&mut self, ctx: &mut Self::Context) -> Running {
         let mut state = ctx.state().lock().expect("Can't lock ServerState.");
-        println!("Removing client: {}", self.client_id);
+        info!("Removing client: {}", self.client_id);
         state.clients.remove(&self.client_id);
         Running::Stop
     }
@@ -101,7 +113,7 @@ impl ServerActor {
             // check client heartbeats
             if Instant::now().duration_since(act.hb) > CLIENT_TIMEOUT {
                 // heartbeat timed out
-                println!("Websocket Client heartbeat failed, disconnecting!");
+                error!("👹 Websocket Client heartbeat failed, disconnecting!");
 
                 // stop actor
                 ctx.stop();
@@ -124,6 +136,11 @@ pub enum MsgDataType {
     GetDmoTime,
     ShowErrorMessage,
     SetSettings,
+    StartPreview,
+    StopPreview,
+    PreviewOpened,
+    PreviewClosed,
+    ExitApp,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -205,7 +222,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
 
                             Ok(dmo) => {
                                 info!{"Deserialized Dmo"};
-                                let mut state = ctx.state().lock().expect("Can't lock ServerState.");
+                                let mut state = ctx.state().lock().expect("👿 Can't lock ServerState.");
                                 state.project_data.dmo_data = dmo;
 
                                 for (id, addr) in &state.clients {
@@ -241,7 +258,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                         match serde_json::from_str::<f64>(&message.data) {
                             Ok(time) => {
                                 //info!{"Deserialized time"};
-                                let state = ctx.state().lock().expect("Can't lock ServerState.");
+                                let state = ctx.state().lock().expect("👿 Can't lock ServerState.");
 
                                 for (id, addr) in &state.clients {
                                     if *id == self.client_id {
@@ -325,6 +342,125 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                         // Client is sending error message to server.
                         // TODO
                     },
+
+                    StartPreview => {
+                        let mut state = ctx.state().lock().expect("Can't lock ServerState.");
+
+                        if let Some(ref mut child) = state.preview_child {
+
+                            match child.try_wait() {
+                                Ok(Some(_)) => {
+                                    info!("🔎 Spawn a new process.");
+                                    let new_child: Option<Child> =
+                                        run_preview_command(&state.app_info.path_to_binary);
+
+                                    if new_child.is_some() {
+                                        state.preview_child = new_child;
+                                    }
+                                },
+
+                                Ok(None) => warn!("⚡ Still running."),
+
+                                Err(e) => error!("🔥 Can't wait for child process: {:?}", e),
+                            }
+
+                            return;
+
+                        } else {
+
+                            info!("🔎 Spawn a new process.");
+                            let new_child: Option<Child> =
+                                run_preview_command(&state.app_info.path_to_binary);
+
+                            if new_child.is_some() {
+                                state.preview_child = new_child;
+                            }
+
+                        }
+
+                    },
+
+                    StopPreview => {
+                        let state = ctx.state().lock().expect("👿 Can't lock ServerState.");
+
+                        for (id, addr) in &state.clients {
+                            if *id == self.client_id {
+                                continue;
+                            }
+
+                            let resp = Sending {
+                                data_type: StopPreview,
+                                data: "".to_owned(),
+                            };
+                            info!{"💬 Sending StopPreview to client {:?}", self.client_id};
+                            addr.do_send(resp);
+                        }
+                    },
+
+                    PreviewOpened => {
+                        let state = ctx.state().lock().expect("👿 Can't lock ServerState.");
+
+                        for (id, addr) in &state.clients {
+                            if *id == self.client_id {
+                                continue;
+                            }
+
+                            let resp = Sending {
+                                data_type: PreviewOpened,
+                                data: "".to_owned(),
+                            };
+                            info!{"💬 Sending PreviewOpened to client {:?}", self.client_id};
+                            addr.do_send(resp);
+                        }
+                    },
+
+                    PreviewClosed => {
+                        let state = ctx.state().lock().expect("👿 Can't lock ServerState.");
+
+                        for (id, addr) in &state.clients {
+                            if *id == self.client_id {
+                                continue;
+                            }
+
+                            let resp = Sending {
+                                data_type: PreviewClosed,
+                                data: "".to_owned(),
+                            };
+                            info!{"💬 Sending PreviewClosed to client {:?}", self.client_id};
+                            addr.do_send(resp);
+                        }
+                    },
+
+                    ExitApp => {
+                        {
+                            let state = ctx.state().lock().expect("👿 Can't lock ServerState.");
+
+                            // First, send StopPreview.
+
+                            for (id, addr) in &state.clients {
+                                if *id == self.client_id {
+                                    continue;
+                                }
+
+                                let resp = Sending {
+                                    data_type: StopPreview,
+                                    data: "".to_owned(),
+                                };
+                                info!{"💬 Sending StopPreview to client {:?}", self.client_id};
+                                addr.do_send(resp);
+                            }
+
+                            // Send ExitWebview to the webview window.
+                            match state.webview_sender.send("ExitWebview".to_owned()) {
+                                Ok(x) => x,
+                                Err(e) => error!("🔥 Can't send ExitWebview on state.webview_sender: {:?}", e),
+                            };
+                        }
+
+                        // Stop the Actor, stop the System.
+                        ctx.stop();
+                        System::current().stop();
+                    },
                 }
             },
 
@@ -336,4 +472,40 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
 
     }
 
+}
+
+fn run_preview_command(path_to_binary: &PathBuf) -> Option<Child>
+{
+    // std::process::Command inherits the current process's working directory.
+
+    let bin_cmd = format!("{:?} preview", path_to_binary);
+
+    if cfg!(target_os = "windows") {
+
+        match Command::new("cmd").arg("/C").arg(bin_cmd).spawn() {
+            Ok(child) => {
+                info!("🔎 spawned preview");
+                return Some(child);
+            },
+            Err(e) => {
+                error!("🔥 failed to spawn: {:?}", e);
+                return None;
+            },
+        }
+
+    } else {
+        // Not testing for `cfg!(target_os = "linux") || cfg!(target_os =
+        // "macos")`, try to run some command in any case.
+
+        match Command::new("sh").arg("-c").arg(bin_cmd).spawn() {
+            Ok(child) => {
+                info!("🔎 spawned preview");
+                return Some(child);
+            },
+            Err(e) => {
+                error!("🔥 failed to spawn: {:?}", e);
+                return None;
+            },
+        }
+    }
 }

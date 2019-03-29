@@ -19,15 +19,23 @@ extern crate rocket_client;
 extern crate rocket_sync;
 extern crate plazma;
 
-use std::thread;
+use std::sync::{Arc, Mutex, mpsc};
+
 use clap::App;
 
-use plazma::app::{AppStartParams, process_cli_args, start_server, start_webview, start_preview};
+use plazma::server_actor::{Sending, MsgDataType};
+use plazma::app::{self, AppStartParams};
 
 fn main() {
     kankyo::load().unwrap();
     //std::env::set_var("RUST_LOG", "actix_web=info,plazma=info");
     env_logger::init();
+    info!("🚀 Launched");
+
+    let app_info = app::app_info().unwrap();
+
+    info!("🔎 CWD: {:?}", &app_info.cwd);
+    info!("🔎 Path to binary: {:?}", &app_info.path_to_binary);
 
     // --- CLI options ---
 
@@ -42,36 +50,83 @@ fn main() {
         plazma_server_port,
         start_server: param_start_server,
         start_webview: param_start_webview,
-        start_preview: param_start_preview
-    } = process_cli_args(matches).unwrap();
-
-    // --- HTTP and WebSocket server ---
-
-    let server_handle = if param_start_server {
-        start_server(&plazma_server_port, yml_path).unwrap()
-    } else {
-        thread::spawn(|| {})
-    };
+        start_preview: param_start_preview,
+    } = app::process_cli_args(matches).unwrap();
 
     // --- OpenGL preview window ---
 
-    let preview_handle = if param_start_preview {
-        start_preview(&plazma_server_port).unwrap()
+    // Starts on the main thread. The render loop is blocking until it exits.
+
+    let port_a = plazma_server_port.clone();
+    if param_start_preview {
+        app::start_preview(port_a).unwrap();
+    };
+
+    // --- HTTP and WebSocket server ---
+
+    // Starts on a spawned thread. It allows to start the server before the webview window starts
+    // blocking.
+
+    // Channel to pass messages from the server to the webview window.
+    let (webview_sender, webview_receiver) = mpsc::channel();
+
+    // Channel to pass messages from the webview to the server.
+    let (server_sender, server_receiver) = mpsc::channel();
+
+    let port_b = plazma_server_port.clone();
+    let (server_handle, server_receiver_handle, client_receiver_handle) = if param_start_server {
+        let (a, b, c) = app::start_server(port_b,
+                                          app_info,
+                                          yml_path,
+                                          webview_sender,
+                                          server_receiver).unwrap();
+        (Some(a), Some(b), Some(c))
     } else {
-        thread::spawn(|| {})
+        (None, None, None)
     };
 
     // --- WebView ---
 
-    // Blocking until webview window is closed.
+    // Starts on the main thread. The webview window is blocking until it is closed.
 
+    let server_sender_arc = Arc::new(Mutex::new(server_sender));
+    let sender_a = server_sender_arc.clone();
+    let sender_b = server_sender_arc.clone();
+
+    let port_c = plazma_server_port.clone();
     if param_start_webview {
-        start_webview(&plazma_server_port).unwrap();
+        app::start_webview(port_c,
+                           webview_receiver,
+                           sender_a).unwrap();
+
+        // Send ExitApp to the server, in case it is still running. This can happen when the window
+        // manager is used to close the window, not the close button in the web UI.
+
+
+        let msg = serde_json::to_string(&Sending{
+            data_type: MsgDataType::ExitApp,
+            data: "".to_owned(),
+        }).unwrap();
+
+        let sender = sender_b.lock().expect("Can't lock server sender.");
+        match sender.send(msg) {
+            Ok(_) => {},
+            Err(e) => error!("🔥 Can't send on user_data.server_sender: {:?}", e),
+        }
+
     }
 
-    preview_handle.join().unwrap();
+    if let Some(h) = client_receiver_handle {
+        h.join().unwrap();
+    }
 
-    server_handle.join().unwrap();
+    if let Some(h) = server_receiver_handle {
+        h.join().unwrap();
+    }
 
-    info!("gg thx!");
+    if let Some(h) = server_handle {
+        h.join().unwrap();
+    }
+
+    info!("🍉 gg thx! 😎");
 }

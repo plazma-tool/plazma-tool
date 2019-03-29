@@ -1,7 +1,7 @@
-name: Plazma
+name: "Plazma Shader Tool"
 version: "0.1.0"
-author: gambhiro
-about: "Plazma Shader Tool"
+author: "https://plazma-tool.github.io/"
+about: "Create real-time graphics with shaders and polygon models."
 
 args:
   - port:

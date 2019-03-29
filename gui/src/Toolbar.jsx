@@ -59,8 +59,31 @@ class OpenProjectFileModal extends React.Component<OPFM_Props> {
     }
 }
 
+class OpenPreview extends React.Component<{ isOpen: bool, onClick: () => void, }> {
+    render() {
+        let color;
+        let text;
+        if (this.props.isOpen) {
+            color = "primary";
+            text = "Close Preview";
+        } else {
+            color = "info";
+            text = "Open Preview";
+        }
+
+        return (
+            <NavbarItem onClick={this.props.onClick}>
+                <Button isColor={color} >{text}</Button>
+            </NavbarItem>
+        );
+    }
+}
+
 type T_Props = {
     onClick_Library: () => void,
+    onClick_Preview: () => void,
+    onClick_Exit: () => void,
+    previewIsOpen: bool,
 };
 
 type T_State= {
@@ -147,6 +170,11 @@ export class Toolbar extends React.Component<T_Props, T_State> {
                     </NavbarStart>
 
                     <NavbarEnd>
+                        <OpenPreview
+                            isOpen={this.props.previewIsOpen}
+                            onClick={this.props.onClick_Preview}
+                        />
+
                         <NavbarItem hasDropdown isHoverable>
                             <NavbarLink>Info</NavbarLink>
                             <NavbarDropdown>
@@ -156,9 +184,11 @@ export class Toolbar extends React.Component<T_Props, T_State> {
                                 <NavbarItem>Two A</NavbarItem>
                             </NavbarDropdown>
                         </NavbarItem>
-                        <NavbarItem>
-                            <Delete style={{ color: '#55acee' }} />
+
+                        <NavbarItem onClick={this.props.onClick_Exit}>
+                            <Button> <Delete /> </Button>
                         </NavbarItem>
+
                     </NavbarEnd>
 
                 </NavbarMenu>

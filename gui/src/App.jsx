@@ -30,12 +30,14 @@ type AppState = {
     current_page: number,
     current_shader_index: number,
     current_time: number,
+    preview_is_open: bool,
     sentUpdateSinceChange: bool,
 };
 
 class App extends Component<{}, AppState> {
     updateTimerId: number;
     getDmoTimeTimerId: number;
+    connectToServerTimerId: number;
 
     constructor(props: {})
     {
@@ -48,21 +50,15 @@ class App extends Component<{}, AppState> {
             current_page: CurrentPage.Shaders,
             current_shader_index: 0,
             current_time: 0.0,
+            preview_is_open: false,
             sentUpdateSinceChange: false,
         };
     }
 
     componentDidMount()
     {
-        const socket = new WebSocket('ws://localhost:' + PLAZMA_SERVER_PORT + '/ws/');
 
-        socket.addEventListener('open', this.handleSocketOpen);
-        socket.addEventListener('message', this.handleSocketMessage);
-
-        this.setState({
-            socket: socket,
-        });
-
+        this.connectToServerTimerId = window.setInterval(this.connectToServer, 1000);
         this.updateTimerId = window.setInterval(this.sendDmoData, 1000);
         this.getDmoTimeTimerId = window.setInterval(this.getDmoTime, 500);
     }
@@ -70,10 +66,55 @@ class App extends Component<{}, AppState> {
     componentWillUnmount()
     {
         window.clearInterval(this.updateTimerId);
+        window.clearInterval(this.getDmoTimeTimerId);
+        window.clearInterval(this.connectToServerTimerId);
+    }
+
+    connectToServer = () =>
+    {
+        if (this.state.socket !== null && typeof this.state.socket !== 'undefined') {
+
+            if (this.state.socket.readyState === WebSocket.OPEN
+                || this.state.socket.readyState === WebSocket.CONNECTING) {
+
+                // Good to go.
+                window.clearInterval(this.connectToServerTimerId);
+
+            } else if (this.state.socket.readyState === WebSocket.CLOSED) {
+
+                // Connection was attempted before but probably refused.
+                console.log("Connecting to server on port " + PLAZMA_SERVER_PORT + " ...");
+                const socket = new WebSocket('ws://localhost:' + PLAZMA_SERVER_PORT + '/ws/');
+
+                socket.addEventListener('open', this.handleSocketOpen);
+                socket.addEventListener('message', this.handleSocketMessage);
+
+                this.setState({
+                    socket: socket,
+                });
+            }
+
+        } else {
+
+            // First attempt. Could be refused if server hasn't finished starting up.
+
+            console.log("Connecting to server on port " + PLAZMA_SERVER_PORT + " ...");
+            const socket = new WebSocket('ws://localhost:' + PLAZMA_SERVER_PORT + '/ws/');
+
+            socket.addEventListener('open', this.handleSocketOpen);
+            socket.addEventListener('message', this.handleSocketMessage);
+
+            this.setState({
+                socket: socket,
+            });
+
+        }
     }
 
     handleSocketOpen = (event: MessageEvent) =>
     {
+        console.log("Connected to server socket.");
+        console.log("Send to server: FetchDmo");
         // Request DmoData from server.
         let msg: ServerMsg = {
             data_type: 'FetchDmo',
@@ -87,7 +128,9 @@ class App extends Component<{}, AppState> {
 
     sendMsgOnSocket = (msg: ServerMsg) =>
     {
-        if (this.state.socket !== null && typeof this.state.socket !== 'undefined') {
+        if (this.state.socket !== null
+            && typeof this.state.socket !== 'undefined'
+            && this.state.socket.readyState === WebSocket.OPEN) {
             this.state.socket.send(JSON.stringify(msg));
         }
     }
@@ -114,6 +157,14 @@ class App extends Component<{}, AppState> {
                 break;
 
             case 'GetDmoTime':
+                break;
+
+            case 'PreviewOpened':
+                this.setState({ preview_is_open: true });
+                break;
+
+            case 'PreviewClosed':
+                this.setState({ preview_is_open: false });
                 break;
 
             default:
@@ -362,6 +413,39 @@ class App extends Component<{}, AppState> {
 
                 <Toolbar
                     onClick_Library={() => this.setState({ current_page: CurrentPage.Library })}
+
+                    onClick_Preview={() => {
+                        if (this.state.preview_is_open) {
+
+                            console.log("Send to server: StopPreview");
+                            let m: ServerMsg = {
+                                data_type: 'StopPreview',
+                                data: '',
+                            };
+                            this.sendMsgOnSocket(m);
+
+                        } else {
+
+                            console.log("Send to server: StartPreview");
+                            let m: ServerMsg = {
+                                data_type: 'StartPreview',
+                                data: '',
+                            };
+                            this.sendMsgOnSocket(m);
+
+                        }
+                    } }
+
+                    onClick_Exit={() => {
+                        console.log("Send to server: ExitApp");
+                        let m: ServerMsg = {
+                            data_type: 'ExitApp',
+                            data: '',
+                        };
+                        this.sendMsgOnSocket(m);
+                    }}
+
+                    previewIsOpen={this.state.preview_is_open}
                 />
 
                 <Columns>

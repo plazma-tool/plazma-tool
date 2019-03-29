@@ -187,7 +187,7 @@ impl PreviewState {
 
         }
 
-        println!("Recompiled");
+        info!("🎀 Shaders recompiled");
         self.should_recompile = false;
         // TODO draw_anyway needed?
         //self.draw_anyway = true;

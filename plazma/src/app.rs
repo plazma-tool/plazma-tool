@@ -8,7 +8,7 @@ use std::error::Error;
 
 use web_view::Content;
 
-use actix_web::{fs, middleware, server, ws, App, HttpRequest, HttpResponse};
+use actix_web::{fs, middleware, server, ws, App, HttpRequest};
 use actix_web::Error as AxError;
 use actix_web::actix::*;
 
@@ -27,16 +27,6 @@ use crate::utils::file_to_string;
 
 pub fn handle_static_index(_req: &HttpRequest<ServerStateWrap>) -> Result<fs::NamedFile, AxError> {
     Ok(fs::NamedFile::open("../gui/build/index.html")?)
-}
-
-pub fn handle_stop_server(_req: &HttpRequest<ServerStateWrap>) -> Result<HttpResponse, AxError> {
-    // Shouldn't this happen through HttpServer::system_exit()?
-    // Or send the SystemExit message to the running system?
-    System::current().stop();
-
-    Ok(HttpResponse::Ok()
-       .content_type("text/plain")
-       .body("g2g"))
 }
 
 #[derive(Debug)]
@@ -161,13 +151,14 @@ pub fn process_cli_args(matches: clap::ArgMatches)
 pub fn start_server(port: Arc<usize>,
                     app_info: AppInfo,
                     yml_path: PathBuf,
-                    webview_sender: mpsc::Sender<String>,
+                    webview_sender_arc: Arc<Mutex<mpsc::Sender<String>>>,
                     server_receiver: mpsc::Receiver<String>)
     -> Result<(thread::JoinHandle<()>, thread::JoinHandle<()>, thread::JoinHandle<()>), Box<Error>>
 {
     let port_clone_a = Arc::clone(&port);
     let port_clone_b = Arc::clone(&port);
 
+    let a = webview_sender_arc.clone();
     let server_handle = thread::spawn(move || {
         info!("🧵 new thread: server");
 
@@ -176,7 +167,7 @@ pub fn start_server(port: Arc<usize>,
         let server_state = Arc::new(
             Mutex::new(
                 ServerState::new(app_info,
-                                 webview_sender,
+                                 a,
                                  &yml_path).unwrap()
                 )
             );
@@ -188,9 +179,6 @@ pub fn start_server(port: Arc<usize>,
                 .middleware(middleware::Logger::default())
             // WebSocket routes (there is no CORS)
                 .resource("/ws/", |r| r.f(|req| ws::start(req, ServerActor::new())))
-            // tell the server to stop
-                .resource("/stop_server",
-                          |r| r.get().f(handle_stop_server))
             // static files
                 .handler("/static/", fs::StaticFiles::new("../gui/build/").unwrap()
                          .default_handler(handle_static_index))
@@ -247,7 +235,7 @@ pub fn start_server(port: Arc<usize>,
                                 },
                                 Err(_) => {},
                             }
-                            sleep(Duration::from_millis(1000));
+                            sleep(Duration::from_millis(100));
                         }
                     });
 
@@ -258,16 +246,27 @@ pub fn start_server(port: Arc<usize>,
         sys.run();
     });
 
+    let a = webview_sender_arc.clone();
     let client_receiver_handle = thread::spawn(move || {
         info!("🧵 new thread: client receiver");
         loop {
             match client_receiver.try_recv() {
                 Ok(text) => {
-                    info!("client_receiver: {:?}", text);
+                    if text == "StopSystem" {
+                        info!("client_receiver: {:?}", text);
+
+                        let webview_sender = a.lock().expect("Can't lock webview sender.");
+                        match webview_sender.send("ExitWebview".to_owned()) {
+                            Ok(_) => {},
+                            Err(e) => error!("Can't send on webview_sender: {:?}", e),
+                        };
+
+                        break;
+                    }
                 },
                 Err(_) => {},
             }
-            sleep(Duration::from_millis(1000));
+            sleep(Duration::from_millis(100));
         }
     });
 
@@ -301,7 +300,6 @@ pub fn start_webview(plazma_server_port: Arc<usize>,
 
     struct UserData {
         webview_receiver: mpsc::Receiver<String>,
-        //server_sender: mpsc::Sender<String>,
     };
 
     {
@@ -313,7 +311,6 @@ pub fn start_webview(plazma_server_port: Arc<usize>,
             .debug(true)
             .user_data(UserData {
                 webview_receiver: webview_receiver,
-                //server_sender: server_sender,
             })
             .invoke_handler(|_webview, _arg| Ok(()))
         .build().unwrap();
@@ -334,11 +331,10 @@ pub fn start_webview(plazma_server_port: Arc<usize>,
                 let a = server_sender_arc.clone();
                 let res = webview_handle.dispatch(move |webview| {
 
-                    let sender = a.lock().expect("Can't lock server sender.");
+                    let server_sender = a.lock().expect("Can't lock server sender.");
 
                     let UserData {
                         webview_receiver,
-                        //server_sender,
                     } = webview.user_data();
 
                     match webview_receiver.try_recv() {
@@ -353,9 +349,9 @@ pub fn start_webview(plazma_server_port: Arc<usize>,
                                     }?;
 
                                     // FIXME send server the path to use
-                                    match &sender.send("data_type, data...".to_owned()) {
+                                    match &server_sender.send("data_type, data...".to_owned()) {
                                         Ok(_) => {},
-                                        Err(e) => error!("🔥 Can't send on user_data.server_sender: {:?}", e),
+                                        Err(e) => error!("🔥 Can't send on server_sender: {:?}", e),
                                     };
                                 },
 
@@ -388,31 +384,7 @@ pub fn start_webview(plazma_server_port: Arc<usize>,
         // This will block until the window is closed.
         webview.run()?;
 
-        /*
-         * Hitting the /stop_server url no longer seems necessary. Actor and System are stopped in
-         * server_actor.rs when handling ExitApp message.
-         *
-         * handle_stop_server() was causing a segfault anyway.
-
-        // Blocked until gui exits. Then it hits the /stop_server url.
-
-        let url = format!{"http://localhost:{}/stop_server", plazma_server_port};
-
-        info!("🔎 Hit /stop_server");
-        actix::run(|| {
-            client::get(url)
-                .finish().unwrap()
-                .send()
-                .map_err(|err| {
-                    error!("💥 Can't hit url: {:?}", err);
-                    ()
-                })
-            .and_then(|response| {
-                info!("🔎 Server response: {:?}", response);
-                Ok(())
-            })
-        });
-        */
+        // Actor and System are stopped in server_actor.rs when handling ExitApp message.
 
     }
 
@@ -974,7 +946,7 @@ fn render_loop(window: &GlWindow,
     match server_sender.send("StopSystem".to_owned()) {
         Ok(_) => {},
         Err(e) => {
-            println!("🔥 Can't send StopSystem on server_sender: {:?}", e);
+            error!("🔥 Can't send StopSystem on server_sender: {:?}", e);
         },
     };
 

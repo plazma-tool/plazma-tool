@@ -69,6 +69,7 @@ fn main() {
 
     // Channel to pass messages from the server to the webview window.
     let (webview_sender, webview_receiver) = mpsc::channel();
+    let webview_sender_arc = Arc::new(Mutex::new(webview_sender));
 
     // Channel to pass messages from the webview to the server.
     let (server_sender, server_receiver) = mpsc::channel();
@@ -78,7 +79,7 @@ fn main() {
         let (a, b, c) = app::start_server(port_b,
                                           app_info,
                                           yml_path,
-                                          webview_sender,
+                                          webview_sender_arc,
                                           server_receiver).unwrap();
         (Some(a), Some(b), Some(c))
     } else {
@@ -101,7 +102,6 @@ fn main() {
 
         // Send ExitApp to the server, in case it is still running. This can happen when the window
         // manager is used to close the window, not the close button in the web UI.
-
 
         let msg = serde_json::to_string(&Sending{
             data_type: MsgDataType::ExitApp,

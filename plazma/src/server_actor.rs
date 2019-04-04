@@ -38,7 +38,7 @@ const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
 /// PreviewClient, which rebuilds OpenGL objects if necessary.
 pub struct ServerState {
     pub app_info: AppInfo,
-    pub webview_sender: mpsc::Sender<String>,
+    pub webview_sender_arc: Arc<Mutex<mpsc::Sender<String>>>,
     pub project_data: ProjectData,
     pub clients: HashMap<usize, Addr<ServerActor>>,
     pub preview_child: Option<Child>,
@@ -48,13 +48,13 @@ pub type ServerStateWrap = Arc<Mutex<ServerState>>;
 
 impl ServerState {
     pub fn new(app_info: AppInfo,
-               webview_sender: mpsc::Sender<String>,
+               webview_sender_arc: Arc<Mutex<mpsc::Sender<String>>>,
                demo_yml_path: &PathBuf)
         -> Result<ServerState, Box<Error>>
     {
         let state = ServerState {
             app_info: app_info,
-            webview_sender: webview_sender,
+            webview_sender_arc: webview_sender_arc,
             project_data: ProjectData::new(&demo_yml_path)?,
             clients: HashMap::new(),
             preview_child: None,
@@ -451,7 +451,9 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                             }
 
                             // Send ExitWebview to the webview window.
-                            match state.webview_sender.send("ExitWebview".to_owned()) {
+                            let webview_sender = state.webview_sender_arc.lock()
+                                .expect("Can't lock webview sender.");
+                            match webview_sender.send("ExitWebview".to_owned()) {
                                 Ok(x) => x,
                                 Err(e) => error!("🔥 Can't send ExitWebview on state.webview_sender: {:?}", e),
                             };

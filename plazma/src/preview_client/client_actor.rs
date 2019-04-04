@@ -23,8 +23,15 @@ impl Actor for ClientActor {
     }
 
     fn stopping(&mut self, _: &mut Context<Self>) -> Running {
-        info!("🔎 🚔 ClientActor disconnected, stopping the System");
+        info!("🔎 🚔 disconnected, stopping the System");
 
+        info!("Send StopSystem");
+        match self.channel_sender.send("StopSystem".to_owned()) {
+            Ok(_) => {},
+            Err(e) => error!("Can't send StopSystem: {:?}", e),
+        };
+
+        info!("System::current().stop()");
         System::current().stop();
 
         Running::Stop

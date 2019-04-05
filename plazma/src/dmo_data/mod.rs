@@ -15,7 +15,7 @@ use intro_runtime::dmo_gfx::DmoGfx;
 
 use crate::dmo_data::context_data::{ContextData, FrameBuffer};
 use crate::dmo_data::quad_scene::QuadScene;
-use crate::dmo_data::timeline::Timeline;
+use crate::dmo_data::timeline::{Timeline, TimeTrack, SceneBlock, DrawOp};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DmoData {
@@ -71,11 +71,87 @@ impl Default for ProjectData {
 }
 
 impl DmoData {
-    pub fn new_from_yml_str(text: &str, read_shader_paths: bool, read_image_paths: bool) -> Result<DmoData, Box<Error>>
+    pub fn new_from_yml_str(text: &str,
+                            read_shader_paths: bool,
+                            read_image_paths: bool)
+        -> Result<DmoData, Box<Error>>
     {
         let mut dmo_data: DmoData = serde_yaml::from_str(text)?;
         dmo_data.ensure_implicit_builtins();
         dmo_data.context.build_index(read_shader_paths, read_image_paths)?;
+        Ok(dmo_data)
+    }
+
+    pub fn new_minimal() -> Result<DmoData, Box<Error>>
+    {
+        // don't read anything from disk for the minimal demo, include assets in the binary
+        let mut dmo_data = DmoData::default();
+        dmo_data.ensure_implicit_builtins();
+        dmo_data.context.build_index(false, false)?;
+
+        // construct ContextData with one QuadScene
+        // ----------------------------------------
+
+        dmo_data.context.index.add_shader_path_to_index("circle.frag");
+        let a = include_str!("../../data/builtin/circle.frag");
+        dmo_data.context.shader_sources.push(a.to_owned());
+
+        use crate::dmo_data::BuiltIn::*;
+
+        let a = QuadScene {
+            name: "circle".to_owned(),
+            // shader name here is only for index mapping, not going to read it as a path
+            // same path name as in scene_draw_result()
+            vert_src_path: "data_builtin_screen_quad.vert".to_owned(),
+            frag_src_path: "circle.frag".to_owned(),
+            layout_to_vars: vec![
+                UniformMapping::Float(0, Time),
+                UniformMapping::Vec2(1, Window_Width, Window_Height),
+                UniformMapping::Vec2(2, Screen_Width, Screen_Height),
+            ],
+            binding_to_buffers: vec![],
+        };
+
+        // not going to call .build_index() at the end, just do here what is necessary
+        dmo_data.context.index.add_quad_scene(&a,
+                                              dmo_data.context.quad_scenes.len(),
+                                              false,
+                                              &mut vec![])?;
+
+        dmo_data.context.quad_scenes.push(a);
+
+        // construct a Timeline with one track
+        // -----------------------------------
+
+        let mut track = TimeTrack {
+            scene_blocks: vec![],
+        };
+
+        let scene = SceneBlock {
+            start: 0.0,
+            end: 240.0,
+            draw_ops: vec![
+                DrawOp::Target_Buffer("RESULT_IMAGE".to_owned()),
+                // #4682B4, Steel Blue
+                DrawOp::Clear(70, 130, 180, 0),
+                DrawOp::Draw_Quad_Scene("circle".to_owned()),
+            ],
+        };
+
+        track.scene_blocks.push(scene);
+
+        let timeline = Timeline {
+            tracks: vec![
+                track,
+            ],
+        };
+
+        dmo_data.timeline = timeline;
+
+        // result
+        // ------
+
+        //dmo_data.context.build_index(false, false)?;
         Ok(dmo_data)
     }
 
@@ -111,6 +187,14 @@ impl DmoData {
         }
 
         if !has_draw_result {
+            self.context.index.add_shader_path_to_index("data_builtin_screen_quad.vert");
+            let a = include_str!("../../data/builtin/screen_quad.vert");
+            self.context.shader_sources.push(a.to_owned());
+
+            self.context.index.add_shader_path_to_index("data_builtin_draw_result.frag");
+            let a = include_str!("../../data/builtin/draw_result.frag");
+            self.context.shader_sources.push(a.to_owned());
+
             let mut quad_scenes = vec![
                 QuadScene::scene_draw_result(),
             ];

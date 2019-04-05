@@ -111,22 +111,21 @@ impl PreviewState {
         Ok(())
     }
 
-    pub fn build_dmo_gfx_from_yml_str(&mut self,
-                                      yml_str: &str,
-                                      read_shader_paths: bool,
-                                      read_image_paths: bool,
-                                      window_width: f64,
-                                      window_height: f64,
-                                      screen_width: f64,
-                                      screen_height: f64,
-                                      camera: Option<Camera>)
+    pub fn build_dmo_gfx_from_dmo_data(&mut self,
+                                       dmo_data: &DmoData,
+                                       window_width: f64,
+                                       window_height: f64,
+                                       camera: Option<Camera>)
         -> Result<(), Box<Error>>
     {
-        let dmo_data: DmoData = DmoData::new_from_yml_str(&yml_str, read_shader_paths, read_image_paths)?;
+        // NOTE Must use window size for screen size as well
+        //
+        // NOTE The original aspect when first created has to be preserved, so
+        // passing only the size of the window when it was first created.
         let mut dmo_gfx: DmoGfx = DmoGfx::new_with_dimensions(window_width,
                                                               window_height,
-                                                              screen_width,
-                                                              screen_height,
+                                                              window_width,
+                                                              window_height,
                                                               camera);
 
         let (track_names, track_name_to_idx) = build_track_names(&mut dmo_gfx, &dmo_data)?;
@@ -146,6 +145,30 @@ impl PreviewState {
         self.should_recompile = true;
         self.draw_anyway = true;
 
+        Ok(())
+    }
+
+    pub fn build_dmo_gfx_from_yml_str(&mut self,
+                                      yml_str: &str,
+                                      read_shader_paths: bool,
+                                      read_image_paths: bool,
+                                      window_width: f64,
+                                      window_height: f64,
+                                      camera: Option<Camera>)
+        -> Result<(), Box<Error>>
+    {
+        let dmo_data: DmoData = DmoData::new_from_yml_str(&yml_str, read_shader_paths, read_image_paths)?;
+        self.build_dmo_gfx_from_dmo_data(&dmo_data, window_width, window_height, camera)?;
+        Ok(())
+    }
+
+    pub fn build_dmo_gfx_minimal(&mut self,
+                                      window_width: f64,
+                                      window_height: f64)
+        -> Result<(), Box<Error>>
+    {
+        let dmo_data: DmoData = DmoData::new_minimal()?;
+        self.build_dmo_gfx_from_dmo_data(&dmo_data, window_width, window_height, None)?;
         Ok(())
     }
 

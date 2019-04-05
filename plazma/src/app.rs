@@ -23,7 +23,6 @@ use crate::server_actor::{ServerActor, ServerState, ServerStateWrap, Sending, Re
 use crate::preview_client::client_actor::{ClientActor, ClientMessage};
 
 use crate::preview_client::preview_state::PreviewState;
-use crate::utils::file_to_string;
 
 pub fn handle_static_index(_req: &HttpRequest<ServerStateWrap>) -> Result<fs::NamedFile, AxError> {
     Ok(fs::NamedFile::open("../gui/build/index.html")?)
@@ -529,15 +528,9 @@ pub fn start_preview(plazma_server_port: Arc<usize>)
 
     let mut state = PreviewState::new(wx, wy).unwrap();
 
-    // Start with a minimal demo until we receive update from the server.
-    let demo_yml_path = PathBuf::from("data".to_owned())
-        .join(PathBuf::from("minimal".to_owned()))
-        .join(PathBuf::from("demo.yml".to_owned()));
-
-    let text: String = file_to_string(&demo_yml_path).unwrap();
-
-    // NOTE Must use window size for screen size as well
-    state.build_dmo_gfx_from_yml_str(&text, true, true, wx, wy, wx, wy, None).unwrap();
+    // Start with a minimal demo until we receive update from the server. This will be compiled
+    // into the binary, so no reading from the disk is needed to open the preview window.
+    state.build_dmo_gfx_minimal(wx, wy).unwrap();
 
     let mut rocket: Option<SyncClient> = None;
     state.build_rocket_connection(&mut rocket).unwrap();
@@ -617,11 +610,8 @@ fn render_loop(window: &GlWindow,
                         info!{"sx: {}, sy: {}", sx, sy};
                         let camera = state.dmo_gfx.context.camera.get_copy();
 
-                        // NOTE The original aspect when first created has to be preserved, so
-                        // passing screen sizes only, which are the size of the window when it was
-                        // first created.
                         match state.build_dmo_gfx_from_yml_str(&message.data, false, false,
-                                                               sx, sy, sx, sy,
+                                                               sx, sy,
                                                                Some(camera))
                         {
                             Ok(_) => {},

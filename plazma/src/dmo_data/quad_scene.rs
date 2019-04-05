@@ -39,9 +39,9 @@ impl QuadScene {
         use crate::dmo_data::BuiltIn::*;
         QuadScene {
             name: "DRAW_RESULT".to_string(),
-            // FIXME use static strings, b/c these will always need to be present when executing the binary
-            vert_src_path: "./data/builtin/screen_quad.vert".to_string(),
-            frag_src_path: "./data/builtin/draw_result.frag".to_string(),
+            // shader name here is only for index mapping, not going to read it as a path
+            vert_src_path: "data_builtin_screen_quad.vert".to_string(),
+            frag_src_path: "data_builtin_draw_result.frag".to_string(),
             layout_to_vars: vec![
                 UniformMapping::Vec2(0, Window_Width, Window_Height),
                 UniformMapping::Vec2(1, Screen_Width, Screen_Height),

@@ -13,8 +13,8 @@ context:
   quad_scenes:
 
     - name: "circle"
-      vert_src_path: "./data/minimal/data/screen_quad.vert"
-      frag_src_path: "./data/minimal/data/circle.frag"
+      vert_src_path: "./data/sample/data/screen_quad.vert"
+      frag_src_path: "./data/sample/data/circle.frag"
       layout_to_vars:
         - Float: [ 0, "Time" ]
         - Vec2: [ 1, "Window_Width", "Window_Height" ]
@@ -22,8 +22,8 @@ context:
       binding_to_buffers: []
 
     - name: "cross"
-      vert_src_path: "./data/minimal/data/screen_quad.vert"
-      frag_src_path: "./data/minimal/data/cross.frag"
+      vert_src_path: "./data/sample/data/screen_quad.vert"
+      frag_src_path: "./data/sample/data/cross.frag"
       layout_to_vars:
         - Float: [ 0, "Time" ]
         - Vec2: [ 1, "Window_Width", "Window_Height" ]
@@ -129,32 +129,32 @@ context:
 
       - name: "cube one"
         model_type: Cube
-        vert_src_path: "./data/minimal/data/scene_object.vert"
-        frag_src_path: "./data/minimal/data/cube_one.frag"
+        vert_src_path: "./data/sample/data/scene_object.vert"
+        frag_src_path: "./data/sample/data/cube_one.frag"
         obj_path: ""
 
       - name: "cube two"
         model_type: Obj
-        vert_src_path: "./data/minimal/data/scene_object.vert"
-        frag_src_path: "./data/minimal/data/cube_two.frag"
-        obj_path: "./data/minimal/data/cube.obj"
+        vert_src_path: "./data/sample/data/scene_object.vert"
+        frag_src_path: "./data/sample/data/cube_two.frag"
+        obj_path: "./data/sample/data/cube.obj"
 
       - name: "room box"
         model_type: Cube
-        vert_src_path: "./data/minimal/data/scene_object.vert"
-        frag_src_path: "./data/minimal/data/cube_one.frag"
+        vert_src_path: "./data/sample/data/scene_object.vert"
+        frag_src_path: "./data/sample/data/cube_one.frag"
         obj_path: ""
 
       - name: "suzanne"
         model_type: Obj
-        vert_src_path: "./data/minimal/data/scene_object.vert"
-        frag_src_path: "./data/minimal/data/suzanne.frag"
-        obj_path: "./data/minimal/data/suzanne.obj"
+        vert_src_path: "./data/sample/data/scene_object.vert"
+        frag_src_path: "./data/sample/data/suzanne.frag"
+        obj_path: "./data/sample/data/suzanne.obj"
 
       #- name: "light"
       #  model_type: Cube
-      #  vert_src_path: "./data/minimal/data/scene_object.vert"
-      #  frag_src_path: "./data/minimal/data/light.frag"
+      #  vert_src_path: "./data/sample/data/scene_object.vert"
+      #  frag_src_path: "./data/sample/data/light.frag"
       #  obj_path: ""
 
   frame_buffers:
@@ -164,29 +164,29 @@ context:
 
     - { name: "organic texture buf",
         kind: Image_Texture, format: RGB_u8,
-        image_path: "./data/minimal/data/images/organic4 1024x1024 3ch uint8.jpg" }
+        image_path: "./data/sample/data/images/organic4 1024x1024 3ch uint8.jpg" }
 
     - { name: "gray noise medium buf",
         kind: Image_Texture, format: RED_u8,
-        image_path: "./data/minimal/data/images/gray-noise-medium-256x256-1ch-uint8.png" }
+        image_path: "./data/sample/data/images/gray-noise-medium-256x256-1ch-uint8.png" }
 
     - { name: "rgba noise medium buf",
         kind: Image_Texture, format: RGBA_u8,
-        image_path: "./data/minimal/data/images/rgba-noise-medium-256x256-4ch-uint8.png" }
+        image_path: "./data/sample/data/images/rgba-noise-medium-256x256-4ch-uint8.png" }
 
     - { name: "rock tiles",
         kind: Image_Texture, format: RGB_u8,
-        image_path: "./data/minimal/data/images/rock tiles 512x512 3ch uint8.jpg" }
+        image_path: "./data/sample/data/images/rock tiles 512x512 3ch uint8.jpg" }
 
     - { name: "rock surface",
         kind: Image_Texture, format: RGB_u8,
-        image_path: "./data/minimal/data/images/rock-1024x1024-3ch-uint8.jpg" }
+        image_path: "./data/sample/data/images/rock-1024x1024-3ch-uint8.jpg" }
 
     - { name: "font1",
         kind: Image_Texture, format: RGBA_u8,
-        image_path: "./data/minimal/data/images/font1 1024x1024 4ch uint8.png" }
+        image_path: "./data/sample/data/images/font1 1024x1024 4ch uint8.png" }
 
-  sync_tracks_path: "./data/minimal/data/demo.rocket"
+  sync_tracks_path: "./data/sample/data/demo.rocket"
 
   # Leave empty. Will be populated with shader sources read from paths.
   shader_sources: []

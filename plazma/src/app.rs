@@ -45,13 +45,13 @@ pub struct AppInfo {
 
 impl Default for AppStartParams {
     fn default() -> AppStartParams {
-        // Start with a minimal demo until we receive update from the server.
-        let minimal_demo_yml_path = PathBuf::from("data".to_owned())
-            .join(PathBuf::from("minimal".to_owned()))
+        // Start with a sample demo until we receive update from the server.
+        let sample_demo_yml_path = PathBuf::from("data".to_owned())
+            .join(PathBuf::from("sample".to_owned()))
             .join(PathBuf::from("demo.yml".to_owned()));
 
         AppStartParams {
-            yml_path: minimal_demo_yml_path,
+            yml_path: sample_demo_yml_path,
             dmo_path: None,
             plazma_server_port: Arc::new(8080),
             start_server: true,

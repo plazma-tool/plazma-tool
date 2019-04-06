@@ -13,7 +13,7 @@ pub mod timeline;
 
 use intro_runtime::dmo_gfx::DmoGfx;
 
-use crate::dmo_data::context_data::{ContextData, FrameBuffer};
+use crate::dmo_data::context_data::{ContextData, FrameBuffer, BufferKind, PixelFormat};
 use crate::dmo_data::quad_scene::QuadScene;
 use crate::dmo_data::timeline::{Timeline, TimeTrack, SceneBlock, DrawOp};
 
@@ -92,11 +92,17 @@ impl DmoData {
         // construct ContextData with one QuadScene
         // ----------------------------------------
 
+        use crate::dmo_data::BuiltIn::*;
+
         dmo_data.context.index.add_shader_path_to_index("circle.frag");
         let a = include_str!("../../data/builtin/circle.frag");
         dmo_data.context.shader_sources.push(a.to_owned());
 
-        use crate::dmo_data::BuiltIn::*;
+        dmo_data.context.index.add_shader_path_to_index("cross.frag");
+        let a = include_str!("../../data/builtin/cross.frag");
+        dmo_data.context.shader_sources.push(a.to_owned());
+
+        // circle scene
 
         let a = QuadScene {
             name: "circle".to_owned(),
@@ -112,13 +118,53 @@ impl DmoData {
             binding_to_buffers: vec![],
         };
 
-        // not going to call .build_index() at the end, just do here what is necessary
         dmo_data.context.index.add_quad_scene(&a,
                                               dmo_data.context.quad_scenes.len(),
                                               false,
                                               &mut vec![])?;
 
         dmo_data.context.quad_scenes.push(a);
+
+        // cross scene
+
+        let a = QuadScene {
+            name: "cross".to_owned(),
+            // shader name here is only for index mapping, not going to read it as a path
+            // same path name as in scene_draw_result()
+            vert_src_path: "data_builtin_screen_quad.vert".to_owned(),
+            frag_src_path: "cross.frag".to_owned(),
+            layout_to_vars: vec![
+                UniformMapping::Float(0, Time),
+                UniformMapping::Vec2(1, Window_Width, Window_Height),
+                UniformMapping::Vec2(2, Screen_Width, Screen_Height),
+            ],
+            binding_to_buffers: vec![
+                BufferMapping::Sampler2D(0, "scene buf".to_owned()),
+            ],
+        };
+
+        dmo_data.context.index.add_quad_scene(&a,
+                                              dmo_data.context.quad_scenes.len(),
+                                              false,
+                                              &mut vec![])?;
+
+        dmo_data.context.quad_scenes.push(a);
+
+        // framebuffers
+
+        let a = FrameBuffer {
+            name: "scene buf".to_owned(),
+            kind: BufferKind::Empty_Texture,
+            format: PixelFormat::RGBA_u8,
+            image_path: "".to_owned(),
+        };
+
+        dmo_data.context.index.add_frame_buffer(&a,
+                                                dmo_data.context.frame_buffers.len(),
+                                                false,
+                                                &mut vec![])?;
+
+        dmo_data.context.frame_buffers.push(a);
 
         // construct a Timeline with one track
         // -----------------------------------
@@ -131,10 +177,14 @@ impl DmoData {
             start: 0.0,
             end: 240.0,
             draw_ops: vec![
-                DrawOp::Target_Buffer("RESULT_IMAGE".to_owned()),
+                DrawOp::Target_Buffer("scene buf".to_owned()),
                 // #4682B4, Steel Blue
                 DrawOp::Clear(70, 130, 180, 0),
                 DrawOp::Draw_Quad_Scene("circle".to_owned()),
+                DrawOp::Target_Buffer("RESULT_IMAGE".to_owned()),
+                // #4682B4, Steel Blue
+                DrawOp::Clear(70, 130, 180, 0),
+                DrawOp::Draw_Quad_Scene("cross".to_owned()),
             ],
         };
 

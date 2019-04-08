@@ -13,8 +13,8 @@ context:
   quad_scenes:
 
     - name: "circle"
-      vert_src_path: "./data/minimal/data/screen_quad.vert"
-      frag_src_path: "./data/minimal/data/circle.frag"
+      vert_src_path: "./data/sample/data/screen_quad.vert"
+      frag_src_path: "./data/sample/data/circle.frag"
       layout_to_vars:
         - Float: [ 0, "Time" ]
         - Vec2: [ 1, "Window_Width", "Window_Height" ]
@@ -22,8 +22,8 @@ context:
       binding_to_buffers: []
 
     - name: "cross"
-      vert_src_path: "./data/minimal/data/screen_quad.vert"
-      frag_src_path: "./data/minimal/data/cross.frag"
+      vert_src_path: "./data/sample/data/screen_quad.vert"
+      frag_src_path: "./data/sample/data/cross.frag"
       layout_to_vars:
         - Float: [ 0, "Time" ]
         - Vec2: [ 1, "Window_Width", "Window_Height" ]
@@ -85,8 +85,8 @@ context:
             - Vec2: [ 5, "Window_Width", "Window_Height" ]
             - Vec2: [ 6, "Screen_Width", "Screen_Height" ]
             - Vec3: [ 7, "Light_Pos_X", "Light_Pos_Y", "Light_Pos_Z" ]
-          binding_to_buffers:
-            - Sampler2D: [ 0, "organic texture buf" ]
+          binding_to_buffers: []
+          #- Sampler2D: [ 0, "organic texture buf" ]
 
         - name: "room box"
           position:
@@ -129,32 +129,32 @@ context:
 
       - name: "cube one"
         model_type: Cube
-        vert_src_path: "./data/minimal/data/scene_object.vert"
-        frag_src_path: "./data/minimal/data/cube_one.frag"
+        vert_src_path: "./data/sample/data/scene_object.vert"
+        frag_src_path: "./data/sample/data/cube_one.frag"
         obj_path: ""
 
       - name: "cube two"
         model_type: Obj
-        vert_src_path: "./data/minimal/data/scene_object.vert"
-        frag_src_path: "./data/minimal/data/cube_two.frag"
-        obj_path: "./data/minimal/data/cube.obj"
+        vert_src_path: "./data/sample/data/scene_object.vert"
+        frag_src_path: "./data/sample/data/cube_two.frag"
+        obj_path: "./data/sample/data/cube.obj"
 
       - name: "room box"
         model_type: Cube
-        vert_src_path: "./data/minimal/data/scene_object.vert"
-        frag_src_path: "./data/minimal/data/cube_one.frag"
+        vert_src_path: "./data/sample/data/scene_object.vert"
+        frag_src_path: "./data/sample/data/cube_one.frag"
         obj_path: ""
 
       - name: "suzanne"
         model_type: Obj
-        vert_src_path: "./data/minimal/data/scene_object.vert"
-        frag_src_path: "./data/minimal/data/suzanne.frag"
-        obj_path: "./data/minimal/data/suzanne.obj"
+        vert_src_path: "./data/sample/data/scene_object.vert"
+        frag_src_path: "./data/sample/data/suzanne.frag"
+        obj_path: "./data/sample/data/suzanne.obj"
 
       #- name: "light"
       #  model_type: Cube
-      #  vert_src_path: "./data/minimal/data/scene_object.vert"
-      #  frag_src_path: "./data/minimal/data/light.frag"
+      #  vert_src_path: "./data/sample/data/scene_object.vert"
+      #  frag_src_path: "./data/sample/data/light.frag"
       #  obj_path: ""
 
   frame_buffers:
@@ -162,31 +162,31 @@ context:
         kind: Empty_Texture, format: RGBA_u8,
         image_path: "" }
 
-    - { name: "organic texture buf",
-        kind: Image_Texture, format: RGB_u8,
-        image_path: "./data/minimal/data/images/organic4 1024x1024 3ch uint8.jpg" }
+#    - { name: "organic texture buf",
+#        kind: Image_Texture, format: RGB_u8,
+#        image_path: "./data/sample/data/images/organic4 1024x1024 3ch uint8.jpg" }
+#
+#    - { name: "gray noise medium buf",
+#        kind: Image_Texture, format: RED_u8,
+#        image_path: "./data/sample/data/images/gray-noise-medium-256x256-1ch-uint8.png" }
+#
+#    - { name: "rgba noise medium buf",
+#        kind: Image_Texture, format: RGBA_u8,
+#        image_path: "./data/sample/data/images/rgba-noise-medium-256x256-4ch-uint8.png" }
+#
+#    - { name: "rock tiles",
+#        kind: Image_Texture, format: RGB_u8,
+#        image_path: "./data/sample/data/images/rock tiles 512x512 3ch uint8.jpg" }
+#
+#    - { name: "rock surface",
+#        kind: Image_Texture, format: RGB_u8,
+#        image_path: "./data/sample/data/images/rock-1024x1024-3ch-uint8.jpg" }
+#
+#    - { name: "font1",
+#        kind: Image_Texture, format: RGBA_u8,
+#        image_path: "./data/sample/data/images/font1 1024x1024 4ch uint8.png" }
 
-    - { name: "gray noise medium buf",
-        kind: Image_Texture, format: RED_u8,
-        image_path: "./data/minimal/data/images/gray-noise-medium-256x256-1ch-uint8.png" }
-
-    - { name: "rgba noise medium buf",
-        kind: Image_Texture, format: RGBA_u8,
-        image_path: "./data/minimal/data/images/rgba-noise-medium-256x256-4ch-uint8.png" }
-
-    - { name: "rock tiles",
-        kind: Image_Texture, format: RGB_u8,
-        image_path: "./data/minimal/data/images/rock tiles 512x512 3ch uint8.jpg" }
-
-    - { name: "rock surface",
-        kind: Image_Texture, format: RGB_u8,
-        image_path: "./data/minimal/data/images/rock-1024x1024-3ch-uint8.jpg" }
-
-    - { name: "font1",
-        kind: Image_Texture, format: RGBA_u8,
-        image_path: "./data/minimal/data/images/font1 1024x1024 4ch uint8.png" }
-
-  sync_tracks_path: "./data/minimal/data/demo.rocket"
+  sync_tracks_path: "./data/sample/data/demo.rocket"
 
   # Leave empty. Will be populated with shader sources read from paths.
   shader_sources: []
@@ -197,24 +197,24 @@ timeline:
 
     - scene_blocks:
 
-        - start: 0.0
-          end: 200.0
-          draw_ops:
-            - Target_Buffer: "scene buf"
-            - Clear: [ 50, 0, 0, 0 ]
-            - Target_Buffer: "RESULT_IMAGE"
-            - Clear: [ 0, 50, 0, 0 ]
-            - Draw_Poly_Scene: "cubes and suzanne"
-
 #        - start: 0.0
 #          end: 200.0
 #          draw_ops:
 #            - Target_Buffer: "scene buf"
-#            - Clear: [ 0, 0, 0, 0 ]
-#            - Draw_Quad_Scene: "circle"
+#            - Clear: [ 50, 0, 0, 0 ]
 #            - Target_Buffer: "RESULT_IMAGE"
-#            - Clear: [ 0, 0, 0, 0 ]
-#            - Draw_Quad_Scene: "cross"
+#            - Clear: [ 0, 50, 0, 0 ]
+#            - Draw_Poly_Scene: "cubes and suzanne"
+
+        - start: 0.0
+          end: 200.0
+          draw_ops:
+            - Target_Buffer: "scene buf"
+            - Clear: [ 0, 0, 0, 0 ]
+            - Draw_Quad_Scene: "circle"
+            - Target_Buffer: "RESULT_IMAGE"
+            - Clear: [ 0, 0, 0, 0 ]
+            - Draw_Quad_Scene: "cross"
 
 #        - start: 10.0
 #          end: 20.0

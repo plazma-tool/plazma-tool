@@ -23,9 +23,15 @@ impl Actor for ClientActor {
     }
 
     fn stopping(&mut self, _: &mut Context<Self>) -> Running {
-        info!("ClientActor Disconnected");
+        info!("🔎 🚔 disconnected, stopping the System");
 
-        // Stop application on disconnect
+        info!("Send StopSystem");
+        match self.channel_sender.send("StopSystem".to_owned()) {
+            Ok(_) => {},
+            Err(e) => error!("Can't send StopSystem: {:?}", e),
+        };
+
+        info!("System::current().stop()");
         System::current().stop();
 
         Running::Stop
@@ -36,9 +42,14 @@ impl Actor for ClientActor {
 impl Handler<ClientMessage> for ClientActor {
     type Result = ();
 
-    fn handle(&mut self, msg: ClientMessage, _: &mut Context<Self>) {
-        let m = format!("{}", msg.data.trim());
-        self.writer.text(m)
+    fn handle(&mut self, msg: ClientMessage, ctx: &mut Context<Self>) {
+        if msg.data == "StopSystem" {
+            info!("🔎 🚔 Handler<ClientMessage> handle(): stopping the System");
+            ctx.stop();
+        } else {
+            let m = format!("{}", msg.data.trim());
+            self.writer.text(m);
+        }
     }
 }
 
@@ -62,9 +73,7 @@ impl StreamHandler<Message, ProtocolError> for ClientActor {
             Message::Text(text) => {
                 match self.channel_sender.send(text) {
                     Ok(x) => x,
-                    Err(e) => {
-                        error!("Can't send on channel: {:?}", e);
-                    }
+                    Err(e) => error!("🔥 Can't send on ClientActor.channel_sender: {:?}", e),
                 }
             },
             _ => (),
@@ -72,11 +81,11 @@ impl StreamHandler<Message, ProtocolError> for ClientActor {
     }
 
     fn started(&mut self, _: &mut Context<Self>) {
-        println!("Connected");
+        info!("📡 Connected");
     }
 
     fn finished(&mut self, ctx: &mut Context<Self>) {
-        println!("Server disconnected");
+        info!("📡 Server disconnected");
         ctx.stop()
     }
 }

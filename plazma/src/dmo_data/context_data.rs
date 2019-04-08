@@ -85,7 +85,6 @@ impl Default for ContextData {
             quad_scenes: vec![],
             polygon_scenes: vec![],
             polygon_context: PolygonContext::default(),
-            //poly_models: vec![],
             //audio_path: PathBuf::from(""),
             sync_tracks_path: String::new(),
             index: DataIndex::default(),

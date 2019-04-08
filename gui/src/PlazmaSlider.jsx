@@ -1,18 +1,18 @@
+// @flow
 import React from 'react';
 import { Column  } from 'bloomer';
 import Slider from 'rc-slider';
 import { numToStrPad, getFloatValuesFromCode } from './Helpers';
+import type { SliderValue } from './Helpers';
 
-// Requires props:
-// - code
-// - onChangeLift
-export class SliderColumns extends React.Component {
-    constructor(props) {
-        super(props);
-        this.onChangeLocal = this.onChangeLocal.bind(this);
-    }
+type SC_Props = {
+    code: string,
+    onChangeLift: (newCodeValue: string) => void,
+};
 
-    onChangeLocal(newValue) {
+export class SliderColumns extends React.Component<SC_Props> {
+
+    onChangeLocal = (newValue: SliderValue) => {
         let newCodeValue = replaceSliderValueInCode(newValue, this.props.code);
         this.props.onChangeLift(newCodeValue);
     }
@@ -36,17 +36,15 @@ export class SliderColumns extends React.Component {
     }
 }
 
-// Requires props:
-// - sliderValue: { name: "name", value: 0.0 }
-// - onChangeLift
-class PlazmaSlider extends React.Component {
-    constructor(props) {
-        super(props);
-        this.onChangeLocal = this.onChangeLocal.bind(this);
-    }
+type PS_Props = {
+    sliderValue: SliderValue,
+    onChangeLift: (newValue: SliderValue) => void,
+};
 
-    onChangeLocal(x) {
-        let newValue = {
+class PlazmaSlider extends React.Component<PS_Props> {
+
+    onChangeLocal = (x: number) => {
+        let newValue: SliderValue = {
             name: this.props.sliderValue.name,
             value: x,
         };
@@ -69,12 +67,12 @@ class PlazmaSlider extends React.Component {
     }
 }
 
-function getSliderValuesFromCode(code) {
+function getSliderValuesFromCode(code: string): Array<SliderValue> {
     let re_slider = /float +([^ ]+) *= *([0-9.-]+); *\/\/ *!! slider *$/gm;
     return getFloatValuesFromCode(code, re_slider);
 }
 
-function replaceSliderValueInCode(newSliderValue, code) {
+function replaceSliderValueInCode(newSliderValue: SliderValue, code: string): string {
     const x = newSliderValue;
     let re_slider = new RegExp('(float ' + x.name + ' *= *)[0-9\\.]+(; *\\/\\/ *!! slider *$)', 'gm');
     let newCodeValue = code.replace(re_slider, '$1' + numToStrPad(x.value / 1000) + '$2');

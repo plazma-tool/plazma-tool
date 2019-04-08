@@ -1,36 +1,40 @@
 {
-    "name": "plazma-gui",
-    "version": "0.1.0",
-    "private": true,
-    "dependencies": {
-        "@craco/craco": "^3.2.0",
-        "bloomer": "^0.6.5",
-        "bulma": "^0.7.2",
-        "rc-slider": "^8.6.4",
-        "react": "^16.6.3",
-        "react-color": "^2.14.1",
-        "react-dom": "^16.6.3",
-        "react-monaco-editor": "^0.22.0",
-        "react-scripts": "2.1.1"
-    },
-    "scripts": {
-        "start": "craco start",
-        "build": "craco build",
-        "test": "craco test",
-        "eject": "react-scripts eject"
-    },
-    "homepage": "http://localhost:3000/static",
-    "eslintConfig": {
-        "extends": "react-app"
-    },
-    "browserslist": [
-        ">0.2%",
-        "not dead",
-        "not ie <= 11",
-        "not op_mini all"
-    ],
-    "devDependencies": {
-        "@fortawesome/fontawesome-free": "^5.6.1",
-        "monaco-editor-webpack-plugin": "^1.7.0"
-    }
+	"name": "plazma-gui",
+	"version": "0.1.0",
+	"private": true,
+	"dependencies": {
+		"@craco/craco": "^3.2.0",
+		"bloomer": "^0.6.5",
+		"bulma": "^0.7.2",
+		"bulmaswatch": "^0.7.2",
+		"node-sass": "^4.11.0",
+		"rc-slider": "^8.6.4",
+		"react": "^16.6.3",
+		"react-color": "^2.14.1",
+		"react-dom": "^16.6.3",
+		"react-monaco-editor": "^0.22.0",
+		"react-scripts": "2.1.1"
+	},
+	"scripts": {
+		"start": "craco start",
+		"build": "craco build",
+		"test": "craco test",
+		"eject": "react-scripts eject",
+		"flow": "flow"
+	},
+	"homepage": "http://localhost:3000/static",
+	"eslintConfig": {
+		"extends": "react-app"
+	},
+	"browserslist": [
+		">0.2%",
+		"not dead",
+		"not ie <= 11",
+		"not op_mini all"
+	],
+	"devDependencies": {
+		"@fortawesome/fontawesome-free": "^5.6.1",
+		"flow-bin": "^0.94.0",
+		"monaco-editor-webpack-plugin": "^1.7.0"
+	}
 }

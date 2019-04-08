@@ -4,35 +4,35 @@ import { Panel, PanelHeading, Field, Label, Control, Input } from 'bloomer';
 import { CurrentPage } from './Helpers';
 import type { ServerMsg, DmoData, InputEvent } from './Helpers';
 
-type DTP_Props = {
+type DMP_Props = {
     currentPage: number,
     onClickLift: () => void,
 };
 
-export class DmoTimelinePanel extends React.Component<DTP_Props> {
+export class DmoModelsPanel extends React.Component<DMP_Props> {
     render() {
         let color = "";
-        if (this.props.currentPage === CurrentPage.Timeline) {
+        if (this.props.currentPage === CurrentPage.Models) {
             color = "primary";
         }
 
         return (
             <Panel onClick={this.props.onClickLift}>
-                <PanelHeading hasTextColor={color}>Timeline</PanelHeading>
+                <PanelHeading hasTextColor={color}>Models</PanelHeading>
             </Panel>
         );
     }
 }
 
-type TP_Props = {
+type MP_Props = {
     dmoData: DmoData,
     onChangeLift: (ServerMsg) => void,
 };
 
-export class TimelinePage extends React.Component<TP_Props> {
+export class ModelsPage extends React.Component<MP_Props> {
 
     onChangeLocal = (e: InputEvent) => {
-        let msg = {
+        let msg: ServerMsg = {
             data_type: 'TODO: compose the message',
             data: '',
         };
@@ -59,4 +59,3 @@ export class TimelinePage extends React.Component<TP_Props> {
         );
     }
 }
-

@@ -11,9 +11,9 @@ futures = "0.1"
 
 log = "0.4"
 env_logger = "0.6"
-clap = "2.32"
 kankyo = "0.2"
 smallvec = "0.6"
+clap = { version = "2.32", features = ["yaml"] }
 
 gl = "0.11"
 glutin = "0.19"

@@ -1,278 +1,149 @@
+// @flow
 import React, { Component } from 'react';
 //import * as ReactDOM from 'react-dom';
-import { Container, Menu, Columns, Column } from 'bloomer';
-import MonacoEditor from 'react-monaco-editor';
-import { ColorPickerColumns } from './PlazmaColorPicker';
-import { PositionSlidersColumns } from './PlazmaPositionSliders';
-import { SliderColumns } from './PlazmaSlider';
-import { DmoSettingsMenu, DmoSettingsForm } from './DmoSettings';
-import { DmoContextMenu } from './DmoContext';
-import { DmoTimeScrub } from './DmoTimeScrub';
-import { CurrentPage } from './Helpers';
-//import { DmoTimelineMenu } from './DmoTimeline';
-import './App.css';
+import { Columns, Column } from 'bloomer';
 
-//import logo from './logo.svg';
+import { Toolbar } from './Toolbar';
+import { Sidebar } from './Sidebar';
+import { TimeScrub } from './TimeScrub';
+
+import { SettingsPage } from './DmoSettings';
+import { ShadersPage } from './DmoShaders';
+import { FramebuffersPage } from './DmoFramebuffers';
+import { QuadScenesPage } from './DmoQuadScenes';
+import { PolygonScenesPage } from './DmoPolygonScenes';
+import { ImagesPage } from './DmoImages';
+import { ModelsPage } from './DmoModels';
+import { TimelinePage } from './DmoTimeline';
+import { SyncTracksPage } from './DmoSyncTracks';
+
+import { LibraryPage } from './Library';
+import { CurrentPage } from './Helpers';
+import type { ServerMsg, DmoData } from './Helpers';
 
 const PLAZMA_SERVER_PORT = 8080;
 
-function UndoRedoButton(props) {
-    return (
-        <button onClick={props.onClick} disabled={props.disabled}>{props.label}</button>
-    );
-}
+type AppState = {
+    socket: ?WebSocket,
+    dmo_data: ?DmoData,
+    editor_content: string,
+    current_page: number,
+    current_shader_index: number,
+    current_time: number,
+    preview_is_open: bool,
+    sentUpdateSinceChange: bool,
+};
 
-class PlazmaMonacoToolbar extends React.Component {
+class App extends Component<{}, AppState> {
+    updateTimerId: number;
+    getDmoTimeTimerId: number;
+    connectToServerTimerId: number;
 
-    undoAction(editor) {
-        if (editor) {
-            editor.trigger('aaaa', 'undo', 'aaaa');
-            editor.focus();
-        }
-    }
-
-    redoAction(editor) {
-        if (editor) {
-            editor.trigger('aaaa', 'redo', 'aaaa');
-            editor.focus();
-        }
-    }
-
-    render() {
-        return (
-            <div className="toolbar">
-              <UndoRedoButton
-                onClick={() => this.undoAction(this.props.editor)}
-                disabled={this.props.undoDisabled}
-                label="Undo"
-              />
-
-              <UndoRedoButton
-                onClick={() => this.redoAction(this.props.editor)}
-                disabled={this.props.redoDisabled}
-                label="Redo"
-              />
-            </div>
-        );
-    }
-}
-
-// Requires props:
-// - editorContent
-// - onChangeLift
-class PlazmaMonaco extends React.Component {
-    constructor(props) {
+    constructor(props: {})
+    {
         super(props);
 
-        this.state = {
-            editor: null,
-            modelVersions: null,
-            undoDisabled: true,
-            redoDisabled: true,
-        };
-
-        this.editorDidMount = this.editorDidMount.bind(this);
-        this.onResize = this.onResize.bind(this);
-        this.onChangeLocal = this.onChangeLocal.bind(this);
-        this.updateVersions = this.updateVersions.bind(this);
-    }
-
-    editorDidMount(editor, monaco) {
-        let id = editor.getModel().getAlternativeVersionId();
-        let modelVersions = {
-            initialVersion: id,
-            currentVersion: id,
-            lastVersion: id,
-        };
-
-        // not using automaticLayout on the editor, b/c it adds a 100ms interval listener.
-        // https://github.com/Microsoft/monaco-editor/issues/28
-
-        window.addEventListener('resize', this.onResize);
-
-        this.setState({
-            editor: editor,
-            modelVersions: modelVersions,
-        });
-
-        editor.focus();
-        editor.setPosition({ lineNumber: 1, column: 1 });
-    }
-
-    onChangeLocal(newValue, e) {
-        this.props.onChangeLift(newValue, e);
-        this.updateVersions();
-    }
-
-    onResize() {
-        this.state.editor.layout({height: 0, width: 0});
-        this.state.editor.layout();
-    }
-
-    // FIXME: redo is disabled before the last action is restored (last edit
-    // can't be restored).
-
-    updateVersions() {
-        if (!this.state.modelVersions) {
-            return;
-        }
-        let mv = this.state.modelVersions;
-        let undoDisabled = this.state.undoDisabled;
-        let redoDisabled = this.state.redoDisabled;
-
-        const versionId = this.state.editor.getModel().getAlternativeVersionId();
-
-        // undoing
-        if (versionId < mv.currentVersion) {
-            redoDisabled = false;
-            // no more undo possible
-            if (versionId === mv.initialVersion) {
-                undoDisabled = true;
-            }
-        } else {
-            // redoing
-            if (versionId <= mv.lastVersion) {
-                // redoing the last change
-                if (versionId === mv.lastVersion) {
-                    redoDisabled = true;
-                }
-            } else {
-                // adding new change, disable redo when adding new changes
-                redoDisabled = true;
-                if (mv.currentVersion > mv.lastVersion) {
-                    mv.lastVersion = mv.currentVersion;
-                }
-            }
-            undoDisabled = false;
-        }
-        mv.currentVersion = versionId;
-
-        this.setState({
-            modelVersions: mv,
-            undoDisabled: undoDisabled,
-            redoDisabled: redoDisabled,
-        });
-    }
-
-    editorWillMount(monaco) {
-        monaco.languages.register({ id: 'glsl' });
-        monaco.languages.setMonarchTokensProvider('glsl', {
-            comments: {
-                "lineComment": "//",
-                "blockComment": [ "/*", "*/" ]
-            },
-            brackets: [
-                ["{", "}", "delimiter.curly"],
-                //["[", "]", "delimiter.bracket"],
-                //["(", ")", "delimiter.round"],
-            ],
-            tokenizer: {
-                root: [],
-            },
-        });
-    }
-
-    render() {
-        const options = {
-            language: "glsl",
-            lineNumbers: "on",
-            roundedSelection: false,
-            scrollBeyondLastLine: true,
-        };
-
-        return (
-            <div>
-              <PlazmaMonacoToolbar
-                editor={this.state.editor}
-                undoDisabled={this.state.undoDisabled}
-                redoDisabled={this.state.redoDisabled}
-              />
-
-              <MonacoEditor
-                //width="800"
-                height="600"
-                language="glsl"
-                theme="vs-dark"
-                value={this.props.editorContent}
-                options={options}
-                onChange={this.onChangeLocal}
-                editorWillMount={this.editorWillMount}
-                editorDidMount={this.editorDidMount}
-              />
-            </div>
-        );
-    }
-}
-
-class App extends Component {
-    constructor(props) {
-        super(props);
-
-        // TODO add a new attribute to select what is displayed in the main
-        // panel.
-
-        // NOTE No 0 index to avoid == problems.
         this.state = {
             socket: null,
             dmo_data: null,
-            editor_content: null,
-            current_page: CurrentPage.ContextShader,
-            current_shader_index: null,
+            editor_content: "",
+            current_page: CurrentPage.Shaders,
+            current_shader_index: 0,
             current_time: 0.0,
+            preview_is_open: false,
             sentUpdateSinceChange: false,
         };
-
-        this.updateTimerId = null;
-        this.getDmoTimeTimerId = null;
-
-        this.sendUpdatedContent = this.sendUpdatedContent.bind(this);
-        this.onEditorChange = this.onEditorChange.bind(this);
-        this.onContextMenuChange = this.onContextMenuChange.bind(this);
-        this.onTimeScrubChange = this.onTimeScrubChange.bind(this);
-        this.onSettingsFormChange = this.onSettingsFormChange.bind(this);
-        this.onColorPickerChange = this.onColorPickerChange.bind(this);
-        this.onPositionSlidersChange = this.onPositionSlidersChange.bind(this);
-        this.handleSocketOpen = this.handleSocketOpen.bind(this);
-        this.handleSocketMessage = this.handleSocketMessage.bind(this);
-        this.sendDmoData = this.sendDmoData.bind(this);
-        this.getDmoTime = this.getDmoTime.bind(this);
     }
 
-    componentDidMount() {
-        const socket = new WebSocket('ws://localhost:' + PLAZMA_SERVER_PORT + '/ws/');
+    componentDidMount()
+    {
 
-        socket.addEventListener('open', this.handleSocketOpen);
-        socket.addEventListener('message', this.handleSocketMessage);
-
+        this.connectToServerTimerId = window.setInterval(this.connectToServer, 1000);
         this.updateTimerId = window.setInterval(this.sendDmoData, 1000);
         this.getDmoTimeTimerId = window.setInterval(this.getDmoTime, 500);
-
-        this.setState({
-            socket: socket,
-        });
     }
 
-    componentWillUnmount() {
+    componentWillUnmount()
+    {
         window.clearInterval(this.updateTimerId);
+        window.clearInterval(this.getDmoTimeTimerId);
+        window.clearInterval(this.connectToServerTimerId);
     }
 
-    handleSocketOpen(event) {
+    connectToServer = () =>
+    {
+        if (this.state.socket !== null && typeof this.state.socket !== 'undefined') {
+
+            if (this.state.socket.readyState === WebSocket.OPEN
+                || this.state.socket.readyState === WebSocket.CONNECTING) {
+
+                // Good to go.
+                window.clearInterval(this.connectToServerTimerId);
+
+            } else if (this.state.socket.readyState === WebSocket.CLOSED) {
+
+                // Connection was attempted before but probably refused.
+                console.log("Connecting to server on port " + PLAZMA_SERVER_PORT + " ...");
+                const socket = new WebSocket('ws://localhost:' + PLAZMA_SERVER_PORT + '/ws/');
+
+                socket.addEventListener('open', this.handleSocketOpen);
+                socket.addEventListener('message', this.handleSocketMessage);
+
+                this.setState({
+                    socket: socket,
+                });
+            }
+
+        } else {
+
+            // First attempt. Could be refused if server hasn't finished starting up.
+
+            console.log("Connecting to server on port " + PLAZMA_SERVER_PORT + " ...");
+            const socket = new WebSocket('ws://localhost:' + PLAZMA_SERVER_PORT + '/ws/');
+
+            socket.addEventListener('open', this.handleSocketOpen);
+            socket.addEventListener('message', this.handleSocketMessage);
+
+            this.setState({
+                socket: socket,
+            });
+
+        }
+    }
+
+    handleSocketOpen = (event: MessageEvent) =>
+    {
+        console.log("Connected to server socket.");
+        console.log("Send to server: FetchDmo");
         // Request DmoData from server.
-        let msg = {
+        let msg: ServerMsg = {
             data_type: 'FetchDmo',
             data: '',
         };
-        this.state.socket.send(JSON.stringify(msg));
+        this.sendMsgOnSocket(msg);
         this.setState({
             sentUpdateSinceChange: true,
         });
     }
 
-    handleSocketMessage(event) {
-        var msg = JSON.parse(event.data);
-        switch (msg.data_type ) {
+    sendMsgOnSocket = (msg: ServerMsg) =>
+    {
+        if (this.state.socket !== null
+            && typeof this.state.socket !== 'undefined'
+            && this.state.socket.readyState === WebSocket.OPEN) {
+            this.state.socket.send(JSON.stringify(msg));
+        }
+    }
+
+    handleSocketMessage = (event: MessageEvent) =>
+    {
+        let msg: ServerMsg = { data_type: 'NoOp', data: '' };
+        if (typeof event.data === 'string') {
+            msg = JSON.parse(event.data);
+        }
+        switch (msg.data_type) {
             case 'SetDmo':
-                let d = JSON.parse(msg.data);
+                let d: DmoData = JSON.parse(msg.data);
 
                 let idx = this.state.current_shader_index;
                 let frag_src = d.context.shader_sources[idx];
@@ -281,8 +152,19 @@ class App extends Component {
                 break;
 
             case 'SetDmoTime':
-                let time = JSON.parse(msg.data);
+                let time: number = JSON.parse(msg.data);
                 this.setState({ current_time: time });
+                break;
+
+            case 'GetDmoTime':
+                break;
+
+            case 'PreviewOpened':
+                this.setState({ preview_is_open: true });
+                break;
+
+            case 'PreviewClosed':
+                this.setState({ preview_is_open: false });
                 break;
 
             default:
@@ -290,7 +172,8 @@ class App extends Component {
         }
     }
 
-    sendUpdatedContent(newValue) {
+    sendUpdatedContent = (newValue: string) =>
+    {
         if (this.state.dmo_data) {
             let d = this.state.dmo_data;
             let idx = this.state.current_shader_index;
@@ -306,142 +189,297 @@ class App extends Component {
         });
     }
 
-    onContextMenuChange(idx) {
-        this.setState({
-            current_shader_index: idx,
-            editor_content: this.state.dmo_data.context.shader_sources[idx],
-        });
-    }
-
-    onSettingsFormChange(msg) {
-        if (msg.data_type === 'SetSettings') {
-            this.setState({ settings: msg.data });
+    onDmoShadersMenuChange = (idx: number) =>
+    {
+        if (this.state.dmo_data !== null && typeof this.state.dmo_data !== 'undefined') {
+            this.setState({
+                current_shader_index: idx,
+                editor_content: this.state.dmo_data.context.shader_sources[idx],
+            });
         }
-        let server_msg = {
-            data_type: 'SetSettings',
-            data: JSON.stringify(msg.data),
-        };
-        console.log('Sending server: SetSettings');
-        this.state.socket.send(JSON.stringify(server_msg));
     }
 
-    onTimeScrubChange(msg) {
+    onChange_SettingsPage = (msg: ServerMsg) =>
+    {
+        if (msg.data_type === 'SetSettings') {
+            if (this.state.dmo_data !== null && typeof this.state.dmo_data !== 'undefined') {
+                let d = this.state.dmo_data;
+                d.settings = JSON.parse(msg.data);
+                this.setState({ dmo_data: d });
+            }
+        }
+        console.log('Sending server: SetSettings');
+        this.sendMsgOnSocket(msg);
+    }
+
+    onChange_ShadersPage = (msg: ServerMsg) =>
+    {
+        console.log("TODO: implement onChange_ShadersPage(msg)");
+    }
+
+    onChange_FramebuffersPage = (msg: ServerMsg) =>
+    {
+        console.log("TODO: implement onChange_FramebuffersPage(msg)");
+    }
+
+    onChange_QuadScenesPage = (msg: ServerMsg) =>
+    {
+        console.log("TODO: implement onChange_QuadScenesPage(msg)");
+    }
+
+    onChange_PolygonScenesPage = (msg: ServerMsg) =>
+    {
+        console.log("TODO: implement onChange_PolygonScenesPage(msg)");
+    }
+
+    onChange_ImagesPage = (msg: ServerMsg) =>
+    {
+        console.log("TODO: implement onChange_ImagesPage(msg)");
+    }
+
+    onChange_ModelsPage = (msg: ServerMsg) =>
+    {
+        console.log("TODO: implement onChange_ModelsPage(msg)");
+    }
+
+    onChange_TimelinePage = (msg: ServerMsg) =>
+    {
+        console.log("TODO: implement onChange_TimelinePage(msg)");
+    }
+
+    onChange_SyncTracksPage = (msg: ServerMsg) =>
+    {
+        console.log("TODO: implement onChange_SyncTracksPage(msg)");
+    }
+
+    onChange_LibraryPage = (msg: ServerMsg) =>
+    {
+        console.log("TODO: implement onChange_LibraryPage(msg)");
+    }
+
+    onTimeScrubChange = (msg: ServerMsg) =>
+    {
         if (msg.data_type === 'SetDmoTime') {
             console.log('Sending server SetDmoTime');
             this.setState({ current_time: Number(msg.data) });
             msg.data = String(msg.data);
-            this.state.socket.send(JSON.stringify(msg));
+            this.sendMsgOnSocket(msg);
         }
     }
 
-    onEditorChange(newValue, e) {
+    onEditorChange = (newValue: string, e: MessageEvent) =>
+    {
         this.sendUpdatedContent(newValue);
     }
 
-    onColorPickerChange(newValue) {
+    onColorPickerChange = (newValue: string) =>
+    {
         this.sendUpdatedContent(newValue);
     }
 
-    onPositionSlidersChange(newValue) {
+    onPositionSlidersChange = (newValue: string) =>
+    {
         this.sendUpdatedContent(newValue);
     }
 
-    sendDmoData() {
+    sendDmoData = () =>
+    {
         if (this.state.sentUpdateSinceChange) {
             return;
         } else if (this.state.socket) {
-            let msg = {
+            let msg: ServerMsg = {
                 data_type: 'SetDmo',
                 data: JSON.stringify(this.state.dmo_data),
             };
             console.log('Sending server: SetDmo');
-            this.state.socket.send(JSON.stringify(msg));
+            this.sendMsgOnSocket(msg);
             this.setState({
                 sentUpdateSinceChange: true,
             });
         }
     }
 
-    getDmoTime() {
-        let msg = { data_type: 'GetDmoTime', data: '' };
-        this.state.socket.send(JSON.stringify(msg));
+    getDmoTime = () =>
+    {
+        let msg: ServerMsg = { data_type: 'GetDmoTime', data: '' };
+        this.sendMsgOnSocket(msg);
     }
 
-    render() {
+    render()
+    {
         let page;
-        switch (this.state.current_page) {
-            case CurrentPage.Settings:
-                page =
-                    <div>
-                        <DmoSettingsForm
+        if (this.state.dmo_data === null || typeof this.state.dmo_data === 'undefined') {
+
+            page = <div><p>DmoData is empty.</p></div>;
+
+        } else {
+
+            switch (this.state.current_page) {
+
+                case CurrentPage.Settings:
+                    page =
+                        <SettingsPage
                             dmoData={this.state.dmo_data}
-                            onChangeLift={this.onSettingsFormChange}
+                            onChangeLift={this.onChange_SettingsPage}
+                        />;
+                    break;
+
+                case CurrentPage.Shaders:
+                    page =
+                        <ShadersPage
+                            editorContent={this.state.editor_content}
+                            onChange_PlazmaMonaco={this.onEditorChange}
+                            onChange_ColorPickerColumns={this.onColorPickerChange}
+                            onChange_PositionSlidersColumns={this.onPositionSlidersChange}
+                            onChange_SliderColumns={this.onColorPickerChange}
                         />
-                    </div>;
-                break;
-            case CurrentPage.ContextShader:
-                page =
-                    <div>
-                        <Columns>
-                            <Column>
-                                <PlazmaMonaco
-                                    editorContent={this.state.editor_content}
-                                    onChangeLift={this.onEditorChange}
-                                />
-                            </Column>
-                        </Columns>
-                        <Columns>
-                            <ColorPickerColumns
-                                code={this.state.editor_content}
-                                onChangeLift={this.onColorPickerChange}
-                            />
-                            <PositionSlidersColumns
-                                code={this.state.editor_content}
-                                onChangeLift={this.onPositionSlidersChange}
-                            />
-                            <SliderColumns
-                                code={this.state.editor_content}
-                                onChangeLift={this.onColorPickerChange}
-                            />
-                        </Columns>
-                    </div>;
-                break;
-            default:
-                page =
-                    <div>
-                        <p>no page</p>
-                    </div>;
-        };
+                        break;
+
+                case CurrentPage.Framebuffers:
+                    page =
+                        <FramebuffersPage
+                            dmoData={this.state.dmo_data}
+                            onChangeLift={this.onChange_FramebuffersPage}
+                        />;
+                    break;
+
+                case CurrentPage.QuadScenes:
+                    page =
+                        <QuadScenesPage
+                            dmoData={this.state.dmo_data}
+                            onChangeLift={this.onChange_QuadScenesPage}
+                        />;
+                    break;
+
+                case CurrentPage.PolygonScenes:
+                    page =
+                        <PolygonScenesPage
+                            dmoData={this.state.dmo_data}
+                            onChangeLift={this.onChange_PolygonScenesPage}
+                        />;
+                    break;
+
+                case CurrentPage.Images:
+                    page =
+                        <ImagesPage
+                            dmoData={this.state.dmo_data}
+                            onChangeLift={this.onChange_ImagesPage}
+                        />;
+                    break;
+
+                case CurrentPage.Models:
+                    page =
+                        <ModelsPage
+                            dmoData={this.state.dmo_data}
+                            onChangeLift={this.onChange_ModelsPage}
+                        />;
+                    break;
+
+                case CurrentPage.Timeline:
+                    page =
+                        <TimelinePage
+                            dmoData={this.state.dmo_data}
+                            onChangeLift={this.onChange_TimelinePage}
+                        />;
+                    break;
+
+                case CurrentPage.SyncTracks:
+                    page =
+                        <SyncTracksPage
+                            dmoData={this.state.dmo_data}
+                            onChangeLift={this.onChange_SyncTracksPage}
+                        />;
+                    break;
+
+                case CurrentPage.Library:
+                    page =
+                        <LibraryPage
+                            dmoData={this.state.dmo_data}
+                            onChangeLift={this.onChange_LibraryPage}
+                        />;
+                    break;
+
+                default:
+                    page =
+                        <div>
+                            <p>no page</p>
+                        </div>;
+            };
+
+        }
+
         return (
             <div className="App">
+
+                <Toolbar
+                    onClick_Library={() => this.setState({ current_page: CurrentPage.Library })}
+
+                    onClick_Preview={() => {
+                        if (this.state.preview_is_open) {
+
+                            console.log("Send to server: StopPreview");
+                            let m: ServerMsg = {
+                                data_type: 'StopPreview',
+                                data: '',
+                            };
+                            this.sendMsgOnSocket(m);
+
+                        } else {
+
+                            console.log("Send to server: StartPreview");
+                            let m: ServerMsg = {
+                                data_type: 'StartPreview',
+                                data: '',
+                            };
+                            this.sendMsgOnSocket(m);
+
+                        }
+                    } }
+
+                    onClick_Exit={() => {
+                        console.log("Send to server: ExitApp");
+                        let m: ServerMsg = {
+                            data_type: 'ExitApp',
+                            data: '',
+                        };
+                        this.sendMsgOnSocket(m);
+                    }}
+
+                    previewIsOpen={this.state.preview_is_open}
+                />
+
                 <Columns>
-                    <Column isSize={{default: 1}}>
-                        <Menu>
-                            <DmoSettingsMenu
-                                currentPage={this.state.current_page}
-                                onClickLift={() => this.setState({ current_page: CurrentPage.Settings })}
-                            />
-                            <DmoContextMenu
-                                dmoData={this.state.dmo_data}
-                                currentIndex={this.state.current_shader_index}
-                                currentPage={this.state.current_page}
-                                onChangeLift={this.onContextMenuChange}
-                                onClickLift={() => this.setState({ current_page: CurrentPage.ContextShader })}
-                            />
-                        </Menu>
-              </Column>
-              <Column>
-                  {page}
-              </Column>
-          </Columns>
-          <Container>
-              <DmoTimeScrub
-                  dmoData={this.state.dmo_data}
-                  currentTime={this.state.current_time}
-                  onChangeLift={this.onTimeScrubChange}
-              />
-          </Container>
-      </div>
+                    <Column isSize={{default: 2}}>
+                        <Sidebar
+                            dmoData={this.state.dmo_data}
+                            currentPage={this.state.current_page}
+                            currentShaderIndex={this.state.current_shader_index}
+
+                            onClick_DmoSettingsMenu={() => this.setState({ current_page: CurrentPage.Settings })}
+                            onClick_DmoFramebuffersMenu={() => this.setState({ current_page: CurrentPage.Framebuffers })}
+                            onClick_DmoQuadScenesMenu={() => this.setState({ current_page: CurrentPage.QuadScenes })}
+                            onClick_DmoPolygonScenesMenu={() => this.setState({ current_page: CurrentPage.PolygonScenes })}
+                            onClick_DmoShadersMenu={() => this.setState({ current_page: CurrentPage.Shaders })}
+                            onClick_DmoImagesMenu={() => this.setState({ current_page: CurrentPage.Images })}
+                            onClick_DmoModelsMenu={() => this.setState({ current_page: CurrentPage.Models })}
+                            onClick_DmoTimelineMenu={() => this.setState({ current_page: CurrentPage.Timeline })}
+                            onClick_DmoSyncTracksMenu={() => this.setState({ current_page: CurrentPage.SyncTracks })}
+
+                            onChange_DmoShadersMenu={this.onDmoShadersMenuChange}
+                        />
+                    </Column>
+                    <Column>
+                        {page}
+                    </Column>
+                </Columns>
+
+                <TimeScrub
+                    dmoData={this.state.dmo_data}
+                    currentTime={this.state.current_time}
+                    onChangeLift={this.onTimeScrubChange}
+                />
+
+            </div>
         );
     }
 }

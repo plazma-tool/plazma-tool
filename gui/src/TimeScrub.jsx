@@ -1,27 +1,34 @@
+// @flow
 import React from 'react';
 import { Progress, Button, Icon, Level, LevelLeft, LevelItem } from 'bloomer';
+import type { ServerMsg, DmoData } from './Helpers';
 
-// Requires props:
-// - value
-// - max
-// - onClickLift
-class TimeSlider extends React.Component {
-    constructor(props) {
+type TS_Props = {
+    value: number,
+    max: number,
+    onClickLift: (ServerMsg) => void,
+};
+
+class TimeSlider extends React.Component<TS_Props> {
+    theElement: { current: null | HTMLDivElement }
+
+    constructor(props: TS_Props) {
         super(props);
-        this.theElement = React.createRef()
-        this.onClickLocal = this.onClickLocal.bind(this);
+        this.theElement = React.createRef();
     }
 
-    onClickLocal(e) {
-        // relative x position of click
-        let x = e.nativeEvent.offsetX * (this.props.max / this.theElement.current.offsetWidth);
-        let click_value = Number(x.toFixed(2));
+    onClickLocal = (e: SyntheticMouseEvent<>) => {
+        if (this.theElement.current !== null) {
+            // relative x position of click
+            let x = e.nativeEvent.offsetX * (this.props.max / this.theElement.current.offsetWidth);
+            let click_value = Number(x.toFixed(2));
 
-        let msg = {
-            data_type: 'SetDmoTime',
-            data: click_value,
-        };
-        this.props.onClickLift(msg);
+            let msg: ServerMsg = {
+                data_type: 'SetDmoTime',
+                data: JSON.stringify(click_value),
+            };
+            this.props.onClickLift(msg);
+        }
     }
 
     render() {
@@ -37,23 +44,21 @@ class TimeSlider extends React.Component {
     }
 }
 
-// Requires props:
-// - currentTime
-// - totalLength
-// - onChangeLift
-export class DmoTimeScrub extends React.Component {
-    constructor(props) {
-        super(props);
-        this.onChangeLocal = this.onChangeLocal.bind(this);
-    }
+type TSc_Props = {
+    dmoData: ?DmoData,
+    currentTime: number,
+    onChangeLift: (ServerMsg) => void,
+};
 
-    onChangeLocal(msg) {
+export class TimeScrub extends React.Component<TSc_Props> {
+
+    onChangeLocal = (msg: ServerMsg) => {
         this.props.onChangeLift(msg);
     }
 
     render() {
         let time_max = 100.0;
-        if (this.props.dmoData !== null) {
+        if (this.props.dmoData !== null && typeof this.props.dmoData !== 'undefined') {
             time_max = this.props.dmoData.settings.total_length;
         }
         return (

@@ -32,3 +32,11 @@
     transform: rotate(360deg);
   }
 }
+
+#sidebar nav.panel {
+	margin: 0;
+}
+
+#sidebar nav.panel .panel-heading {
+	border: none;
+}

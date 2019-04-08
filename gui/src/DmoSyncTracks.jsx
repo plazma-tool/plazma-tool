@@ -4,35 +4,35 @@ import { Panel, PanelHeading, Field, Label, Control, Input } from 'bloomer';
 import { CurrentPage } from './Helpers';
 import type { ServerMsg, DmoData, InputEvent } from './Helpers';
 
-type DTP_Props = {
+type DSTP_Props = {
     currentPage: number,
     onClickLift: () => void,
 };
 
-export class DmoTimelinePanel extends React.Component<DTP_Props> {
+export class DmoSyncTracksPanel extends React.Component<DSTP_Props> {
     render() {
         let color = "";
-        if (this.props.currentPage === CurrentPage.Timeline) {
+        if (this.props.currentPage === CurrentPage.SyncTracks) {
             color = "primary";
         }
 
         return (
             <Panel onClick={this.props.onClickLift}>
-                <PanelHeading hasTextColor={color}>Timeline</PanelHeading>
+                <PanelHeading hasTextColor={color}>SyncTracks</PanelHeading>
             </Panel>
         );
     }
 }
 
-type TP_Props = {
+type STP_Props = {
     dmoData: DmoData,
     onChangeLift: (ServerMsg) => void,
 };
 
-export class TimelinePage extends React.Component<TP_Props> {
+export class SyncTracksPage extends React.Component<STP_Props> {
 
     onChangeLocal = (e: InputEvent) => {
-        let msg = {
+        let msg: ServerMsg = {
             data_type: 'TODO: compose the message',
             data: '',
         };

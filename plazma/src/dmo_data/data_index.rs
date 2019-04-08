@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 use crate::dmo_data::context_data::{FrameBuffer, Image, PixelFormat};
 use crate::dmo_data::quad_scene::QuadScene;
+use crate::dmo_data::quad_scene::{DRAW_RESULT_VERT_SRC_PATH, DRAW_RESULT_FRAG_SRC_PATH};
 use crate::dmo_data::polygon_scene::PolygonScene;
 use crate::dmo_data::model::Model;
 use crate::error::ToolError;
@@ -114,7 +115,10 @@ impl DataIndex {
 
         self.add_shader_path_to_index(path);
 
-        if read_shader_path {
+        if read_shader_path
+            && path != DRAW_RESULT_VERT_SRC_PATH
+            && path != DRAW_RESULT_FRAG_SRC_PATH
+        {
             let src = file_to_string(&PathBuf::from(path))?;
             shader_sources.push(src.to_owned());
         }

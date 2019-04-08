@@ -1,120 +1,125 @@
+// @flow
 import React from 'react';
-import { Title, Field, Label, Control, Input, Checkbox } from 'bloomer';
+import { FieldBody, Column, Columns, Panel, PanelHeading, Field, Label, Control, Input, Checkbox } from 'bloomer';
 import { CurrentPage } from './Helpers';
+import type { ServerMsg, DmoData, InputEvent } from './Helpers';
 
-// TODO Click on the label shows the settings form in the main panel.
+type DSP_Props = {
+    currentPage: number,
+    onClickLift: () => void,
+};
 
-// Requires props:
-// - currentPage
-// - onClickLift
-export class DmoSettingsMenu extends React.Component {
+export class DmoSettingsPanel extends React.Component<DSP_Props> {
     render() {
         let color = "";
         if (this.props.currentPage === CurrentPage.Settings) {
             color = "primary";
         }
         return (
-            <Title tag='h1' hasTextColor={color} onClick={this.props.onClickLift}>
-                Settings
-            </Title>
+            <Panel onClick={this.props.onClickLift}>
+                <PanelHeading hasTextColor={color}>Settings</PanelHeading>
+            </Panel>
         );
     }
 }
 
-// Requires props:
-// - dmoData
-// - onChangeLift
-export class DmoSettingsForm extends React.Component {
-    constructor(props) {
-        super(props);
-        this.onChangeLocal = this.onChangeLocal.bind(this);
-    }
+type SP_Props = {
+    dmoData: DmoData,
+    onChangeLift: (ServerMsg) => void,
+};
 
-    onChangeLocal(e) {
+export class SettingsPage extends React.Component<SP_Props> {
+
+    onChangeLocal = (e: InputEvent) => {
         let s = this.props.dmoData.settings;
-        switch(e.target.type) {
+        switch(e.currentTarget.type) {
             case 'number':
-                s[e.target.name] = Number(e.target.value);
+                s[e.currentTarget.name] = Number(e.currentTarget.value);
                 break;
             case 'checkbox':
-                s[e.target.name] = e.target.checked;
+                s[e.currentTarget.name] = e.currentTarget.checked;
                 break;
             default:
-                s[e.target.name] = e.target.value;
+                s[e.currentTarget.name] = e.currentTarget.value;
         }
 
-        let msg = {
+        let msg: ServerMsg = {
             data_type: 'SetSettings',
-            data: s,
+            data: JSON.stringify(s),
         };
         this.props.onChangeLift(msg);
     }
 
     render() {
         return (
-            <div>
+            <Columns>
+                <Column>
 
-              <Field>
-                <Label>Mouse sensitivity</Label>
-                <Control>
-                    <Input
-                        name='mouse_sensitivity'
-                        value={this.props.dmoData.settings.mouse_sensitivity}
-                        type="number" min="0.0" step="0.1"
-                        onChange={this.onChangeLocal}
-                    />
-                </Control>
-              </Field>
+                    <Field>
+                        <Label>Mouse sensitivity</Label>
+                        <Control>
+                            <Input
+                                name='mouse_sensitivity'
+                                value={this.props.dmoData.settings.mouse_sensitivity}
+                                type="number" min="0.0" step="0.1"
+                                onChange={this.onChangeLocal}
+                            />
+                        </Control>
+                    </Field>
 
-              <Field>
-                <Label>Movement sensitivity</Label>
-                <Control>
-                    <Input
-                        name='movement_sensitivity'
-                        value={this.props.dmoData.settings.movement_sensitivity}
-                        type="number" min="0.0" step="0.1"
-                        onChange={this.onChangeLocal}
-                    />
-                </Control>
-              </Field>
+                    <Field>
+                        <Label>Movement sensitivity</Label>
+                        <Control>
+                            <Input
+                                name='movement_sensitivity'
+                                value={this.props.dmoData.settings.movement_sensitivity}
+                                type="number" min="0.0" step="0.1"
+                                onChange={this.onChangeLocal}
+                            />
+                        </Control>
+                    </Field>
 
-              <Field>
-                <Label>Total length</Label>
-                <Control>
-                    <Input
-                        name='total_length'
-                        value={this.props.dmoData.settings.total_length}
-                        type="number" min="0.0" step="1.0"
-                        onChange={this.onChangeLocal}
-                    />
-                </Control>
-              </Field>
+                </Column>
+                <Column>
 
-              <Field>
-                <Control>
-                    <Checkbox
-                        name='start_full_screen'
-                        checked={this.props.dmoData.settings.start_full_screen}
-                        onChange={this.onChangeLocal}
-                    >
-                        Start full screen
-                    </Checkbox>
-                </Control>
-              </Field>
+                    <Field>
+                        <Label>Total length</Label>
+                        <Control>
+                            <Input
+                                name='total_length'
+                                value={this.props.dmoData.settings.total_length}
+                                type="number" min="0.0" step="1.0"
+                                onChange={this.onChangeLocal}
+                            />
+                        </Control>
+                    </Field>
 
-              <Field>
-                <Control>
-                    <Checkbox
-                        name='audio_play_on_start'
-                        checked={this.props.dmoData.settings.audio_play_on_start}
-                        onChange={this.onChangeLocal}
-                    >
-                        Play audio on start
-                    </Checkbox>
-                </Control>
-              </Field>
+                    <Field>
+                        <Control>
+                            <Checkbox
+                                name='start_full_screen'
+                                checked={this.props.dmoData.settings.start_full_screen}
+                                onChange={this.onChangeLocal}
+                            >
+                                Start full screen
+                            </Checkbox>
+                        </Control>
+                    </Field>
 
-            </div>
+                    <Field>
+                        <Control>
+                            <Checkbox
+                                name='audio_play_on_start'
+                                checked={this.props.dmoData.settings.audio_play_on_start}
+                                onChange={this.onChangeLocal}
+                            >
+                                Play audio on start
+                            </Checkbox>
+                        </Control>
+                    </Field>
+
+                </Column>
+            </Columns>
         );
     }
 }

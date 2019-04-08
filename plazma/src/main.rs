@@ -1,9 +1,9 @@
+#[macro_use]
 extern crate clap;
 extern crate web_view;
 extern crate actix;
 extern crate actix_web;
 
-#[macro_use]
 extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
@@ -12,178 +12,121 @@ extern crate serde_json;
 extern crate log;
 extern crate env_logger;
 extern crate kankyo;
+extern crate futures;
+extern crate glutin;
 
+extern crate rocket_client;
+extern crate rocket_sync;
 extern crate plazma;
 
-use std::env;
-use std::sync::{Arc, Mutex};
-use std::thread;
-//use std::time::Duration;
-use std::path::PathBuf;
-//use std::error::Error;
+use std::sync::{Arc, Mutex, mpsc};
 
-use clap::App as ClApp;
-use clap::{Arg, SubCommand};
+use clap::App;
 
-use web_view::Content;
-
-use actix_web::{fs, middleware, server, client, ws, App, HttpRequest, HttpResponse};
-use actix_web::Error as AxError;
-use actix_web::actix::*;
-
-use futures::Future;
-
-use plazma::server_actor::{ServerActor, ServerState, ServerStateWrap};
-
-fn static_index(_req: &HttpRequest<ServerStateWrap>) -> Result<fs::NamedFile, AxError> {
-    Ok(fs::NamedFile::open("../gui/build/index.html")?)
-}
-
-fn stop_server(_req: &HttpRequest<ServerStateWrap>) -> Result<HttpResponse, AxError> {
-    System::current().stop();
-    Ok(HttpResponse::Ok()
-       .content_type("text/plain")
-       .body("g2g"))
-}
+use plazma::server_actor::{Sending, MsgDataType};
+use plazma::app::{self, AppStartParams};
 
 fn main() {
     kankyo::load().unwrap();
-    std::env::set_var("RUST_LOG", "actix_web=info,plazma=info");
+    //std::env::set_var("RUST_LOG", "actix_web=info,plazma=info");
     env_logger::init();
+    info!("🚀 Launched");
 
-    let plazma_server_port = Arc::new(8080);
+    let app_info = app::app_info().unwrap();
 
-    // In development mode, use the React dev server port.
-    let react_server_port: Option<usize> = match env::var("MODE") {
-        Ok(x) => {
-            if x == "development" {
-                Some(3000)
-            } else {
-                None
-            }
-        },
-        Err(_) => None
-    };
+    info!("🔎 CWD: {:?}", &app_info.cwd);
+    info!("🔎 Path to binary: {:?}", &app_info.path_to_binary);
 
     // --- CLI options ---
 
-    let matches = ClApp::new("Plazma")
-        .version("0.1.0")
-        .author("etd <erethedaybreak@gmail.com>")
-        .subcommand(SubCommand::with_name("open")
-                    .about("open a demo")
-                    .arg(Arg::with_name("yml")
-                         .long("yml")
-                         .value_name("FILE")
-                         .required(true)
-                         .takes_value(true)
-                         .help("YAML demo file")))
-        .get_matches();
+    let cli_yaml = load_yaml!("cli.yml");
+    let matches = App::from_yaml(cli_yaml).get_matches();
 
-    // --- Process CLI args ---
+    // Process the cli args and destructure the members to separate owned variables.
 
-    let demo_yml_path: PathBuf;
+    let AppStartParams {
+        yml_path,
+        dmo_path: _,
+        plazma_server_port,
+        start_server: param_start_server,
+        start_webview: param_start_webview,
+        start_preview: param_start_preview,
+    } = app::process_cli_args(matches).unwrap();
 
-    if let Some(m) = matches.subcommand_matches("open") {
+    // --- OpenGL preview window ---
 
-        demo_yml_path = PathBuf::from(m.value_of("yml").unwrap());
+    // Starts on the main thread. The render loop is blocking until it exits.
 
-    } else {
-        // No CLI subcommands were given. Try default locations for a demo.yml
-
-        // ./demo.yml
-        let a = PathBuf::from("demo.yml".to_owned());
-        // ./data/demo.yml
-        let b = PathBuf::from("data".to_owned()).join(PathBuf::from("demo.yml".to_owned()));
-        if a.exists() {
-            demo_yml_path = a;
-        } else if b.exists() {
-            demo_yml_path = b;
-        } else {
-            // No subcommands were given and default locations don't exist.
-            // Start with a minimal default demo.
-
-            // ./data/minimal/demo.yml
-            demo_yml_path = PathBuf::from("data".to_owned())
-                .join(PathBuf::from("minimal".to_owned()))
-                .join(PathBuf::from("demo.yml".to_owned()));
-        }
-    }
+    let port_a = plazma_server_port.clone();
+    if param_start_preview {
+        app::start_preview(port_a).unwrap();
+    };
 
     // --- HTTP and WebSocket server ---
 
-    let plazma_server_port_a = Arc::clone(&plazma_server_port);
+    // Starts on a spawned thread. It allows to start the server before the webview window starts
+    // blocking.
 
-    let server_handle = thread::spawn(move || {
+    // Channel to pass messages from the server to the webview window.
+    let (webview_sender, webview_receiver) = mpsc::channel();
+    let webview_sender_arc = Arc::new(Mutex::new(webview_sender));
 
-        let sys = actix::System::new("plazma server");
+    // Channel to pass messages from the webview to the server.
+    let (server_sender, server_receiver) = mpsc::channel();
 
-        let server_state = Arc::new(Mutex::new(ServerState::new(&demo_yml_path).unwrap()));
-
-        server::new(move || {
-
-            App::with_state(server_state.clone())
-            // logger
-                .middleware(middleware::Logger::default())
-            // WebSocket routes (there is no CORS)
-                .resource("/ws/", |r| r.f(|req| ws::start(req, ServerActor::new())))
-            // tell the server to stop
-                .resource("/stop_server",
-                          |r| r.get().f(stop_server))
-            // static files
-                .handler("/static/", fs::StaticFiles::new("../gui/build/").unwrap()
-                         .default_handler(static_index))
-        })
-            .bind(format!{"127.0.0.1:{}", plazma_server_port_a})
-            .unwrap()
-            .start();
-
-        sys.run();
-    });
+    let port_b = plazma_server_port.clone();
+    let (server_handle, server_receiver_handle, client_receiver_handle) = if param_start_server {
+        let (a, b, c) = app::start_server(port_b,
+                                          app_info,
+                                          yml_path,
+                                          webview_sender_arc,
+                                          server_receiver).unwrap();
+        (Some(a), Some(b), Some(c))
+    } else {
+        (None, None, None)
+    };
 
     // --- WebView ---
 
-    // If the React dev server is running, load content from there. If not, load
-    // our static files route which is serving the React build directory.
-    let content_url = if let Some(port) = react_server_port {
-        format!{"http://localhost:{}/static/", port}
-    } else {
-        format!{"http://localhost:{}/static/", plazma_server_port}
-    };
+    // Starts on the main thread. The webview window is blocking until it is closed.
 
-    {
-        web_view::builder()
-            .title("Plazma")
-            .content(Content::Url(content_url))
-            .size(1366, 768)
-            .resizable(true)
-            .debug(true)
-            .user_data(())
-            .invoke_handler(|_webview, _arg| Ok(()))
-            .run()
-            .unwrap();
+    let server_sender_arc = Arc::new(Mutex::new(server_sender));
+    let sender_a = server_sender_arc.clone();
+    let sender_b = server_sender_arc.clone();
 
-        // Blocked until gui exits. Then it hits the /stop_server url.
+    let port_c = plazma_server_port.clone();
+    if param_start_webview {
+        app::start_webview(port_c,
+                           webview_receiver,
+                           sender_a).unwrap();
 
-        let url = format!{"http://localhost:{}/stop_server", plazma_server_port};
+        // Send ExitApp to the server, in case it is still running. This can happen when the window
+        // manager is used to close the window, not the close button in the web UI.
 
-        actix::run(|| {
-            client::get(url)
-                .finish().unwrap()
-                .send()
-                .map_err(|err| {
-                    error!("Error: {:?}", err);
-                    ()
-                })
-                .and_then(|response| {
-                    info!("Response: {:?}", response);
-                    Ok(())
-                })
-        });
+        let msg = serde_json::to_string(&Sending{
+            data_type: MsgDataType::ExitApp,
+            data: "".to_owned(),
+        }).unwrap();
+
+        let sender = sender_b.lock().expect("Can't lock server sender.");
+        match sender.send(msg) {
+            Ok(_) => {},
+            Err(e) => error!("🔥 Can't send on user_data.server_sender: {:?}", e),
+        }
+
     }
 
-    server_handle.join().unwrap();
+    if let Some(h) = client_receiver_handle {
+        h.join().unwrap();
+    }
 
-    info!("gg thx!");
+    if let Some(h) = server_receiver_handle {
+        h.join().unwrap();
+    }
+
+    if let Some(h) = server_handle {
+        h.join().unwrap();
+    }
+
+    info!("🍉 gg thx! 😎");
 }
-

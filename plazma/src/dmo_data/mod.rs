@@ -13,9 +13,10 @@ pub mod timeline;
 
 use intro_runtime::dmo_gfx::DmoGfx;
 
-use crate::dmo_data::context_data::{ContextData, FrameBuffer};
+use crate::dmo_data::context_data::{ContextData, FrameBuffer, BufferKind, PixelFormat};
+use crate::dmo_data::quad_scene::{DRAW_RESULT_VERT_SRC_PATH, DRAW_RESULT_FRAG_SRC_PATH};
 use crate::dmo_data::quad_scene::QuadScene;
-use crate::dmo_data::timeline::Timeline;
+use crate::dmo_data::timeline::{Timeline, TimeTrack, SceneBlock, DrawOp};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DmoData {
@@ -33,6 +34,24 @@ pub struct DmoData {
     pub timeline: Timeline,
 }
 
+pub struct ProjectData {
+    /// Path to the demo YAML project description. Paths to asset files (shaders, images, etc.) in
+    /// the YAML are stored as relative to the YAML's folder.
+    pub dmo_yml_path: PathBuf,
+
+    /// The folder from which the demo YAML was read from.
+    pub project_root: PathBuf,
+
+    // /// The deserialized value of the YAML since the last read. Can be used to find what has
+    // /// changed when selecively rebuilding parts of the DmoGfx after detecting that the YAML files
+    // /// was modified on the disk.
+    // pub dmo_yml_value: Value,
+
+    // /// The deserialized value of the demo either after reading from YAML or receiving it from the
+    // /// server.
+    // pub dmo_data: DmoData,
+}
+
 impl Default for DmoData {
     fn default() -> DmoData {
         DmoData {
@@ -43,12 +62,147 @@ impl Default for DmoData {
     }
 }
 
+impl Default for ProjectData {
+    fn default() -> ProjectData {
+        ProjectData {
+            dmo_yml_path: PathBuf::default(),
+            project_root: PathBuf::default(),
+        }
+    }
+}
+
 impl DmoData {
-    pub fn new_from_yml_str(text: &str, read_shader_paths: bool, read_image_paths: bool) -> Result<DmoData, Box<Error>>
+    pub fn new_from_yml_str(text: &str,
+                            read_shader_paths: bool,
+                            read_image_paths: bool)
+        -> Result<DmoData, Box<Error>>
     {
         let mut dmo_data: DmoData = serde_yaml::from_str(text)?;
         dmo_data.ensure_implicit_builtins();
         dmo_data.context.build_index(read_shader_paths, read_image_paths)?;
+        Ok(dmo_data)
+    }
+
+    pub fn new_minimal() -> Result<DmoData, Box<Error>>
+    {
+        // don't read anything from disk for the minimal demo, include assets in the binary
+        let mut dmo_data = DmoData::default();
+        dmo_data.ensure_implicit_builtins();
+        dmo_data.context.build_index(false, false)?;
+
+        // construct ContextData with one QuadScene
+        // ----------------------------------------
+
+        use crate::dmo_data::BuiltIn::*;
+
+        dmo_data.context.index.add_shader_path_to_index("circle.frag");
+        let a = include_str!("../../data/builtin/circle.frag");
+        dmo_data.context.shader_sources.push(a.to_owned());
+
+        dmo_data.context.index.add_shader_path_to_index("cross.frag");
+        let a = include_str!("../../data/builtin/cross.frag");
+        dmo_data.context.shader_sources.push(a.to_owned());
+
+        // circle scene
+
+        let a = QuadScene {
+            name: "circle".to_owned(),
+            // shader name here is only for index mapping, not going to read it as a path
+            // same path name as in scene_draw_result()
+            vert_src_path: DRAW_RESULT_VERT_SRC_PATH.to_owned(),
+            frag_src_path: "circle.frag".to_owned(),
+            layout_to_vars: vec![
+                UniformMapping::Float(0, Time),
+                UniformMapping::Vec2(1, Window_Width, Window_Height),
+                UniformMapping::Vec2(2, Screen_Width, Screen_Height),
+            ],
+            binding_to_buffers: vec![],
+        };
+
+        dmo_data.context.index.add_quad_scene(&a,
+                                              dmo_data.context.quad_scenes.len(),
+                                              false,
+                                              &mut vec![])?;
+
+        dmo_data.context.quad_scenes.push(a);
+
+        // cross scene
+
+        let a = QuadScene {
+            name: "cross".to_owned(),
+            // shader name here is only for index mapping, not going to read it as a path
+            // same path name as in scene_draw_result()
+            vert_src_path: DRAW_RESULT_VERT_SRC_PATH.to_owned(),
+            frag_src_path: "cross.frag".to_owned(),
+            layout_to_vars: vec![
+                UniformMapping::Float(0, Time),
+                UniformMapping::Vec2(1, Window_Width, Window_Height),
+                UniformMapping::Vec2(2, Screen_Width, Screen_Height),
+            ],
+            binding_to_buffers: vec![
+                BufferMapping::Sampler2D(0, "scene buf".to_owned()),
+            ],
+        };
+
+        dmo_data.context.index.add_quad_scene(&a,
+                                              dmo_data.context.quad_scenes.len(),
+                                              false,
+                                              &mut vec![])?;
+
+        dmo_data.context.quad_scenes.push(a);
+
+        // framebuffers
+
+        let a = FrameBuffer {
+            name: "scene buf".to_owned(),
+            kind: BufferKind::Empty_Texture,
+            format: PixelFormat::RGBA_u8,
+            image_path: "".to_owned(),
+        };
+
+        dmo_data.context.index.add_frame_buffer(&a,
+                                                dmo_data.context.frame_buffers.len(),
+                                                false,
+                                                &mut vec![])?;
+
+        dmo_data.context.frame_buffers.push(a);
+
+        // construct a Timeline with one track
+        // -----------------------------------
+
+        let mut track = TimeTrack {
+            scene_blocks: vec![],
+        };
+
+        let scene = SceneBlock {
+            start: 0.0,
+            end: 240.0,
+            draw_ops: vec![
+                DrawOp::Target_Buffer("scene buf".to_owned()),
+                // #4682B4, Steel Blue
+                DrawOp::Clear(70, 130, 180, 0),
+                DrawOp::Draw_Quad_Scene("circle".to_owned()),
+                DrawOp::Target_Buffer("RESULT_IMAGE".to_owned()),
+                // #4682B4, Steel Blue
+                DrawOp::Clear(70, 130, 180, 0),
+                DrawOp::Draw_Quad_Scene("cross".to_owned()),
+            ],
+        };
+
+        track.scene_blocks.push(scene);
+
+        let timeline = Timeline {
+            tracks: vec![
+                track,
+            ],
+        };
+
+        dmo_data.timeline = timeline;
+
+        // result
+        // ------
+
+        //dmo_data.context.build_index(false, false)?;
         Ok(dmo_data)
     }
 
@@ -84,6 +238,14 @@ impl DmoData {
         }
 
         if !has_draw_result {
+            self.context.index.add_shader_path_to_index(DRAW_RESULT_VERT_SRC_PATH);
+            let a = include_str!("../../data/builtin/screen_quad.vert");
+            self.context.shader_sources.push(a.to_owned());
+
+            self.context.index.add_shader_path_to_index(DRAW_RESULT_FRAG_SRC_PATH);
+            let a = include_str!("../../data/builtin/draw_result.frag");
+            self.context.shader_sources.push(a.to_owned());
+
             let mut quad_scenes = vec![
                 QuadScene::scene_draw_result(),
             ];

@@ -160,8 +160,9 @@ pub fn start_server(port: Arc<usize>,
     let a = webview_sender_arc.clone();
     let server_handle = thread::spawn(move || {
         info!("🧵 new thread: server");
-
         let sys = actix::System::new("plazma server");
+
+        info!("ServerState::new() using yml_path: {:?}", &yml_path);
 
         let server_state = Arc::new(
             Mutex::new(

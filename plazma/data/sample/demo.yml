@@ -85,8 +85,8 @@ context:
             - Vec2: [ 5, "Window_Width", "Window_Height" ]
             - Vec2: [ 6, "Screen_Width", "Screen_Height" ]
             - Vec3: [ 7, "Light_Pos_X", "Light_Pos_Y", "Light_Pos_Z" ]
-          binding_to_buffers:
-            - Sampler2D: [ 0, "organic texture buf" ]
+          binding_to_buffers: []
+          #- Sampler2D: [ 0, "organic texture buf" ]
 
         - name: "room box"
           position:
@@ -162,29 +162,29 @@ context:
         kind: Empty_Texture, format: RGBA_u8,
         image_path: "" }
 
-    - { name: "organic texture buf",
-        kind: Image_Texture, format: RGB_u8,
-        image_path: "./data/sample/data/images/organic4 1024x1024 3ch uint8.jpg" }
-
-    - { name: "gray noise medium buf",
-        kind: Image_Texture, format: RED_u8,
-        image_path: "./data/sample/data/images/gray-noise-medium-256x256-1ch-uint8.png" }
-
-    - { name: "rgba noise medium buf",
-        kind: Image_Texture, format: RGBA_u8,
-        image_path: "./data/sample/data/images/rgba-noise-medium-256x256-4ch-uint8.png" }
-
-    - { name: "rock tiles",
-        kind: Image_Texture, format: RGB_u8,
-        image_path: "./data/sample/data/images/rock tiles 512x512 3ch uint8.jpg" }
-
-    - { name: "rock surface",
-        kind: Image_Texture, format: RGB_u8,
-        image_path: "./data/sample/data/images/rock-1024x1024-3ch-uint8.jpg" }
-
-    - { name: "font1",
-        kind: Image_Texture, format: RGBA_u8,
-        image_path: "./data/sample/data/images/font1 1024x1024 4ch uint8.png" }
+#    - { name: "organic texture buf",
+#        kind: Image_Texture, format: RGB_u8,
+#        image_path: "./data/sample/data/images/organic4 1024x1024 3ch uint8.jpg" }
+#
+#    - { name: "gray noise medium buf",
+#        kind: Image_Texture, format: RED_u8,
+#        image_path: "./data/sample/data/images/gray-noise-medium-256x256-1ch-uint8.png" }
+#
+#    - { name: "rgba noise medium buf",
+#        kind: Image_Texture, format: RGBA_u8,
+#        image_path: "./data/sample/data/images/rgba-noise-medium-256x256-4ch-uint8.png" }
+#
+#    - { name: "rock tiles",
+#        kind: Image_Texture, format: RGB_u8,
+#        image_path: "./data/sample/data/images/rock tiles 512x512 3ch uint8.jpg" }
+#
+#    - { name: "rock surface",
+#        kind: Image_Texture, format: RGB_u8,
+#        image_path: "./data/sample/data/images/rock-1024x1024-3ch-uint8.jpg" }
+#
+#    - { name: "font1",
+#        kind: Image_Texture, format: RGBA_u8,
+#        image_path: "./data/sample/data/images/font1 1024x1024 4ch uint8.png" }
 
   sync_tracks_path: "./data/sample/data/demo.rocket"
 
@@ -197,24 +197,24 @@ timeline:
 
     - scene_blocks:
 
-        - start: 0.0
-          end: 200.0
-          draw_ops:
-            - Target_Buffer: "scene buf"
-            - Clear: [ 50, 0, 0, 0 ]
-            - Target_Buffer: "RESULT_IMAGE"
-            - Clear: [ 0, 50, 0, 0 ]
-            - Draw_Poly_Scene: "cubes and suzanne"
-
 #        - start: 0.0
 #          end: 200.0
 #          draw_ops:
 #            - Target_Buffer: "scene buf"
-#            - Clear: [ 0, 0, 0, 0 ]
-#            - Draw_Quad_Scene: "circle"
+#            - Clear: [ 50, 0, 0, 0 ]
 #            - Target_Buffer: "RESULT_IMAGE"
-#            - Clear: [ 0, 0, 0, 0 ]
-#            - Draw_Quad_Scene: "cross"
+#            - Clear: [ 0, 50, 0, 0 ]
+#            - Draw_Poly_Scene: "cubes and suzanne"
+
+        - start: 0.0
+          end: 200.0
+          draw_ops:
+            - Target_Buffer: "scene buf"
+            - Clear: [ 0, 0, 0, 0 ]
+            - Draw_Quad_Scene: "circle"
+            - Target_Buffer: "RESULT_IMAGE"
+            - Clear: [ 0, 0, 0, 0 ]
+            - Draw_Quad_Scene: "cross"
 
 #        - start: 10.0
 #          end: 20.0

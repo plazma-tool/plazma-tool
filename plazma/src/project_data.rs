@@ -15,6 +15,7 @@ pub struct ProjectData {
 
 impl ProjectData {
     pub fn new(demo_yml_path: &PathBuf) -> Result<ProjectData, Box<Error>> {
+        info!("ProjectData::new() demo_yml_path: {:?}", &demo_yml_path);
         let text: String = file_to_string(demo_yml_path)?;
         let demo_yml_value: Value = serde_yaml::from_str(&text)?;
 

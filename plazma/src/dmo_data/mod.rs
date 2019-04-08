@@ -14,6 +14,7 @@ pub mod timeline;
 use intro_runtime::dmo_gfx::DmoGfx;
 
 use crate::dmo_data::context_data::{ContextData, FrameBuffer, BufferKind, PixelFormat};
+use crate::dmo_data::quad_scene::{DRAW_RESULT_VERT_SRC_PATH, DRAW_RESULT_FRAG_SRC_PATH};
 use crate::dmo_data::quad_scene::QuadScene;
 use crate::dmo_data::timeline::{Timeline, TimeTrack, SceneBlock, DrawOp};
 
@@ -108,7 +109,7 @@ impl DmoData {
             name: "circle".to_owned(),
             // shader name here is only for index mapping, not going to read it as a path
             // same path name as in scene_draw_result()
-            vert_src_path: "data_builtin_screen_quad.vert".to_owned(),
+            vert_src_path: DRAW_RESULT_VERT_SRC_PATH.to_owned(),
             frag_src_path: "circle.frag".to_owned(),
             layout_to_vars: vec![
                 UniformMapping::Float(0, Time),
@@ -131,7 +132,7 @@ impl DmoData {
             name: "cross".to_owned(),
             // shader name here is only for index mapping, not going to read it as a path
             // same path name as in scene_draw_result()
-            vert_src_path: "data_builtin_screen_quad.vert".to_owned(),
+            vert_src_path: DRAW_RESULT_VERT_SRC_PATH.to_owned(),
             frag_src_path: "cross.frag".to_owned(),
             layout_to_vars: vec![
                 UniformMapping::Float(0, Time),
@@ -237,11 +238,11 @@ impl DmoData {
         }
 
         if !has_draw_result {
-            self.context.index.add_shader_path_to_index("data_builtin_screen_quad.vert");
+            self.context.index.add_shader_path_to_index(DRAW_RESULT_VERT_SRC_PATH);
             let a = include_str!("../../data/builtin/screen_quad.vert");
             self.context.shader_sources.push(a.to_owned());
 
-            self.context.index.add_shader_path_to_index("data_builtin_draw_result.frag");
+            self.context.index.add_shader_path_to_index(DRAW_RESULT_FRAG_SRC_PATH);
             let a = include_str!("../../data/builtin/draw_result.frag");
             self.context.shader_sources.push(a.to_owned());
 

@@ -64,7 +64,7 @@ export class ImagesPage extends React.Component<IP_Props> {
             let idx = this.props.dmoData.context.index.image_path_to_idx[path];
             let format = this.props.dmoData.context.index.image_path_to_format[path];
 
-            return (<ImageItem path={path} idx={idx} format={format} />);
+            return (<ImageItem key={path} path={path} idx={idx} format={format} />);
         });
 
         return (

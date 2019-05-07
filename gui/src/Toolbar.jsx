@@ -3,7 +3,7 @@ import React from 'react';
 
 import logo from './idea.svg';
 
-import { Input, Title, Box, Modal, ModalBackground, ModalContent, ModalClose, ModalCard, ModalCardHeader, ModalCardBody, ModalCardTitle, ModalCardFooter, Delete, Field, Control, Button, Navbar, NavbarBrand, NavbarItem, Icon, NavbarBurger, NavbarMenu,
+import { Input, Title, Box, Modal, ModalBackground, ModalContent, ModalClose, Delete, Field, Control, Button, Navbar, NavbarBrand, NavbarItem, Icon, NavbarBurger, NavbarMenu,
     NavbarStart, NavbarEnd, NavbarLink, NavbarDropdown, NavbarDivider } from 'bloomer';
 
 import type { InputEvent } from './Helpers';

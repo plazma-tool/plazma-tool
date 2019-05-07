@@ -7,7 +7,6 @@ import { DmoShadersPanel } from './DmoShaders';
 import { DmoFramebuffersPanel } from './DmoFramebuffers';
 import { DmoQuadScenesPanel } from './DmoQuadScenes';
 import { DmoPolygonScenesPanel } from './DmoPolygonScenes';
-import { DmoImagesPanel } from './DmoImages';
 import { DmoModelsPanel } from './DmoModels';
 import { DmoTimelinePanel } from './DmoTimeline';
 import { DmoSyncTracksPanel } from './DmoSyncTracks';
@@ -22,7 +21,6 @@ type S_Props = {
     onClick_DmoQuadScenesMenu: () => void,
     onClick_DmoPolygonScenesMenu: () => void,
     onClick_DmoShadersMenu: () => void,
-    onClick_DmoImagesMenu: () => void,
     onClick_DmoModelsMenu: () => void,
     onClick_DmoTimelineMenu: () => void,
     onClick_DmoSyncTracksMenu: () => void,
@@ -66,11 +64,6 @@ export class Sidebar extends React.Component<S_Props> {
                 <DmoPolygonScenesPanel
                     currentPage={this.props.currentPage}
                     onClickLift={this.props.onClick_DmoPolygonScenesMenu}
-                />
-
-                <DmoImagesPanel
-                    currentPage={this.props.currentPage}
-                    onClickLift={this.props.onClick_DmoImagesMenu}
                 />
 
                 <DmoModelsPanel

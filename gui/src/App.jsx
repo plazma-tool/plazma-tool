@@ -12,7 +12,6 @@ import { ShadersPage } from './DmoShaders';
 import { FramebuffersPage } from './DmoFramebuffers';
 import { QuadScenesPage } from './DmoQuadScenes';
 import { PolygonScenesPage } from './DmoPolygonScenes';
-import { ImagesPage } from './DmoImages';
 import { ModelsPage } from './DmoModels';
 import { TimelinePage } from './DmoTimeline';
 import { SyncTracksPage } from './DmoSyncTracks';
@@ -232,11 +231,6 @@ class App extends Component<{}, AppState> {
         console.log("TODO: implement onChange_PolygonScenesPage(msg)");
     }
 
-    onChange_ImagesPage = (msg: ServerMsg) =>
-    {
-        console.log("TODO: implement onChange_ImagesPage(msg)");
-    }
-
     onChange_ModelsPage = (msg: ServerMsg) =>
     {
         console.log("TODO: implement onChange_ModelsPage(msg)");
@@ -359,14 +353,6 @@ class App extends Component<{}, AppState> {
                         />;
                     break;
 
-                case CurrentPage.Images:
-                    page =
-                        <ImagesPage
-                            dmoData={this.state.dmo_data}
-                            onChangeLift={this.onChange_ImagesPage}
-                        />;
-                    break;
-
                 case CurrentPage.Models:
                     page =
                         <ModelsPage
@@ -460,7 +446,6 @@ class App extends Component<{}, AppState> {
                             onClick_DmoQuadScenesMenu={() => this.setState({ current_page: CurrentPage.QuadScenes })}
                             onClick_DmoPolygonScenesMenu={() => this.setState({ current_page: CurrentPage.PolygonScenes })}
                             onClick_DmoShadersMenu={() => this.setState({ current_page: CurrentPage.Shaders })}
-                            onClick_DmoImagesMenu={() => this.setState({ current_page: CurrentPage.Images })}
                             onClick_DmoModelsMenu={() => this.setState({ current_page: CurrentPage.Models })}
                             onClick_DmoTimelineMenu={() => this.setState({ current_page: CurrentPage.Timeline })}
                             onClick_DmoSyncTracksMenu={() => this.setState({ current_page: CurrentPage.SyncTracks })}

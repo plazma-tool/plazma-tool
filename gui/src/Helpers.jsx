@@ -7,11 +7,10 @@ export const CurrentPage = {
     Framebuffers: 3,
     QuadScenes: 4,
     PolygonScenes: 5,
-    Images: 6,
-    Models: 7,
-    Timeline: 8,
-    SyncTracks: 9,
-    Library: 10,
+    Models: 6,
+    Timeline: 7,
+    SyncTracks: 8,
+    Library: 9,
 };
 
 export type ServerMsg = {

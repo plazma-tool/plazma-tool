@@ -1,6 +1,6 @@
 // @flow
 import React from 'react';
-import { Panel, PanelHeading, Field, Label, Control, Input } from 'bloomer';
+import { Table, Panel, PanelHeading } from 'bloomer';
 import { CurrentPage } from './Helpers';
 import type { ServerMsg, DmoData, InputEvent } from './Helpers';
 
@@ -24,6 +24,24 @@ export class DmoModelsPanel extends React.Component<DMP_Props> {
     }
 }
 
+type MI_Props = {
+    model_idx: number,
+    model_name: string,
+    // FIXME add props
+};
+
+export class ModelItem extends React.Component<MI_Props> {
+    render()
+    {
+        return(
+            <tr>
+                <td>{this.props.model_idx}</td>
+                <td>{this.props.model_name}</td>
+            </tr>
+        );
+    }
+}
+
 type MP_Props = {
     dmoData: DmoData,
     onChangeLift: (ServerMsg) => void,
@@ -40,22 +58,32 @@ export class ModelsPage extends React.Component<MP_Props> {
     }
 
     render() {
+        let models = Object.keys(this.props.dmoData.context.index.model_name_to_idx).map((name) => {
+            let model_idx = this.props.dmoData.context.index.model_name_to_idx[name];
+            let model_name = name;
+            // TODO other model properties
+
+            return (
+                <ModelItem
+                    key={model_name}
+                    model_idx={model_idx}
+                    model_name={model_name}
+                />
+            );
+        });
+
         return (
-            <div>
-
-              <Field>
-                <Label>Mouse sensitivity</Label>
-                <Control>
-                    <Input
-                        name='mouse_sensitivity'
-                        value={this.props.dmoData.settings.mouse_sensitivity}
-                        type="number" min="0.0" step="0.1"
-                        onChange={this.onChangeLocal}
-                    />
-                </Control>
-              </Field>
-
-            </div>
+            <Table>
+                <thead>
+                    <tr>
+                        <th>model_idx</th>
+                        <th>model_name</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {models}
+                </tbody>
+            </Table>
         );
     }
 }

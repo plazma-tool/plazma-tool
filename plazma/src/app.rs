@@ -611,7 +611,9 @@ fn render_loop(window: &GlWindow,
                         info!{"sx: {}, sy: {}", sx, sy};
                         let camera = state.dmo_gfx.context.camera.get_copy();
 
-                        match state.build_dmo_gfx_from_yml_str(&message.data, true, true,
+                        // - don't read in shader files again, the updated shaders are sent directly from the UI
+                        // - do read in images, these are passed only by path from the UI
+                        match state.build_dmo_gfx_from_yml_str(&message.data, false, true,
                                                                sx, sy,
                                                                Some(camera))
                         {

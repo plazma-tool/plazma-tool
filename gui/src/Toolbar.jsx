@@ -186,7 +186,7 @@ export class Toolbar extends React.Component<T_Props, T_State> {
                         </NavbarItem>
 
                         <NavbarItem onClick={this.props.onClick_Exit}>
-                            <Button> <Delete /> </Button>
+                            <Delete />
                         </NavbarItem>
 
                     </NavbarEnd>

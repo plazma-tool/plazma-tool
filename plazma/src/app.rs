@@ -611,7 +611,7 @@ fn render_loop(window: &GlWindow,
                         info!{"sx: {}, sy: {}", sx, sy};
                         let camera = state.dmo_gfx.context.camera.get_copy();
 
-                        match state.build_dmo_gfx_from_yml_str(&message.data, false, false,
+                        match state.build_dmo_gfx_from_yml_str(&message.data, true, true,
                                                                sx, sy,
                                                                Some(camera))
                         {

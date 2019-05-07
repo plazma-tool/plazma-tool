@@ -1,10 +1,13 @@
 #version 430
 
+in vec2 texCoord;
 out vec4 out_color;
 
 layout(location = 0) uniform float iTime;
 layout(location = 1) uniform vec2 iResolution;
 layout(location = 2) uniform vec2 screenResolution;
+
+layout (binding = 0) uniform sampler2D backgroundTexture;
 
 // --- tool ---
 
@@ -18,7 +21,9 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
   vec2 uv = -1.0 + 2.0 * fragCoord.xy / iResolution.xy;
   uv.x *= iResolution.x / iResolution.y;
 
-  vec3 base = vec3(0.1, 0.2, 0.3); // !! color
+  vec2 tex_uv = texCoord * (screenResolution / iResolution);
+
+  vec3 base = vec3(texture(backgroundTexture, tex_uv));
   vec3 circle = vec3(0., 0., 1.); // !! color
   float radius = 0.3; // !! slider
 

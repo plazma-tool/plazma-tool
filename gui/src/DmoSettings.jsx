@@ -1,6 +1,6 @@
 // @flow
 import React from 'react';
-import { FieldBody, Column, Columns, Panel, PanelHeading, Field, Label, Control, Input, Checkbox } from 'bloomer';
+import { Column, Columns, Panel, PanelHeading, Field, Label, Control, Input, Checkbox } from 'bloomer';
 import { CurrentPage } from './Helpers';
 import type { ServerMsg, DmoData, InputEvent } from './Helpers';
 

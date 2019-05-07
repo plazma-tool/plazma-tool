@@ -19,7 +19,8 @@ context:
         - Float: [ 0, "Time" ]
         - Vec2: [ 1, "Window_Width", "Window_Height" ]
         - Vec2: [ 2, "Screen_Width", "Screen_Height" ]
-      binding_to_buffers: []
+      binding_to_buffers:
+        - Sampler2D: [ 0, "rock surface" ]
 
     - name: "cross"
       vert_src_path: "./data/sample/data/screen_quad.vert"
@@ -162,29 +163,29 @@ context:
         kind: Empty_Texture, format: RGBA_u8,
         image_path: "" }
 
-#    - { name: "organic texture buf",
-#        kind: Image_Texture, format: RGB_u8,
-#        image_path: "./data/sample/data/images/organic4 1024x1024 3ch uint8.jpg" }
-#
-#    - { name: "gray noise medium buf",
-#        kind: Image_Texture, format: RED_u8,
-#        image_path: "./data/sample/data/images/gray-noise-medium-256x256-1ch-uint8.png" }
-#
-#    - { name: "rgba noise medium buf",
-#        kind: Image_Texture, format: RGBA_u8,
-#        image_path: "./data/sample/data/images/rgba-noise-medium-256x256-4ch-uint8.png" }
-#
-#    - { name: "rock tiles",
-#        kind: Image_Texture, format: RGB_u8,
-#        image_path: "./data/sample/data/images/rock tiles 512x512 3ch uint8.jpg" }
-#
-#    - { name: "rock surface",
-#        kind: Image_Texture, format: RGB_u8,
-#        image_path: "./data/sample/data/images/rock-1024x1024-3ch-uint8.jpg" }
-#
-#    - { name: "font1",
-#        kind: Image_Texture, format: RGBA_u8,
-#        image_path: "./data/sample/data/images/font1 1024x1024 4ch uint8.png" }
+    - { name: "organic texture buf",
+        kind: Image_Texture, format: RGB_u8,
+        image_path: "./data/sample/data/images/organic4 1024x1024 3ch uint8.jpg" }
+
+    - { name: "gray noise medium buf",
+        kind: Image_Texture, format: RED_u8,
+        image_path: "./data/sample/data/images/gray-noise-medium-256x256-1ch-uint8.png" }
+
+    - { name: "rgba noise medium buf",
+        kind: Image_Texture, format: RGBA_u8,
+        image_path: "./data/sample/data/images/rgba-noise-medium-256x256-4ch-uint8.png" }
+
+    - { name: "rock tiles",
+        kind: Image_Texture, format: RGB_u8,
+        image_path: "./data/sample/data/images/rock tiles 512x512 3ch uint8.jpg" }
+
+    - { name: "rock surface",
+        kind: Image_Texture, format: RGB_u8,
+        image_path: "./data/sample/data/images/rock-1024x1024-3ch-uint8.jpg" }
+
+    - { name: "font1",
+        kind: Image_Texture, format: RGBA_u8,
+        image_path: "./data/sample/data/images/font1 1024x1024 4ch uint8.png" }
 
   sync_tracks_path: "./data/sample/data/demo.rocket"
 

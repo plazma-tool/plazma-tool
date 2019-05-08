@@ -7,7 +7,7 @@ license = "MIT"
 description = """
 Create real-time graphics with shaders and polygon models.
 """
-repository = "https://github.com/plazma-tool/plazma"
+repository = "https://github.com/plazma-tool/plazma-tool"
 readme = "README.md"
 
 [dependencies]

@@ -1,6 +1,6 @@
 [package]
 name = "rocket_client"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Gambhiro <gambhiro.bhikkhu.85@gmail.com>"]
 edition = "2018"
 license = "MIT"
@@ -14,4 +14,4 @@ readme = "README.md"
 log = "0.3"
 env_logger = "0.3"
 
-rocket_sync = { path = "../rocket_sync", version = "0.1.0" }
+rocket_sync = { path = "../rocket_sync", version = "0.1.1" }

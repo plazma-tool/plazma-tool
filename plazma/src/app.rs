@@ -489,6 +489,9 @@ pub fn start_preview(plazma_server_port: Arc<usize>,
         sys.run();
     });
 
+    // Tell the UI that preview is open. Allow the OpenGL window to open and the builtin demo to be
+    // rendered for user to see the response. Then request the demo currently loaded on the server.
+
     let msg = serde_json::to_string(&Sending{
         data_type: MsgDataType::PreviewOpened,
         data: "".to_owned(),
@@ -550,6 +553,19 @@ pub fn start_preview(plazma_server_port: Arc<usize>,
 
     // TODO server_sender will error when server is not connected. Detect the condition and don't
     // send messages.
+
+    // At this point the preview window is open. Request the demo which is currently loaded on the
+    // server. The render loop will probably render a frame of the builtin demo before the response
+    // is processed.
+
+    let msg = serde_json::to_string(&Sending{
+        data_type: MsgDataType::FetchDmo,
+        data: "".to_owned(),
+    }).unwrap();
+    match server_sender.send(msg) {
+        Ok(_) => {},
+        Err(e) => error!("🔥 Can't send FetchDmo on server_sender channel: {:?}", e),
+    };
 
     render_loop(&window, &mut events_loop, &mut state, &mut rocket, client_receiver, &server_sender);
 

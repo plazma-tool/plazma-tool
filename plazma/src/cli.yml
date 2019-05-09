@@ -12,6 +12,20 @@ args:
       required: false
       takes_value: true
 
+  - yml:
+      help: "YAML file to read, located at project root folder of the demo."
+      long: yml
+      value_name: FILE
+      required: false
+      takes_value: true
+
+  - dmo:
+      help: "DMO project file, an all-in-one binary format."
+      long: dmo
+      value_name: FILE
+      required: false
+      takes_value: true
+
 subcommands:
 
   - server:
@@ -19,36 +33,6 @@ subcommands:
 
   - preview:
       about: "Open a demo project in an OpenGL preview window. Use the flag options to specify the path to the demo project. If no project path is given, a minimal example demo will start."
-      args:
-
-        - yml:
-            help: "YAML file to read, located at project root folder of the demo."
-            long: yml
-            value_name: FILE
-            required: false
-            takes_value: true
-
-        - dmo:
-            help: "DMO project file, an all-in-one binary format."
-            long: dmo
-            value_name: FILE
-            required: false
-            takes_value: true
 
   - yml-to-dmo:
       about: "Read in a project from its YAML file and write an all-in-one DMO format file."
-      args:
-
-        - yml:
-            help: "YAML file to read, located at project root folder of the demo."
-            long: yml
-            value_name: FILE
-            required: false
-            takes_value: true
-
-        - dmo:
-            help: "DMO project file, an all-in-one binary format."
-            long: dmo
-            value_name: FILE
-            required: false
-            takes_value: true

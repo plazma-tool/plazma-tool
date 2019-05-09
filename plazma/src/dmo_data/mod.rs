@@ -37,15 +37,15 @@ pub struct DmoData {
 pub struct ProjectData {
     /// Path to the demo YAML project description. Paths to asset files (shaders, images, etc.) in
     /// the YAML are stored as relative to the YAML's folder.
-    pub dmo_yml_path: PathBuf,
+    pub demo_yml_path: Option<PathBuf>,
 
     /// The folder from which the demo YAML was read from.
-    pub project_root: PathBuf,
+    pub project_root: Option<PathBuf>,
 
     // /// The deserialized value of the YAML since the last read. Can be used to find what has
     // /// changed when selecively rebuilding parts of the DmoGfx after detecting that the YAML files
     // /// was modified on the disk.
-    // pub dmo_yml_value: Value,
+    // pub demo_yml_value: Value,
 
     // /// The deserialized value of the demo either after reading from YAML or receiving it from the
     // /// server.
@@ -65,8 +65,25 @@ impl Default for DmoData {
 impl Default for ProjectData {
     fn default() -> ProjectData {
         ProjectData {
-            dmo_yml_path: PathBuf::default(),
-            project_root: PathBuf::default(),
+            demo_yml_path: None,
+            project_root: None,
+        }
+    }
+}
+
+impl ProjectData {
+    pub fn new(demo_yml_path: Option<PathBuf>) -> Result<ProjectData, Box<Error>> {
+        if let Some(yml_path) = demo_yml_path {
+            let project_root = yml_path.parent().ok_or("missing demo yml parent folder")?;
+            Ok(ProjectData {
+                demo_yml_path: Some(yml_path.clone()),
+                project_root: Some(project_root.to_path_buf()),
+            })
+        } else {
+            Ok(ProjectData {
+                demo_yml_path: None,
+                project_root: None,
+            })
         }
     }
 }

@@ -20,6 +20,7 @@ extern crate rocket_sync;
 extern crate plazma;
 
 use std::sync::{Arc, Mutex, mpsc};
+use std::path::PathBuf;
 
 use clap::App;
 
@@ -59,7 +60,12 @@ fn main() {
 
     let port_a = plazma_server_port.clone();
     if param_start_preview {
-        app::start_preview(port_a).unwrap();
+        let p = if let Some(ref path) = yml_path {
+            Some(PathBuf::from(&path))
+        } else {
+            None
+        };
+        app::start_preview(port_a, p).unwrap();
     };
 
     // --- HTTP and WebSocket server ---

@@ -30,7 +30,7 @@ pub fn handle_static_index(_req: &HttpRequest<ServerStateWrap>) -> Result<fs::Na
 
 #[derive(Debug)]
 pub struct AppStartParams {
-    pub yml_path: PathBuf,
+    pub yml_path: Option<PathBuf>,
     pub dmo_path: Option<PathBuf>,
     pub plazma_server_port: Arc<usize>,
     pub start_server: bool,
@@ -45,13 +45,8 @@ pub struct AppInfo {
 
 impl Default for AppStartParams {
     fn default() -> AppStartParams {
-        // Start with a sample demo until we receive update from the server.
-        let sample_demo_yml_path = PathBuf::from("data".to_owned())
-            .join(PathBuf::from("sample".to_owned()))
-            .join(PathBuf::from("demo.yml".to_owned()));
-
         AppStartParams {
-            yml_path: sample_demo_yml_path,
+            yml_path: None,
             dmo_path: None,
             plazma_server_port: Arc::new(8080),
             start_server: true,
@@ -108,39 +103,53 @@ pub fn process_cli_args(matches: clap::ArgMatches)
 
     let mut params = AppStartParams::default_with_port(server_port);
 
+    if matches.is_present("yml") {
+        params.yml_path = match matches.value_of("yml").unwrap().parse::<String>() {
+            Ok(x) => {
+                let path = PathBuf::from(&x);
+                if path.exists() {
+                    Some(path)
+                } else {
+                    error!("🔥 Path does not exist: {:?}", &path);
+                    exit(2);
+                }
+            },
+            Err(e) => {
+                error!{"🔥 {:?}", e};
+                exit(2);
+            }
+        };
+    }
+
+    if matches.is_present("dmo") {
+        params.dmo_path = match matches.value_of("dmo").unwrap().parse::<String>() {
+            Ok(x) => {
+                let path = PathBuf::from(&x);
+                if path.exists() {
+                    Some(path)
+                } else {
+                    error!("🔥 Path does not exist: {:?}", &path);
+                    exit(2);
+                }
+            },
+            Err(e) => {
+                error!{"🔥 {:?}", e};
+                exit(2);
+            }
+        };
+    }
+
     if let Some(_) = matches.subcommand_matches("server") {
 
         params.start_server = true;
         params.start_webview = false;
         params.start_preview = false;
 
-    } else if let Some(m) = matches.subcommand_matches("preview") {
+    } else if let Some(_) = matches.subcommand_matches("preview") {
 
         params.start_server = false;
         params.start_webview = false;
         params.start_preview = true;
-
-        if m.is_present("yml") {
-
-            let path = PathBuf::from(m.value_of("yml").unwrap());
-            if path.exists() {
-                params.yml_path = path;
-            } else {
-                error!("🔥 Path does not exist: {:?}", &path);
-                exit(2);
-            }
-
-        } else if m.is_present("dmo") {
-
-            let path = PathBuf::from(m.value_of("dmo").unwrap());
-            if path.exists() {
-                params.dmo_path = Some(path);
-            } else {
-                error!("🔥 Path does not exist: {:?}", &path);
-                exit(2);
-            }
-
-        }
 
     };
 
@@ -149,7 +158,7 @@ pub fn process_cli_args(matches: clap::ArgMatches)
 
 pub fn start_server(port: Arc<usize>,
                     app_info: AppInfo,
-                    yml_path: PathBuf,
+                    yml_path: Option<PathBuf>,
                     webview_sender_arc: Arc<Mutex<mpsc::Sender<String>>>,
                     server_receiver: mpsc::Receiver<String>)
     -> Result<(thread::JoinHandle<()>, thread::JoinHandle<()>, thread::JoinHandle<()>), Box<Error>>
@@ -168,7 +177,7 @@ pub fn start_server(port: Arc<usize>,
             Mutex::new(
                 ServerState::new(app_info,
                                  a,
-                                 &yml_path).unwrap()
+                                 yml_path).unwrap()
                 )
             );
 
@@ -391,7 +400,8 @@ pub fn start_webview(plazma_server_port: Arc<usize>,
     Ok(())
 }
 
-pub fn start_preview(plazma_server_port: Arc<usize>)
+pub fn start_preview(plazma_server_port: Arc<usize>,
+                     yml_path: Option<PathBuf>)
     -> Result<(), Box<Error>>
 {
     info!("⚽ start_preview() start");
@@ -527,11 +537,7 @@ pub fn start_preview(plazma_server_port: Arc<usize>)
     // NOTE should we use LogicalSize instead, keep in mind the u32 truncates later
     let (wx, wy) = (physical_size.width, physical_size.height);
 
-    let mut state = PreviewState::new(wx, wy).unwrap();
-
-    // Start with a minimal demo until we receive update from the server. This will be compiled
-    // into the binary, so no reading from the disk is needed to open the preview window.
-    state.build_dmo_gfx_minimal(wx, wy).unwrap();
+    let mut state = PreviewState::new(yml_path, wx, wy).unwrap();
 
     let mut rocket: Option<SyncClient> = None;
     state.build_rocket_connection(&mut rocket).unwrap();

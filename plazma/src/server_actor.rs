@@ -49,13 +49,13 @@ pub type ServerStateWrap = Arc<Mutex<ServerState>>;
 impl ServerState {
     pub fn new(app_info: AppInfo,
                webview_sender_arc: Arc<Mutex<mpsc::Sender<String>>>,
-               demo_yml_path: &PathBuf)
+               demo_yml_path: Option<PathBuf>)
         -> Result<ServerState, Box<Error>>
     {
         let state = ServerState {
             app_info: app_info,
             webview_sender_arc: webview_sender_arc,
-            project_data: ProjectData::new(&demo_yml_path)?,
+            project_data: ProjectData::new(demo_yml_path)?,
             clients: HashMap::new(),
             preview_child: None,
         };

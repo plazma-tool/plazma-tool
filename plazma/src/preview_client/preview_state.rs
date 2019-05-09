@@ -56,7 +56,9 @@ pub struct PreviewState {
 
 impl PreviewState {
 
-    pub fn new(window_width: f64, window_height: f64)
+    pub fn new(demo_yml_path: Option<PathBuf>,
+               window_width: f64,
+               window_height: f64)
         -> Result<PreviewState, Box<Error>>
     {
         // NOTE screen width and height value has to be the same as window width and height when
@@ -64,7 +66,7 @@ impl PreviewState {
         // to a different aspect ratio and resulting in the image being streched as passed on from
         // one quad pass to another.
 
-        let state = PreviewState {
+        let mut state = PreviewState {
             t_rocket_last_connection_attempt: Instant::now(),
             t_frame_start: Instant::now(),
             t_delta: Duration::new(0, 0),
@@ -86,13 +88,27 @@ impl PreviewState {
             track_names: Vec::new(),
             track_name_to_idx: BTreeMap::new(),
 
-            project_data: ProjectData::default(),
+            project_data: ProjectData::new(demo_yml_path)?,
         };
+
+        if let Some(ref yml_path) = state.project_data.demo_yml_path {
+            info!("PreviewState::new() with yml_path {:?} and build_dmo_gfx_from_yml_str()", &yml_path);
+            let text: String = file_to_string(&yml_path)?;
+            state.build_dmo_gfx_from_yml_str(&text, true, true, window_width, window_height, None)?;
+        } else {
+            info!("PreviewState::new() with build_dmo_gfx_minimal()");
+            // Start with a minimal demo until we receive update from the server. This will be compiled
+            // into the binary, so no reading from the disk is needed to open the preview window.
+            state.build_dmo_gfx_minimal(window_width, window_height)?;
+        }
 
         Ok(state)
     }
 
-    pub fn build_rocket_connection(&mut self, rocket: &mut Option<SyncClient>) -> Result<(), Box<Error>> {
+    pub fn build_rocket_connection(&mut self,
+                                   rocket: &mut Option<SyncClient>)
+        -> Result<(), Box<Error>>
+    {
 
         *rocket = match SyncClient::new("localhost:1338") {
             Ok(x) => Some(x),

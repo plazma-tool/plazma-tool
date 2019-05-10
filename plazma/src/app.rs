@@ -630,6 +630,7 @@ fn render_loop(window: &GlWindow,
 
                     SetDmo => {
                         let (sx, sy) = state.dmo_gfx.context.get_screen_resolution();
+                        let (wx, wy) = state.dmo_gfx.context.get_window_resolution();
                         info!{"sx: {}, sy: {}", sx, sy};
                         let camera = state.dmo_gfx.context.camera.get_copy();
 
@@ -639,7 +640,12 @@ fn render_loop(window: &GlWindow,
                                                                sx, sy,
                                                                Some(camera))
                         {
-                            Ok(_) => {},
+                            Ok(_) => {
+                                match state.callback_window_resized(wx as f64, wy as f64) {
+                                    Ok(_) => {},
+                                    Err(e) => error!("🔥 callback_window_resized() {:?}", e),
+                                }
+                            },
                             Err(e) => error!{"🔥 Can't perform SetDmo: {:?}", e},
                         }
                     },

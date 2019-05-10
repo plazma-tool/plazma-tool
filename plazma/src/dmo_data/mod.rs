@@ -396,7 +396,7 @@ impl Default for Settings {
             audio_play_on_start: true,
             mouse_sensitivity: 0.5,
             movement_sensitivity: 0.5,
-            total_length: 10.0,
+            total_length: 60.0,
         }
     }
 }

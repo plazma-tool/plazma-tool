@@ -22,6 +22,7 @@ use rocket_client::SyncClient;
 use crate::server_actor::{ServerActor, ServerState, ServerStateWrap, Sending, Receiving, MsgDataType};
 use crate::preview_client::client_actor::{ClientActor, ClientMessage};
 
+use crate::dmo_data::SetDmoMsg;
 use crate::preview_client::preview_state::PreviewState;
 
 pub fn handle_static_index(_req: &HttpRequest<ServerStateWrap>) -> Result<fs::NamedFile, AxError> {
@@ -634,20 +635,27 @@ fn render_loop(window: &GlWindow,
                         info!{"sx: {}, sy: {}", sx, sy};
                         let camera = state.dmo_gfx.context.camera.get_copy();
 
-                        // - don't read in shader files again, the updated shaders are sent directly from the UI
-                        // - do read in images, these are passed only by path from the UI
-                        match state.build_dmo_gfx_from_yml_str(&message.data, false, true,
-                                                               sx, sy,
-                                                               Some(camera))
-                        {
-                            Ok(_) => {
-                                match state.callback_window_resized(wx as f64, wy as f64) {
-                                    Ok(_) => {},
-                                    Err(e) => error!("🔥 callback_window_resized() {:?}", e),
+                        match serde_json::from_str::<SetDmoMsg>(&message.data) {
+                            Ok(msg) => {
+                                // - don't read in shader files again,
+                                //   the updated shaders are sent directly from the UI
+                                // - do read in images,
+                                //   these are passed only by path from the UI
+                                match state.build_dmo_gfx_from_dmo_msg(&msg, false, true,
+                                                                       sx, sy,
+                                                                       Some(camera))
+                                {
+                                    Ok(_) => {
+                                        match state.callback_window_resized(wx as f64, wy as f64) {
+                                            Ok(_) => {},
+                                            Err(e) => error!("🔥 callback_window_resized() {:?}", e),
+                                        }
+                                    },
+                                    Err(e) => error!{"🔥 Can't perform SetDmo: {:?}", e},
                                 }
                             },
-                            Err(e) => error!{"🔥 Can't perform SetDmo: {:?}", e},
-                        }
+                            Err(e) => error!("🔥 Can't deserialize SetDmoMsg: {:?}", e),
+                        };
                     },
 
                     SetDmoTime => {

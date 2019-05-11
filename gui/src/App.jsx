@@ -24,6 +24,7 @@ const PLAZMA_SERVER_PORT = 8080;
 
 type AppState = {
     socket: ?WebSocket,
+    project_root: ?string,
     dmo_data: ?DmoData,
     editor_content: string,
     current_page: number,
@@ -44,6 +45,7 @@ class App extends Component<{}, AppState> {
 
         this.state = {
             socket: null,
+            project_root: null,
             dmo_data: null,
             editor_content: "",
             current_page: CurrentPage.Shaders,
@@ -142,11 +144,13 @@ class App extends Component<{}, AppState> {
         }
         switch (msg.data_type) {
             case 'SetDmo':
-                let d: DmoData = JSON.parse(msg.data);
+                let dmo_msg = JSON.parse(msg.data);
+                let project_root = dmo_msg.project_root;
+                let d: DmoData = JSON.parse(dmo_msg.dmo_data_json_str);
 
                 let idx = this.state.current_shader_index;
                 let frag_src = d.context.shader_sources[idx];
-                this.setState({ dmo_data: d, editor_content: frag_src });
+                this.setState({ project_root: project_root, dmo_data: d, editor_content: frag_src });
                 this.setState({ sentUpdateSinceChange: true });
                 break;
 
@@ -283,7 +287,10 @@ class App extends Component<{}, AppState> {
         } else if (this.state.socket) {
             let msg: ServerMsg = {
                 data_type: 'SetDmo',
-                data: JSON.stringify(this.state.dmo_data),
+                data: JSON.stringify({
+                    project_root: this.state.project_root,
+                    dmo_data_json_str: JSON.stringify(this.state.dmo_data),
+                }),
             };
             console.log('Sending server: SetDmo');
             this.sendMsgOnSocket(msg);

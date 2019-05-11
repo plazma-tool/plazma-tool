@@ -11,6 +11,7 @@ use actix_web::ws;
 use actix_web::actix::*;
 
 use crate::project_data::ProjectData;
+use crate::dmo_data::SetDmoMsg;
 use crate::app::AppInfo;
 
 /// How often heartbeat pings are sent
@@ -207,7 +208,10 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                             let state = ctx.state().lock().expect("Can't lock ServerState.");
                             resp = Sending {
                                 data_type: SetDmo,
-                                data: serde_json::to_string(&state.project_data.dmo_data).unwrap(),
+                                data: serde_json::to_string(&SetDmoMsg {
+                                    project_root: state.project_data.project_root.clone(),
+                                    dmo_data_json_str: serde_json::to_string(&state.project_data.dmo_data).unwrap(),
+                                }).unwrap(),
                             };
                         }
                         let body = serde_json::to_string(&resp).unwrap();
@@ -218,12 +222,13 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                         // Client is sending Dmo data. Deserialize and replace the
                         // ServerState.dmo. Serialize and send all other clients the
                         // new Dmo data.
-                        match serde_json::from_str(&message.data) {
+                        match serde_json::from_str::<SetDmoMsg>(&message.data) {
 
-                            Ok(dmo) => {
-                                info!{"Deserialized Dmo"};
+                            Ok(dmo_msg) => {
+                                info!{"Deserialized SetDmoMsg"};
                                 let mut state = ctx.state().lock().expect("👿 Can't lock ServerState.");
-                                state.project_data.dmo_data = dmo;
+                                state.project_data.project_root = dmo_msg.project_root.clone();
+                                state.project_data.dmo_data = serde_json::from_str(&dmo_msg.dmo_data_json_str).unwrap();
 
                                 for (id, addr) in &state.clients {
                                     if *id == self.client_id {
@@ -232,7 +237,10 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
 
                                     let resp = Sending {
                                         data_type: SetDmo,
-                                        data: serde_json::to_string(&state.project_data.dmo_data).unwrap(),
+                                        data: serde_json::to_string(&SetDmoMsg {
+                                            project_root: state.project_data.project_root.clone(),
+                                            dmo_data_json_str: serde_json::to_string(&state.project_data.dmo_data).unwrap(),
+                                        }).unwrap(),
                                     };
                                     info!{"Sending SetDmo"};
                                     addr.do_send(resp);

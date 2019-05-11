@@ -13,6 +13,7 @@ pub mod timeline;
 
 use intro_runtime::dmo_gfx::DmoGfx;
 
+use crate::error::ToolError;
 use crate::dmo_data::context_data::{ContextData, FrameBuffer, BufferKind, PixelFormat};
 use crate::dmo_data::quad_scene::{DRAW_RESULT_VERT_SRC_PATH, DRAW_RESULT_FRAG_SRC_PATH};
 use crate::dmo_data::quad_scene::QuadScene;
@@ -52,6 +53,15 @@ pub struct ProjectData {
     // pub dmo_data: DmoData,
 }
 
+/// Struct to send the project root as well. The preview starts with a minimal demo which doesn't
+/// have a project root, but when the server sends the user's demo, it will have to be read from
+/// disk.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SetDmoMsg {
+    pub project_root: Option<PathBuf>,
+    pub dmo_data_json_str: String,
+}
+
 impl Default for DmoData {
     fn default() -> DmoData {
         DmoData {
@@ -74,12 +84,15 @@ impl Default for ProjectData {
 impl ProjectData {
     pub fn new(demo_yml_path: Option<PathBuf>) -> Result<ProjectData, Box<Error>> {
         if let Some(yml_path) = demo_yml_path {
-            let project_root = yml_path.parent().ok_or("missing demo yml parent folder")?;
+            let p = yml_path.parent().ok_or("missing demo yml parent folder")?;
+            let project_root = p.to_path_buf();
+            info!("plazma::DmoData::ProjectData::new() project_root: {:?}", &project_root);
             Ok(ProjectData {
                 demo_yml_path: Some(yml_path.clone()),
-                project_root: Some(project_root.to_path_buf()),
+                project_root: Some(project_root),
             })
         } else {
+            info!("plazma::DmoData::ProjectData::new() project_root: None");
             Ok(ProjectData {
                 demo_yml_path: None,
                 project_root: None,
@@ -90,13 +103,26 @@ impl ProjectData {
 
 impl DmoData {
     pub fn new_from_yml_str(text: &str,
+                            project_root: &Option<PathBuf>,
                             read_shader_paths: bool,
                             read_image_paths: bool)
         -> Result<DmoData, Box<Error>>
     {
         let mut dmo_data: DmoData = serde_yaml::from_str(text)?;
         dmo_data.ensure_implicit_builtins();
-        dmo_data.context.build_index(read_shader_paths, read_image_paths)?;
+        dmo_data.context.build_index(project_root, read_shader_paths, read_image_paths)?;
+        Ok(dmo_data)
+    }
+
+    pub fn new_from_json_str(text: &str,
+                             project_root: &Option<PathBuf>,
+                             read_shader_paths: bool,
+                             read_image_paths: bool)
+        -> Result<DmoData, Box<Error>>
+    {
+        let mut dmo_data: DmoData = serde_json::from_str(text)?;
+        dmo_data.ensure_implicit_builtins();
+        dmo_data.context.build_index(&project_root, read_shader_paths, read_image_paths)?;
         Ok(dmo_data)
     }
 
@@ -105,7 +131,7 @@ impl DmoData {
         // don't read anything from disk for the minimal demo, include assets in the binary
         let mut dmo_data = DmoData::default();
         dmo_data.ensure_implicit_builtins();
-        dmo_data.context.build_index(false, false)?;
+        dmo_data.context.build_index(&None, false, false)?;
 
         // construct ContextData with one QuadScene
         // ----------------------------------------
@@ -138,6 +164,7 @@ impl DmoData {
 
         dmo_data.context.index.add_quad_scene(&a,
                                               dmo_data.context.quad_scenes.len(),
+                                              &None,
                                               false,
                                               &mut vec![])?;
 
@@ -163,6 +190,7 @@ impl DmoData {
 
         dmo_data.context.index.add_quad_scene(&a,
                                               dmo_data.context.quad_scenes.len(),
+                                              &None,
                                               false,
                                               &mut vec![])?;
 
@@ -179,6 +207,7 @@ impl DmoData {
 
         dmo_data.context.index.add_frame_buffer(&a,
                                                 dmo_data.context.frame_buffers.len(),
+                                                &None,
                                                 false,
                                                 &mut vec![])?;
 
@@ -271,13 +300,17 @@ impl DmoData {
         }
     }
 
-    pub fn add_models_to(&self, dmo_gfx: &mut DmoGfx) -> Result<(), Box<Error>> {
+    pub fn add_models_to(&self,
+                         dmo_gfx: &mut DmoGfx,
+                         project_root: &Option<PathBuf>)
+        -> Result<(), Box<Error>>
+    {
         use crate::dmo_data as d;
 
         for model_data in self.context.polygon_context.models.iter() {
             match model_data.model_type {
                 d::model::ModelType::Cube => self.add_model_cube_to(dmo_gfx, model_data)?,
-                d::model::ModelType::Obj => self.add_model_obj_to(dmo_gfx, model_data)?,
+                d::model::ModelType::Obj => self.add_model_obj_to(dmo_gfx, model_data, project_root)?,
                 d::model::ModelType::NOOP => {},
             }
         }
@@ -312,26 +345,32 @@ impl DmoData {
 
     pub fn add_model_obj_to(&self,
                         dmo_gfx: &mut DmoGfx,
-                        model_data: &self::model::Model)
-                        -> Result<(), Box<Error>>
+                        model_data: &self::model::Model,
+                        project_root: &Option<PathBuf>)
+        -> Result<(), Box<Error>>
     {
         use intro_runtime::model::Model;
         use intro_runtime::mesh::Mesh;
         use intro_runtime::types::Vertex;
+
+        let project_root = if let Some(p) = project_root {
+            p
+        } else {
+            return Err(Box::new(ToolError::MissingProjectRoot));
+        };
+
+        if model_data.obj_path.len() == 0 {
+            return Err(Box::new(ToolError::MissingObjectPath));
+        }
 
         let mut model = Model::empty_obj();
 
         let vert_src_idx = self.context.index.get_shader_index(&model_data.vert_src_path)?;
         let frag_src_idx = self.context.index.get_shader_index(&model_data.frag_src_path)?;
 
-        // if model_data.obj_path.len() == 0 {
-        //     // that's a problem.
-        //     // FIXME return an error
-        // }
-
         // Add meshes.
         {
-            let (meshes, _materials) = tobj::load_obj(&PathBuf::from(&model_data.obj_path))?;
+            let (meshes, _materials) = tobj::load_obj(&project_root.join(PathBuf::from(&model_data.obj_path)))?;
 
             for i in meshes.iter() {
                 let mesh = &i.mesh;

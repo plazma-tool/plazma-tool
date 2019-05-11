@@ -50,6 +50,7 @@ impl DataIndex {
     pub fn add_quad_scene(&mut self,
                           scene: &QuadScene,
                           idx: usize,
+                          project_root: &Option<PathBuf>,
                           read_shader_paths: bool,
                           shader_sources: &mut Vec<String>)
         -> Result<(), Box<Error>>
@@ -59,8 +60,8 @@ impl DataIndex {
         }
 
         self.quad_scene_name_to_idx.insert(scene.name.to_string(), idx);
-        self.add_shader(&scene.vert_src_path, read_shader_paths, shader_sources)?;
-        self.add_shader(&scene.frag_src_path, read_shader_paths, shader_sources)?;
+        self.add_shader(&scene.vert_src_path, project_root, read_shader_paths, shader_sources)?;
+        self.add_shader(&scene.frag_src_path, project_root, read_shader_paths, shader_sources)?;
 
         Ok(())
     }
@@ -82,6 +83,7 @@ impl DataIndex {
     pub fn add_model(&mut self,
                      model: &Model,
                      idx: usize,
+                     project_root: &Option<PathBuf>,
                      read_shader_paths: bool,
                      shader_sources: &mut Vec<String>)
         -> Result<(), Box<Error>>
@@ -92,14 +94,15 @@ impl DataIndex {
 
         self.model_name_to_idx.insert(model.name.to_string(), idx);
 
-        self.add_shader(&model.vert_src_path, read_shader_paths, shader_sources)?;
-        self.add_shader(&model.frag_src_path, read_shader_paths, shader_sources)?;
+        self.add_shader(&model.vert_src_path, project_root, read_shader_paths, shader_sources)?;
+        self.add_shader(&model.frag_src_path, project_root, read_shader_paths, shader_sources)?;
 
         Ok(())
     }
 
     pub fn add_shader(&mut self,
                       path: &str,
+                      project_root: &Option<PathBuf>,
                       read_shader_path: bool,
                       shader_sources: &mut Vec<String>)
         -> Result<(), Box<Error>>
@@ -119,7 +122,12 @@ impl DataIndex {
             && path != DRAW_RESULT_VERT_SRC_PATH
             && path != DRAW_RESULT_FRAG_SRC_PATH
         {
-            let src = file_to_string(&PathBuf::from(path))?;
+            let p: PathBuf = if let Some(project_root) = project_root {
+                project_root.join(PathBuf::from(path))
+            } else {
+                return Err(Box::new(ToolError::MissingProjectRoot));
+            };
+            let src = file_to_string(&p)?;
             shader_sources.push(src.to_owned());
         }
 
@@ -129,6 +137,7 @@ impl DataIndex {
     pub fn add_frame_buffer(&mut self,
                             buffer: &FrameBuffer,
                             idx: usize,
+                            project_root: &Option<PathBuf>,
                             read_image_path: bool,
                             image_sources: &mut Vec<Image>)
         -> Result<(), Box<Error>>
@@ -145,7 +154,11 @@ impl DataIndex {
             self.add_image_path_format_to_index(&buffer.image_path, buffer.format.clone());
 
             if read_image_path {
-                let p = PathBuf::from(&buffer.image_path);
+                let p: PathBuf = if let Some(project_root) = project_root {
+                    project_root.join(PathBuf::from(&buffer.image_path))
+                } else {
+                    return Err(Box::new(ToolError::MissingProjectRoot));
+                };
                 let image_data = image::open(&p)?;
                 let (width, height) = image_data.dimensions();
 

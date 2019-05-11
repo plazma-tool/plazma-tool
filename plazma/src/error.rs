@@ -9,6 +9,8 @@ pub enum ToolError {
     NameAlreadyExists,
     NoQuad,
     UiError(String),
+    MissingProjectRoot,
+    MissingObjectPath,
 }
 
 pub enum ToolOk {
@@ -68,6 +70,8 @@ impl fmt::Debug for ToolError {
             ToolError::NoQuad => "No Quad",
             ToolError::UiError(_) => "UI Error",
             ToolError::NameAlreadyExists => "Name already exists",
+            ToolError::MissingProjectRoot => "Missing project root",
+            ToolError::MissingObjectPath => "Missing object path",
         };
 
         write!(fmt, "{}:\n{}", kind, self.description())
@@ -94,6 +98,8 @@ impl error::Error for ToolError {
             ToolError::NoQuad => "No Quad",
             ToolError::UiError(ref s) => s.trim(),
             ToolError::NameAlreadyExists => "Name already exists",
+            ToolError::MissingProjectRoot => "Missing project root",
+            ToolError::MissingObjectPath => "Missing object path",
         }
     }
 

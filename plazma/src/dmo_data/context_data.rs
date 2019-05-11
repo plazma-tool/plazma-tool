@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::path::PathBuf;
 
 use crate::dmo_data::quad_scene::QuadScene;
 use crate::dmo_data::polygon_scene::PolygonScene;
@@ -51,21 +52,25 @@ pub struct ContextData {
 }
 
 impl ContextData {
-    pub fn build_index(&mut self, read_shader_paths: bool, read_image_paths: bool) -> Result<(), Box<Error>>
+    pub fn build_index(&mut self,
+                       project_root: &Option<PathBuf>,
+                       read_shader_paths: bool,
+                       read_image_paths: bool)
+        -> Result<(), Box<Error>>
     {
         // First, empty any existing index data.
         self.index = DataIndex::new();
 
         for (idx, scene) in self.quad_scenes.iter_mut().enumerate() {
-            self.index.add_quad_scene(scene, idx, read_shader_paths, &mut self.shader_sources)?;
+            self.index.add_quad_scene(scene, idx, project_root, read_shader_paths, &mut self.shader_sources)?;
         }
 
         for (idx, buffer) in self.frame_buffers.iter().enumerate() {
-            self.index.add_frame_buffer(buffer, idx, read_image_paths, &mut self.image_sources)?;
+            self.index.add_frame_buffer(buffer, idx, project_root, read_image_paths, &mut self.image_sources)?;
         }
 
         for (idx, model) in self.polygon_context.models.iter().enumerate() {
-            self.index.add_model(model, idx, read_shader_paths, &mut self.shader_sources)?;
+            self.index.add_model(model, idx, project_root, read_shader_paths, &mut self.shader_sources)?;
         }
 
         for (idx, scene) in self.polygon_scenes.iter().enumerate() {

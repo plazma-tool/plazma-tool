@@ -25,7 +25,7 @@ use intro_runtime::types::{PixelFormat, ValueVec3, ValueFloat, BufferMapping, Un
 use rocket_sync::{SyncDevice, SyncTrack, TrackKey, code_to_key};
 use rocket_client::SyncClient;
 
-use crate::dmo_data::{DmoData, ProjectData};
+use crate::dmo_data::{DmoData, ProjectData, SetDmoMsg};
 use crate::error::ToolError;
 use crate::utils::file_to_string;
 
@@ -144,14 +144,20 @@ impl PreviewState {
                                                               window_height,
                                                               camera);
 
-        let (track_names, track_name_to_idx) = build_track_names(&mut dmo_gfx, &dmo_data)?;
+        let (track_names, track_name_to_idx) =
+            build_track_names(&mut dmo_gfx,
+                              &dmo_data,
+                              &self.project_data.project_root)?;
 
         build_shader_sources(&mut dmo_gfx, &dmo_data);
         build_image_sources(&mut dmo_gfx, &dmo_data);
         build_settings(&mut dmo_gfx, &dmo_data);
         build_frame_buffers(&mut dmo_gfx, &dmo_data)?;
         build_quad_scenes(&mut dmo_gfx, &dmo_data, &track_name_to_idx)?;
-        build_polygon_context_and_scenes(&mut dmo_gfx, &dmo_data, &track_name_to_idx)?;
+        build_polygon_context_and_scenes(&mut dmo_gfx,
+                                         &dmo_data,
+                                         &track_name_to_idx,
+                                         &self.project_data.project_root)?;
         build_timeline(&mut dmo_gfx, &dmo_data)?;
 
         self.track_names = track_names;
@@ -173,8 +179,35 @@ impl PreviewState {
                                       camera: Option<Camera>)
         -> Result<(), Box<Error>>
     {
-        let dmo_data: DmoData = DmoData::new_from_yml_str(&yml_str, read_shader_paths, read_image_paths)?;
-        self.build_dmo_gfx_from_dmo_data(&dmo_data, window_width, window_height, camera)?;
+        let dmo_data: DmoData = DmoData::new_from_yml_str(&yml_str,
+                                                          &self.project_data.project_root,
+                                                          read_shader_paths,
+                                                          read_image_paths)?;
+        self.build_dmo_gfx_from_dmo_data(&dmo_data,
+                                         window_width,
+                                         window_height,
+                                         camera)?;
+        Ok(())
+    }
+
+    pub fn build_dmo_gfx_from_dmo_msg(&mut self,
+                                      msg: &SetDmoMsg,
+                                      read_shader_paths: bool,
+                                      read_image_paths: bool,
+                                      window_width: f64,
+                                      window_height: f64,
+                                      camera: Option<Camera>)
+        -> Result<(), Box<Error>>
+    {
+        self.project_data.project_root = msg.project_root.clone();
+        let dmo_data: DmoData = DmoData::new_from_json_str(&msg.dmo_data_json_str,
+                                                           &self.project_data.project_root,
+                                                           read_shader_paths,
+                                                           read_image_paths)?;
+        self.build_dmo_gfx_from_dmo_data(&dmo_data,
+                                         window_width,
+                                         window_height,
+                                         camera)?;
         Ok(())
     }
 
@@ -593,7 +626,8 @@ fn builtin_to_idx(track_name_to_idx: &BTreeMap<String, usize>,
 }
 
 fn build_track_names(dmo_gfx: &mut DmoGfx,
-                     dmo_data: &DmoData)
+                     dmo_data: &DmoData,
+                     project_root: &Option<PathBuf>)
     -> Result<(Vec<String>, BTreeMap<String, usize>), Box<Error>>
 {
     // Build the track names and their sync var indexes.
@@ -648,11 +682,13 @@ fn build_track_names(dmo_gfx: &mut DmoGfx,
 
     // Read the Rocket XML and add tracks.
 
-    let p: PathBuf = PathBuf::from(&dmo_data.context.sync_tracks_path);
-    let text = if p.exists() && p.is_file() {
-        file_to_string(&p)?
+    let text = if dmo_data.context.sync_tracks_path.len() > 0 {
+        if let Some(p) = project_root {
+            file_to_string(&p.join(PathBuf::from(&dmo_data.context.sync_tracks_path)))?
+        } else {
+            return Err(Box::new(ToolError::MissingProjectRoot));
+        }
     } else {
-        // TODO should not we simply stop if the file was not found?
         String::from(EMPTY_ROCKET)
     };
 
@@ -917,7 +953,8 @@ fn build_quad_scenes(dmo_gfx: &mut DmoGfx,
 
 fn build_polygon_context_and_scenes(dmo_gfx: &mut DmoGfx,
                                     dmo_data: &DmoData,
-                                    track_name_to_idx: &BTreeMap<String, usize>)
+                                    track_name_to_idx: &BTreeMap<String, usize>,
+                                    project_root: &Option<PathBuf>)
     -> Result<(), Box<Error>>
 {
     use crate::dmo_data as d;
@@ -932,7 +969,7 @@ fn build_polygon_context_and_scenes(dmo_gfx: &mut DmoGfx,
     dmo_gfx.context.camera = Camera::new_defaults(aspect as f32);
     dmo_gfx.context.polygon_context = PolygonContext::new_defaults(aspect as f32);
 
-    dmo_data.add_models_to(dmo_gfx)?;
+    dmo_data.add_models_to(dmo_gfx, project_root)?;
 
     // Create correcponding OpenGL objects.
 

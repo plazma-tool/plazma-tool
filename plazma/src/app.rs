@@ -19,10 +19,10 @@ use glutin::{GlWindow, GlContext, EventsLoop, Event, WindowEvent, ElementState};
 use intro_3d::Vector3;
 use rocket_client::SyncClient;
 
-use crate::server_actor::{ServerActor, ServerState, ServerStateWrap, Sending, Receiving, MsgDataType};
+use crate::server_actor::{ServerActor, ServerState, ServerStateWrap, Sending, Receiving,
+MsgDataType, SetDmoMsg, SetShaderMsg};
 use crate::preview_client::client_actor::{ClientActor, ClientMessage};
 
-use crate::dmo_data::SetDmoMsg;
 use crate::preview_client::preview_state::PreviewState;
 
 pub fn handle_static_index(_req: &HttpRequest<ServerStateWrap>) -> Result<fs::NamedFile, AxError> {
@@ -678,6 +678,21 @@ fn render_loop(window: &GlWindow,
                         match server_sender.send(msg) {
                             Ok(_) => {},
                             Err(_) => {},
+                        };
+                    },
+
+                    SetShader => {
+                        let msg: SetShaderMsg = match serde_json::from_str(&message.data) {
+                            Ok(x) => x,
+                            Err(e) => {
+                                error!{"🔥 Can't deserialize to SetShaderMsg: {:?}", e};
+                                return;
+                            },
+                        };
+
+                        match state.set_shader(msg.idx, &msg.content) {
+                            Ok(_) => { state.draw_anyway = true; },
+                            Err(e) => error!{"🔥 Can't perform SetShader: {:?}", e},
                         };
                     },
 

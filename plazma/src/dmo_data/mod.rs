@@ -53,15 +53,6 @@ pub struct ProjectData {
     // pub dmo_data: DmoData,
 }
 
-/// Struct to send the project root as well. The preview starts with a minimal demo which doesn't
-/// have a project root, but when the server sends the user's demo, it will have to be read from
-/// disk.
-#[derive(Serialize, Deserialize, Debug)]
-pub struct SetDmoMsg {
-    pub project_root: Option<PathBuf>,
-    pub dmo_data_json_str: String,
-}
-
 impl Default for DmoData {
     fn default() -> DmoData {
         DmoData {

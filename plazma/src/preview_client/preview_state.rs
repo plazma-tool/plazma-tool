@@ -25,7 +25,8 @@ use intro_runtime::types::{PixelFormat, ValueVec3, ValueFloat, BufferMapping, Un
 use rocket_sync::{SyncDevice, SyncTrack, TrackKey, code_to_key};
 use rocket_client::SyncClient;
 
-use crate::dmo_data::{DmoData, ProjectData, SetDmoMsg};
+use crate::dmo_data::{DmoData, ProjectData};
+use crate::server_actor::SetDmoMsg;
 use crate::error::ToolError;
 use crate::utils::file_to_string;
 
@@ -263,6 +264,73 @@ impl PreviewState {
         self.should_recompile = false;
         // TODO draw_anyway needed?
         //self.draw_anyway = true;
+
+        Ok(())
+    }
+
+    pub fn set_shader(&mut self, shader_idx: usize, content: &str) -> Result<(), Box<Error>> {
+        match self.dmo_gfx.update_shader_src(shader_idx, content) {
+            Ok(_) => {},
+            Err(e) => return Err(Box::new(ToolError::Runtime(e, "".to_owned()))),
+        };
+
+        // Recompile quad scenes which use this shader.
+
+        // Collect the indexes which use it and recompile.
+        let a = self.dmo_gfx.context.quad_scenes
+            .iter().enumerate().filter(|i| {
+                let (_, scene) = i;
+                return scene.vert_src_idx == shader_idx || scene.frag_src_idx == shader_idx;
+            })
+            .map(|i| {
+                let (idx, _) = i;
+                return idx;
+            })
+            .collect::<Vec<usize>>();
+
+        // Iterate over those quad scenes.
+        for scene_idx in a.iter() {
+            let mut err_msg_buf = [32 as u8; ERR_MSG_LEN];
+            match self.dmo_gfx.compile_quad_scene(*scene_idx, &mut err_msg_buf) {
+                Ok(_) => {},
+                Err(e) => {
+                    let msg = String::from_utf8(err_msg_buf.to_vec())?;
+                    return Err(Box::new(ToolError::Runtime(e, msg)));
+                },
+            }
+        }
+
+        // Recompile meshes which use this shader.
+
+        // Collect the indexes of models which has a mesh which uses it.
+        let a = self.dmo_gfx.context.polygon_context.models
+            .iter().enumerate().filter(|i| {
+                let (_, model) = i;
+                let mut is_using = false;
+                for mesh in model.meshes.iter() {
+                    if mesh.vert_src_idx == shader_idx || mesh.frag_src_idx == shader_idx {
+                        is_using = true;
+                    }
+                }
+                is_using
+            })
+            .map(|i| {
+                let (idx, _) = i;
+                return idx;
+            })
+            .collect::<Vec<usize>>();
+
+        // Iterate over those models.
+        for model_idx in a.iter() {
+            let mut err_msg_buf = [32 as u8; ERR_MSG_LEN];
+            match self.dmo_gfx.compile_model_shaders(*model_idx, &mut err_msg_buf) {
+                Ok(_) => {},
+                Err(e) => {
+                    let msg = String::from_utf8(err_msg_buf.to_vec())?;
+                    return Err(Box::new(ToolError::Runtime(e, msg)));
+                },
+            }
+        }
 
         Ok(())
     }

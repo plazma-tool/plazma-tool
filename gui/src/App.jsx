@@ -22,6 +22,12 @@ import type { ServerMsg, DmoData } from './Helpers';
 
 const PLAZMA_SERVER_PORT = 8080;
 
+type AppUpdates = {
+    SetDmo: bool,
+    SetShader: bool,
+    shaderIndexes: number[],
+};
+
 type AppState = {
     socket: ?WebSocket,
     project_root: ?string,
@@ -32,6 +38,7 @@ type AppState = {
     current_time: number,
     preview_is_open: bool,
     sentUpdateSinceChange: bool,
+    updatesToSend: AppUpdates,
 };
 
 class App extends Component<{}, AppState> {
@@ -52,7 +59,12 @@ class App extends Component<{}, AppState> {
             current_shader_index: 0,
             current_time: 0.0,
             preview_is_open: false,
-            sentUpdateSinceChange: false,
+            sentUpdateSinceChange: true,
+            updatesToSend: {
+                SetDmo: false,
+                SetShader: false,
+                shaderIndexes: [],
+            },
         };
     }
 
@@ -60,7 +72,7 @@ class App extends Component<{}, AppState> {
     {
 
         this.connectToServerTimerId = window.setInterval(this.connectToServer, 1000);
-        this.updateTimerId = window.setInterval(this.sendDmoData, 1000);
+        this.updateTimerId = window.setInterval(this.sendUpdates, 1000);
         this.getDmoTimeTimerId = window.setInterval(this.getDmoTime, 500);
     }
 
@@ -112,6 +124,17 @@ class App extends Component<{}, AppState> {
         }
     }
 
+    resetUpdates = () => {
+        this.setState({
+            sentUpdateSinceChange: true,
+            updatesToSend: {
+                SetDmo: false,
+                SetShader: false,
+                shaderIndexes: [],
+            },
+        });
+    }
+
     handleSocketOpen = (event: MessageEvent) =>
     {
         console.log("Connected to server socket.");
@@ -122,9 +145,7 @@ class App extends Component<{}, AppState> {
             data: '',
         };
         this.sendMsgOnSocket(msg);
-        this.setState({
-            sentUpdateSinceChange: true,
-        });
+        this.resetUpdates();
     }
 
     sendMsgOnSocket = (msg: ServerMsg) =>
@@ -150,8 +171,18 @@ class App extends Component<{}, AppState> {
 
                 let idx = this.state.current_shader_index;
                 let frag_src = d.context.shader_sources[idx];
-                this.setState({ project_root: project_root, dmo_data: d, editor_content: frag_src });
-                this.setState({ sentUpdateSinceChange: true });
+                this.setState({
+                    project_root: project_root,
+                    dmo_data: d,
+                    editor_content: frag_src,
+                    // resetUpdates
+                    sentUpdateSinceChange: true,
+                    updatesToSend: {
+                        SetDmo: false,
+                        SetShader: false,
+                        shaderIndexes: [],
+                    },
+                });
                 break;
 
             case 'SetDmoTime':
@@ -182,14 +213,17 @@ class App extends Component<{}, AppState> {
             let idx = this.state.current_shader_index;
             d.context.shader_sources[idx] = newValue;
 
+            let a = this.state.updatesToSend;
+            a.SetShader = true;
+            a.shaderIndexes.push(this.state.current_shader_index);
+
             this.setState({
                 dmo_data: d,
                 editor_content: newValue,
+                sentUpdateSinceChange: false,
+                updatesToSend: a,
             });
         }
-        this.setState({
-            sentUpdateSinceChange: false,
-        });
     }
 
     onDmoShadersMenuChange = (idx: number) =>
@@ -280,11 +314,19 @@ class App extends Component<{}, AppState> {
         this.sendUpdatedContent(newValue);
     }
 
-    sendDmoData = () =>
-    {
+    sendUpdates = () => {
         if (this.state.sentUpdateSinceChange) {
             return;
         } else if (this.state.socket) {
+            this.sendDmoData();
+            this.sendSetShader();
+            this.resetUpdates();
+        }
+    }
+
+    sendDmoData = () =>
+    {
+        if (this.state.updatesToSend.SetDmo && this.state.socket) {
             let msg: ServerMsg = {
                 data_type: 'SetDmo',
                 data: JSON.stringify({
@@ -292,10 +334,57 @@ class App extends Component<{}, AppState> {
                     dmo_data_json_str: JSON.stringify(this.state.dmo_data),
                 }),
             };
+
             console.log('Sending server: SetDmo');
             this.sendMsgOnSocket(msg);
+
+            let a = this.state.updatesToSend;
+            a.SetDmo = false;
             this.setState({
-                sentUpdateSinceChange: true,
+                updatesToSend: a,
+            });
+        }
+    }
+
+    sendSetShader = () =>
+    {
+        if (this.state.updatesToSend.SetShader && this.state.socket) {
+            // filter the indexes.
+            var filtered = (function(items){
+                var m = {}, new_items = [];
+                for (var i=0; i<items.length; i++) {
+                    var v = items[i];
+                    if (!m[v]) {
+                        new_items.push(v);
+                        m[v] = true;
+                    }
+                }
+                return new_items;
+            })(this.state.updatesToSend.shaderIndexes);
+
+            filtered.forEach((idx) => {
+                if (this.state.dmo_data === null || typeof this.state.dmo_data === 'undefined') {
+                    console.log("ERROR: trying to use dmo_data while null");
+                    return;
+                } else {
+                    let msg: ServerMsg = {
+                        data_type: 'SetShader',
+                        data: JSON.stringify({
+                            idx: idx,
+                            content: this.state.dmo_data.context.shader_sources[idx],
+                        }),
+                    };
+
+                    console.log('Sending server: SetShader idx ' + idx);
+                    this.sendMsgOnSocket(msg);
+                }
+            });
+
+            let a = this.state.updatesToSend;
+            a.SetShader = false;
+            a.shaderIndexes = [];
+            this.setState({
+                updatesToSend: a,
             });
         }
     }

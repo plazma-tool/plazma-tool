@@ -11,7 +11,6 @@ use actix_web::ws;
 use actix_web::actix::*;
 
 use crate::project_data::ProjectData;
-use crate::dmo_data::SetDmoMsg;
 use crate::app::AppInfo;
 
 /// How often heartbeat pings are sent
@@ -128,13 +127,14 @@ impl ServerActor {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Copy, Clone, Debug)]
 pub enum MsgDataType {
     NoOp,
     FetchDmo,
     SetDmo,
     SetDmoTime,
     GetDmoTime,
+    SetShader,
     ShowErrorMessage,
     SetSettings,
     StartPreview,
@@ -142,6 +142,22 @@ pub enum MsgDataType {
     PreviewOpened,
     PreviewClosed,
     ExitApp,
+}
+
+/// Message to send the project root and DmoData. The preview starts with a minimal demo which
+/// doesn't have a project root, but when the server sends the user's demo, it will have to be read
+/// from disk.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SetDmoMsg {
+    pub project_root: Option<PathBuf>,
+    pub dmo_data_json_str: String,
+}
+
+/// Message to update the content of a specific shader.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SetShaderMsg {
+    pub idx: usize,
+    pub content: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -235,14 +251,18 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                                         continue;
                                     }
 
+                                    //let resp = Sending {
+                                    //    data_type: SetDmo,
+                                    //    data: serde_json::to_string(&SetDmoMsg {
+                                    //        project_root: state.project_data.project_root.clone(),
+                                    //        dmo_data_json_str: serde_json::to_string(&state.project_data.dmo_data).unwrap(),
+                                    //    }).unwrap(),
+                                    //};
                                     let resp = Sending {
-                                        data_type: SetDmo,
-                                        data: serde_json::to_string(&SetDmoMsg {
-                                            project_root: state.project_data.project_root.clone(),
-                                            dmo_data_json_str: serde_json::to_string(&state.project_data.dmo_data).unwrap(),
-                                        }).unwrap(),
+                                        data_type: message.data_type,
+                                        data: message.data.clone(),
                                     };
-                                    info!{"Sending SetDmo"};
+                                    info!{"Sending: {:?}", &message.data_type};
                                     addr.do_send(resp);
                                 }
                             },
@@ -308,6 +328,27 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                                 data_type: GetDmoTime,
                                 data: "".to_owned(),
                             };
+                            addr.do_send(resp);
+                        }
+                    },
+
+                    SetShader => {
+                        // Client is sending a shader to be updated. We are not storing the shader
+                        // sources in the DmoData, so we don't have to update it in the server
+                        // state, only pass on the message to the other clients such as the OpenGL
+                        // preview.
+
+                        let state = ctx.state().lock().expect("Can't lock ServerState.");
+                        for (id, addr) in &state.clients {
+                            if *id == self.client_id {
+                                continue;
+                            }
+
+                            let resp = Sending {
+                                data_type: message.data_type,
+                                data: message.data.clone(),
+                            };
+                            info!{"Sending: {:?}", &message.data_type};
                             addr.do_send(resp);
                         }
                     },

@@ -196,16 +196,17 @@ timeline:
 
     - scene_blocks:
 
-#        - start: 0.0
-#          end: 200.0
-#          draw_ops:
-#            - Target_Buffer: "scene buf"
-#            - Clear: [ 50, 0, 0, 0 ]
-#            - Target_Buffer: "RESULT_IMAGE"
-#            - Clear: [ 0, 50, 0, 0 ]
-#            - Draw_Poly_Scene: "cubes and suzanne"
-
         - start: 0.0
+          end: 100.0
+          draw_ops:
+            - Target_Buffer: "scene buf"
+            - Clear: [ 0, 0, 0, 0 ]
+            - Draw_Quad_Scene: "circle"
+            - Target_Buffer: "RESULT_IMAGE"
+            - Clear: [ 0, 0, 0, 0 ]
+            - Draw_Poly_Scene: "cubes and suzanne"
+
+        - start: 100.0
           end: 200.0
           draw_ops:
             - Target_Buffer: "scene buf"
@@ -215,11 +216,11 @@ timeline:
             - Clear: [ 0, 0, 0, 0 ]
             - Draw_Quad_Scene: "cross"
 
-#        - start: 10.0
-#          end: 20.0
-#          draw_ops:
-#            - Target_Buffer: "RESULT_IMAGE"
-#            - Clear: [ 0, 0, 0, 0 ]
-#            - Draw_Quad_Scene: "circle"
+        - start: 200.0
+          end: 300.0
+          draw_ops:
+            - Target_Buffer: "RESULT_IMAGE"
+            - Clear: [ 0, 0, 0, 0 ]
+            - Draw_Quad_Scene: "circle"
 
 

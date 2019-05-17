@@ -1,0 +1,122 @@
+[
+  {
+    "label": "isampler1D"
+  },
+  {
+    "label": "isampler1DArray"
+  },
+  {
+    "label": "isampler2D"
+  },
+  {
+    "label": "isampler2DArray"
+  },
+  {
+    "label": "isampler2DMS"
+  },
+  {
+    "label": "isampler2DMSArray"
+  },
+  {
+    "label": "isampler2DRect"
+  },
+  {
+    "label": "isampler3D"
+  },
+  {
+    "label": "isamplerBuffer"
+  },
+  {
+    "label": "isamplerCube"
+  },
+  {
+    "label": "isamplerCubeArray"
+  },
+  {
+    "label": "sampler1D"
+  },
+  {
+    "label": "sampler1DArray"
+  },
+  {
+    "label": "sampler1DArrayShadow"
+  },
+  {
+    "label": "sampler1DShadow"
+  },
+  {
+    "label": "sampler2D"
+  },
+  {
+    "label": "sampler2DArray"
+  },
+  {
+    "label": "sampler2DArrayShadow"
+  },
+  {
+    "label": "sampler2DMS"
+  },
+  {
+    "label": "sampler2DMSArray"
+  },
+  {
+    "label": "sampler2DRect"
+  },
+  {
+    "label": "sampler2DRectShadow"
+  },
+  {
+    "label": "sampler2DShadow"
+  },
+  {
+    "label": "sampler3D"
+  },
+  {
+    "label": "samplerBuffer"
+  },
+  {
+    "label": "samplerCube"
+  },
+  {
+    "label": "samplerCubeArray"
+  },
+  {
+    "label": "samplerCubeArrayShadow"
+  },
+  {
+    "label": "samplerCubeShadow"
+  },
+  {
+    "label": "usampler1D"
+  },
+  {
+    "label": "usampler1DArray"
+  },
+  {
+    "label": "usampler2D"
+  },
+  {
+    "label": "usampler2DArray"
+  },
+  {
+    "label": "usampler2DMS"
+  },
+  {
+    "label": "usampler2DMSArray"
+  },
+  {
+    "label": "usampler2DRect"
+  },
+  {
+    "label": "usampler3D"
+  },
+  {
+    "label": "usamplerBuffer"
+  },
+  {
+    "label": "usamplerCube"
+  },
+  {
+    "label": "usamplerCubeArray"
+  }
+]

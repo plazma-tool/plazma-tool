@@ -1,0 +1,101 @@
+[
+  {
+    "label": "iimage1D"
+  },
+  {
+    "label": "iimage1DArray"
+  },
+  {
+    "label": "iimage2D"
+  },
+  {
+    "label": "iimage2DArray"
+  },
+  {
+    "label": "iimage2DMS"
+  },
+  {
+    "label": "iimage2DMSArray"
+  },
+  {
+    "label": "iimage2DRect"
+  },
+  {
+    "label": "iimage3D"
+  },
+  {
+    "label": "iimageBuffer"
+  },
+  {
+    "label": "iimageCube"
+  },
+  {
+    "label": "iimageCubeArray"
+  },
+  {
+    "label": "image1D"
+  },
+  {
+    "label": "image1DArray"
+  },
+  {
+    "label": "image2D"
+  },
+  {
+    "label": "image2DArray"
+  },
+  {
+    "label": "image2DMS"
+  },
+  {
+    "label": "image2DMSArray"
+  },
+  {
+    "label": "image2DRect"
+  },
+  {
+    "label": "image3D"
+  },
+  {
+    "label": "imageBuffer"
+  },
+  {
+    "label": "imageCube"
+  },
+  {
+    "label": "imageCubeArray"
+  },
+  {
+    "label": "uimage1D"
+  },
+  {
+    "label": "uimage1DArray"
+  },
+  {
+    "label": "uimage2D"
+  },
+  {
+    "label": "uimage2DArray"
+  },
+  {
+    "label": "uimage2DMS"
+  },
+  {
+    "label": "uimage2DMSArray"
+  },
+  {
+    "label": "uimage2DRect"
+  },
+  {
+    "label": "uimage3D"
+  },
+  {
+    "label": "uimageBuffer"
+  },
+  {
+    "label": "uimageCube"
+  },
+  {
+    "label": "uimageCubeArray"
+  }
+]

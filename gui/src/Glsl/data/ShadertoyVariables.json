@@ -1,0 +1,35 @@
+[
+  {
+    "label": "iChannelResolution"
+  },
+  {
+    "label": "iChannelTime"
+  },
+  {
+    "label": "iDate"
+  },
+  {
+    "label": "iFrame"
+  },
+  {
+    "label": "iFrameRate"
+  },
+  {
+    "label": "iGlobalTime"
+  },
+  {
+    "label": "iMouse"
+  },
+  {
+    "label": "iResolution"
+  },
+  {
+    "label": "iSampleRate"
+  },
+  {
+    "label": "iTime"
+  },
+  {
+    "label": "iTimeDelta"
+  }
+]

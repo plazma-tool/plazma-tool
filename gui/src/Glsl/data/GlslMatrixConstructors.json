@@ -1,0 +1,74 @@
+[
+  {
+    "label": "dmat2"
+  },
+  {
+    "label": "dmat2x2"
+  },
+  {
+    "label": "dmat2x3"
+  },
+  {
+    "label": "dmat2x4"
+  },
+  {
+    "label": "dmat3"
+  },
+  {
+    "label": "dmat3x2"
+  },
+  {
+    "label": "dmat3x3"
+  },
+  {
+    "label": "dmat3x4"
+  },
+  {
+    "label": "dmat4"
+  },
+  {
+    "label": "dmat4x2"
+  },
+  {
+    "label": "dmat4x3"
+  },
+  {
+    "label": "dmat4x4"
+  },
+  {
+    "label": "mat2"
+  },
+  {
+    "label": "mat2x2"
+  },
+  {
+    "label": "mat2x3"
+  },
+  {
+    "label": "mat2x4"
+  },
+  {
+    "label": "mat3"
+  },
+  {
+    "label": "mat3x2"
+  },
+  {
+    "label": "mat3x3"
+  },
+  {
+    "label": "mat3x4"
+  },
+  {
+    "label": "mat4"
+  },
+  {
+    "label": "mat4x2"
+  },
+  {
+    "label": "mat4x3"
+  },
+  {
+    "label": "mat4x4"
+  }
+]

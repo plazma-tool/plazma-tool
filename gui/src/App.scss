@@ -34,9 +34,19 @@
 }
 
 #sidebar nav.panel {
-	margin: 0;
+  margin: 0;
 }
 
 #sidebar nav.panel .panel-heading {
-	border: none;
+  border: none;
+}
+
+//#root .monaco-editor .minimap-slider,// not overriding the minimap, good as is
+#root .monaco-editor,
+#root .monaco-editor-background,
+#root .monaco-editor .inputarea.ime-input,
+#root .monaco-editor .margin {
+  // vs-dark default background-color is #1e1e1e
+  //background-color: #1e1e1e;
+  background-color: #181818;
 }

@@ -1,0 +1,590 @@
+[
+  {
+    "label": "abs"
+  },
+  {
+    "label": "acos"
+  },
+  {
+    "label": "acosh"
+  },
+  {
+    "label": "all"
+  },
+  {
+    "label": "allInvocation"
+  },
+  {
+    "label": "any"
+  },
+  {
+    "label": "anyInvocation"
+  },
+  {
+    "label": "anyInvocationsEqual"
+  },
+  {
+    "label": "asin"
+  },
+  {
+    "label": "asinh"
+  },
+  {
+    "label": "atan"
+  },
+  {
+    "label": "atanh"
+  },
+  {
+    "label": "atomicAdd"
+  },
+  {
+    "label": "atomicAnd"
+  },
+  {
+    "label": "atomicCompSwap"
+  },
+  {
+    "label": "atomicCounter"
+  },
+  {
+    "label": "atomicCounterAdd"
+  },
+  {
+    "label": "atomicCounterAnd"
+  },
+  {
+    "label": "atomicCounterCompSwap"
+  },
+  {
+    "label": "atomicCounterDecrement"
+  },
+  {
+    "label": "atomicCounterExchange"
+  },
+  {
+    "label": "atomicCounterIncrement"
+  },
+  {
+    "label": "atomicCounterMax"
+  },
+  {
+    "label": "atomicCounterMin"
+  },
+  {
+    "label": "atomicCounterOr"
+  },
+  {
+    "label": "atomicCounterSubtract"
+  },
+  {
+    "label": "atomicCounterXor"
+  },
+  {
+    "label": "atomicExchange"
+  },
+  {
+    "label": "atomicMax"
+  },
+  {
+    "label": "atomicMin"
+  },
+  {
+    "label": "atomicOr"
+  },
+  {
+    "label": "atomicXor"
+  },
+  {
+    "label": "barrier"
+  },
+  {
+    "label": "bitCount"
+  },
+  {
+    "label": "bitfieldExtract"
+  },
+  {
+    "label": "bitfieldInsert"
+  },
+  {
+    "label": "bitfieldReverse"
+  },
+  {
+    "label": "ceil"
+  },
+  {
+    "label": "clamp"
+  },
+  {
+    "label": "cos"
+  },
+  {
+    "label": "cosh"
+  },
+  {
+    "label": "cross"
+  },
+  {
+    "label": "degrees"
+  },
+  {
+    "label": "determinant"
+  },
+  {
+    "label": "dFdx"
+  },
+  {
+    "label": "dFdxCoarse"
+  },
+  {
+    "label": "dFdxFine"
+  },
+  {
+    "label": "dFdy"
+  },
+  {
+    "label": "dFdyCoarse"
+  },
+  {
+    "label": "dFdyFine"
+  },
+  {
+    "label": "distance"
+  },
+  {
+    "label": "dot"
+  },
+  {
+    "label": "EmitStreamVertex"
+  },
+  {
+    "label": "EmitVertex"
+  },
+  {
+    "label": "EndPrimitive"
+  },
+  {
+    "label": "EndStreamPrimitive"
+  },
+  {
+    "label": "equal"
+  },
+  {
+    "label": "exp"
+  },
+  {
+    "label": "exp2"
+  },
+  {
+    "label": "faceforward"
+  },
+  {
+    "label": "findLSB"
+  },
+  {
+    "label": "findMSB"
+  },
+  {
+    "label": "floatBitsToInt"
+  },
+  {
+    "label": "floatBitsToUint"
+  },
+  {
+    "label": "floor"
+  },
+  {
+    "label": "fma"
+  },
+  {
+    "label": "fract"
+  },
+  {
+    "label": "frexp"
+  },
+  {
+    "label": "ftransform"
+  },
+  {
+    "label": "fwidth"
+  },
+  {
+    "label": "fwidthCoarse"
+  },
+  {
+    "label": "fwidthFine"
+  },
+  {
+    "label": "greaterThan"
+  },
+  {
+    "label": "greaterThanEqual"
+  },
+  {
+    "label": "groupMemoryBarrier"
+  },
+  {
+    "label": "imageAtomicAdd"
+  },
+  {
+    "label": "imageAtomicAnd"
+  },
+  {
+    "label": "imageAtomicCompSwap"
+  },
+  {
+    "label": "imageAtomicExchange"
+  },
+  {
+    "label": "imageAtomicMax"
+  },
+  {
+    "label": "imageAtomicMin"
+  },
+  {
+    "label": "imageAtomicOr"
+  },
+  {
+    "label": "imageAtomicXor"
+  },
+  {
+    "label": "imageLoad"
+  },
+  {
+    "label": "imageSamples"
+  },
+  {
+    "label": "imageSize"
+  },
+  {
+    "label": "imageStore"
+  },
+  {
+    "label": "imulExtended"
+  },
+  {
+    "label": "intBitsToFloat"
+  },
+  {
+    "label": "interpolateAtCentroid"
+  },
+  {
+    "label": "interpolateAtOffset"
+  },
+  {
+    "label": "interpolateAtSample"
+  },
+  {
+    "label": "inverse"
+  },
+  {
+    "label": "inversesqrt"
+  },
+  {
+    "label": "isinf"
+  },
+  {
+    "label": "isnan"
+  },
+  {
+    "label": "ldexp"
+  },
+  {
+    "label": "length"
+  },
+  {
+    "label": "lessThan"
+  },
+  {
+    "label": "lessThanEqual"
+  },
+  {
+    "label": "log"
+  },
+  {
+    "label": "log2"
+  },
+  {
+    "label": "matrixCompMult"
+  },
+  {
+    "label": "max"
+  },
+  {
+    "label": "memoryBarrier"
+  },
+  {
+    "label": "memoryBarrierAtomicCounter"
+  },
+  {
+    "label": "memoryBarrierBuffer"
+  },
+  {
+    "label": "memoryBarrierImage"
+  },
+  {
+    "label": "memoryBarrierShared"
+  },
+  {
+    "label": "min"
+  },
+  {
+    "label": "mix"
+  },
+  {
+    "label": "mod"
+  },
+  {
+    "label": "modf"
+  },
+  {
+    "label": "noise1"
+  },
+  {
+    "label": "noise2"
+  },
+  {
+    "label": "noise3"
+  },
+  {
+    "label": "noise4"
+  },
+  {
+    "label": "normalize"
+  },
+  {
+    "label": "not"
+  },
+  {
+    "label": "notEqual"
+  },
+  {
+    "label": "outerProduct"
+  },
+  {
+    "label": "packDouble2x32"
+  },
+  {
+    "label": "packHalf2x16"
+  },
+  {
+    "label": "packSnorm2x16"
+  },
+  {
+    "label": "packSnorm4x8"
+  },
+  {
+    "label": "packUnorm2x16"
+  },
+  {
+    "label": "packUnorm4x8"
+  },
+  {
+    "label": "pow"
+  },
+  {
+    "label": "radians"
+  },
+  {
+    "label": "reflect"
+  },
+  {
+    "label": "refract"
+  },
+  {
+    "label": "round"
+  },
+  {
+    "label": "roundEven"
+  },
+  {
+    "label": "shadow1D"
+  },
+  {
+    "label": "shadow1DLod"
+  },
+  {
+    "label": "shadow1DProj"
+  },
+  {
+    "label": "shadow1DProjLod"
+  },
+  {
+    "label": "shadow2D"
+  },
+  {
+    "label": "shadow2DLod"
+  },
+  {
+    "label": "shadow2DProj"
+  },
+  {
+    "label": "shadow2DProjLod"
+  },
+  {
+    "label": "sign"
+  },
+  {
+    "label": "sin"
+  },
+  {
+    "label": "sinh"
+  },
+  {
+    "label": "smoothstep"
+  },
+  {
+    "label": "sqrt"
+  },
+  {
+    "label": "step"
+  },
+  {
+    "label": "tan"
+  },
+  {
+    "label": "tanh"
+  },
+  {
+    "label": "texelFetch"
+  },
+  {
+    "label": "texelFetchOffset"
+  },
+  {
+    "label": "texture"
+  },
+  {
+    "label": "texture1D"
+  },
+  {
+    "label": "texture1DLod"
+  },
+  {
+    "label": "texture1DProj"
+  },
+  {
+    "label": "texture1DProjLod"
+  },
+  {
+    "label": "texture2D"
+  },
+  {
+    "label": "texture2DLod"
+  },
+  {
+    "label": "texture2DProj"
+  },
+  {
+    "label": "texture2DProjLod"
+  },
+  {
+    "label": "texture3D"
+  },
+  {
+    "label": "texture3DLod"
+  },
+  {
+    "label": "texture3DProj"
+  },
+  {
+    "label": "texture3DProjLod"
+  },
+  {
+    "label": "textureCube"
+  },
+  {
+    "label": "textureCubeLod"
+  },
+  {
+    "label": "textureGather"
+  },
+  {
+    "label": "textureGatherOffset"
+  },
+  {
+    "label": "textureGatherOffsets"
+  },
+  {
+    "label": "textureGrad"
+  },
+  {
+    "label": "textureGradOffset"
+  },
+  {
+    "label": "textureLod"
+  },
+  {
+    "label": "textureLodOffset"
+  },
+  {
+    "label": "textureOffset"
+  },
+  {
+    "label": "textureProj"
+  },
+  {
+    "label": "textureProjGrad"
+  },
+  {
+    "label": "textureProjGradOffset"
+  },
+  {
+    "label": "textureProjLod"
+  },
+  {
+    "label": "textureProjLodOffset"
+  },
+  {
+    "label": "textureProjOffset"
+  },
+  {
+    "label": "textureQueryLevels"
+  },
+  {
+    "label": "textureQueryLod"
+  },
+  {
+    "label": "textureSamples"
+  },
+  {
+    "label": "textureSize"
+  },
+  {
+    "label": "transpose"
+  },
+  {
+    "label": "trunc"
+  },
+  {
+    "label": "uaddCarry"
+  },
+  {
+    "label": "uintBitsToFloat"
+  },
+  {
+    "label": "umulExtended"
+  },
+  {
+    "label": "unpackDouble2x32"
+  },
+  {
+    "label": "unpackHalf2x16"
+  },
+  {
+    "label": "unpackSnorm2x16"
+  },
+  {
+    "label": "unpackSnorm4x8"
+  },
+  {
+    "label": "unpackUnorm2x16"
+  },
+  {
+    "label": "unpackUnorm4x8"
+  },
+  {
+    "label": "usubBorrow"
+  }
+]

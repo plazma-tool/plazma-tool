@@ -8,6 +8,12 @@ import MonacoEditor from 'react-monaco-editor';
 import { ColorPickerColumns } from './PlazmaColorPicker';
 import { PositionSlidersColumns } from './PlazmaPositionSliders';
 import { SliderColumns } from './PlazmaSlider';
+import { StatusBar } from './StatusBar';
+
+import { GlslTokensProvider } from './Glsl/TokensProvider';
+import { GetGlslCompletionProvider } from './Glsl/CompletionProvider';
+import { GlslHoverProvider } from './Glsl/HoverProvider';
+import { ThemeBase16DefaultDark } from './Glsl/ThemeBase16DefaultDark';
 
 // TODO Use a collapsed and expanded state. Click on the menu label expands a
 // tree. Selecting a shader opens it in the editor.
@@ -292,25 +298,16 @@ class PlazmaMonaco extends React.Component<PM_Props, PM_State> {
 
     editorWillMount(monaco) {
         monaco.languages.register({ id: 'glsl' });
-        monaco.languages.setMonarchTokensProvider('glsl', {
-            comments: {
-                "lineComment": "//",
-                "blockComment": [ "/*", "*/" ]
-            },
-            brackets: [
-                ["{", "}", "delimiter.curly"],
-                //["[", "]", "delimiter.bracket"],
-                //["(", ")", "delimiter.round"],
-            ],
-            tokenizer: {
-                root: [],
-            },
-        });
+        monaco.languages.setMonarchTokensProvider('glsl', GlslTokensProvider);
+        monaco.languages.registerCompletionItemProvider('glsl', GetGlslCompletionProvider(monaco));
+        monaco.languages.registerHoverProvider('glsl', GlslHoverProvider);
+        monaco.editor.defineTheme('glsl-base16-default-dark', ThemeBase16DefaultDark);
     }
 
     render() {
         const options = {
             language: "glsl",
+            theme: "glsl-base16-default-dark",
             lineNumbers: "on",
             roundedSelection: false,
             scrollBeyondLastLine: true,
@@ -328,12 +325,17 @@ class PlazmaMonaco extends React.Component<PM_Props, PM_State> {
                 //width="800"
                 height="600"
                 language="glsl"
-                theme="vs-dark"
+                theme="glsl-base16-default-dark"
+                fontFamily="Iosevka Term Web"
                 value={this.props.editorContent}
                 options={options}
                 onChange={this.onChangeLocal}
                 editorWillMount={this.editorWillMount}
                 editorDidMount={this.editorDidMount}
+              />
+
+              <StatusBar
+                  editorContent={this.props.editorContent}
               />
             </div>
         );

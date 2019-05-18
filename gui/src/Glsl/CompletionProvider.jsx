@@ -1,29 +1,21 @@
-import { GlslReservedVariables } from './CompletionData';
+import { GlslReservedVariables, GlslPredefinedConstants, GlslBuiltinFunctions, GlslLanguageSnippets,
+    ShadertoyVariables } from './CompletionData';
 
-function get_glsl_suggestions(monaco) {
-    return function glsl_suggestions(model, position, token) {
-        let suggestions = [];
+function glsl_suggestions(model, position) {
 
-        let a = GlslReservedVariables.map((i) => {
-            return {
-                label: i.label,
-                detail: i.label,// TODO
-                kind: monaco.languages.CompletionItemKind.Keyword,
-                insertText: i.label,
-                documentation: { value: 'GLSL Reserved Variable or Constant' },// TODO
-            };
-        });
+    let suggestions = [
+        GlslLanguageSnippets,
+        GlslReservedVariables,
+        GlslPredefinedConstants,
+        GlslBuiltinFunctions,
+        ShadertoyVariables,
+    ].flat();
 
-        suggestions = suggestions.concat(a);
+    return { suggestions: suggestions };
+};
 
-        return { suggestions: suggestions };
-    };
-}
-
-export function GetGlslCompletionProvider(monaco) {
-    return {
-        provideCompletionItems: get_glsl_suggestions(monaco),
-    };
+export const GlslCompletionProvider = {
+    provideCompletionItems: glsl_suggestions,
 };
 
 

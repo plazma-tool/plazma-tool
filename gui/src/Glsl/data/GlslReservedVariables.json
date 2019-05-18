@@ -1,5 +1,47 @@
 [
   {
+    "label": "gl_Position",
+    "detail": "contains the position of the current vertex",
+    "documentation": {
+      "value": "**Vertex position**\n\n``` glsl\nhighp vec4 gl_Position;\n```\n\nThe built-in variable **gl_Position** is used by the vertex shader to\nhand over the transformed vertex position to the OpenGL ES 2.0 pipeline.\nThe variable is declared as shown above and can be used in the vertex\nshader for an assignment without prior declaration.\n\nThe values of the position vector are interpreted in clip coordinate space. The\nvertex shader is responsible to execute all vertex manipulations, e.g. the\ntransformation from object coordinates to clip coordinates.\n\nThe assignment of values to this variable is mandatory for the vertex\nshader.\n\n- <http://docs.gl/sl4/gl_Position>\n- <https://www.shaderific.com/glsl-variables>\n"
+    }
+  },
+  {
+    "label": "gl_FragCoord",
+    "detail": "contains the window-relative coordinates of the current fragment",
+    "documentation": {
+      "value": "**Fragment coordinates**\n\n``` glsl\nmediump vec4 gl_FragCoord;\n```\n\nThe built-in variable **gl_FragCoord** is used by the OpenGL ES 2.0 pipeline\nto hand over the coordinates of the fragment to the fragment shader. The\nvariable is read-only and the value is assigned by the OpenGL ES 2.0\npipeline.\n\nThe values of the fragment coordinate vector are given in the window\ncoordinate system.\n\n- <http://docs.gl/sl4/gl_FragCoord>\n- <https://www.shaderific.com/glsl-variables>\n"
+    }
+  },
+  {
+    "label": "gl_FrontFacing",
+    "detail": "indicates whether a primitive is front or back facing",
+    "documentation": {
+      "value": "**Fragment orientation**\n\n``` glsl\nbool gl_FrontFacing;\n```\n\nThe built-in variable **gl_FrontFacing** is used by the OpenGL ES 2.0\npipeline to hand over the information to the fragment shader if the\nfragment is part of a front-facing primitive (triangle). The variable is\nread-only and the value is assigned by the OpenGL ES 2.0 pipeline.\n\nThe front-facing variable has a boolean value.\n\n- <http://docs.gl/sl4/gl_FrontFacing>\n- <https://www.shaderific.com/glsl-variables>\n"
+    }
+  },
+  {
+    "label": "gl_PointCoord",
+    "detail": "contains the coordinate of a fragment within a point",
+    "documentation": {
+      "value": "**Point coordinates**\n\n``` glsl\nmediump int gl_PointCoord;\n```\n\nThe built-in variable **gl_PointCoord** is used by the OpenGL ES 2.0\npipeline to hand over the coordinates of a point sprite to the fragment\nshader. The variable is read-only and the value is calculated and\nassigned by the OpenGL ES 2.0 pipeline based on the position and radius\nof the point sprite..\n\nSide note: A value for this variable is provided by the OpenGL ES 2.0\npipeline only if the rendered primitives are points.\n\n- <http://docs.gl/sl4/gl_PointCoord>\n- <https://www.shaderific.com/glsl-variables>\n"
+    }
+  },
+  {
+    "label": "gl_FragColor",
+    "detail": "(GL_ES 2.0) sets the fragment color",
+    "documentation": {
+      "value": "**Fragment color**\n\n**NOTE:** `gl_FragColor` is deprecated in GLSL 1.3 (OpenGL 3.0), only\navailable in OpenGL ES 2.0.  Instead, declare an `out` variable in the\nfragment shader:\n\n``` glsl\nout vec4 out_color;\n// ...\nvoid main() {\n  out_color = vec4(1.0);\n}\n```\n\n*Description*\n\n``` glsl\nmediump vec4 gl_FragColor;\n```\n\nThe built-in variable **gl_FragColor** is used by the fragment shader to\nhand over the color of the fragment to the OpenGL ES 2.0 pipeline. The\nvariable is pre-declared as shown above that way the variable can be used\nin the fragment shader for an assignment without prior declaration.\n\nThe values of the color vector are interpreted in the RGBA color space.\n\nThe assignment of values to this variable is mandatory for the fragment\nshader.\n\n- <https://www.shaderific.com/glsl-variables>\n"
+    }
+  },
+  {
+    "label": "gl_FragDepth",
+    "detail": "establishes a depth value for the current fragment",
+    "documentation": {
+      "value": "**Fragment depth**\n\n``` glsl\nout float gl_FragDepth;\n```\n\nAvailable only in the fragment language, **gl_FragDepth** is an output\nvariable that is used to establish the depth value for the current\nfragment.\n\nIf depth buffering is enabled and no shader writes to `gl_FragDepth`,\nthen the fixed function value for depth will be used (this value is\ncontained in the `z` component of `gl_FragCoord`) otherwise, the value\nwritten to `gl_FragDepth` is used.\n\nIf a shader statically assigns to `gl_FragDepth`, then the value of the\nfragment's depth may be undefined for executions of the shader that don't\ntake that path. That is, if the set of linked fragment shaders statically\ncontain a write to `gl_FragDepth`, then it is responsible for always\nwriting it.\n\n- <http://docs.gl/sl4/gl_FragDepth>\n"
+    }
+  },
+  {
     "label": "gl_BackColor"
   },
   {
@@ -66,22 +108,10 @@
     "label": "gl_FogParameters"
   },
   {
-    "label": "gl_FragColor"
-  },
-  {
-    "label": "gl_FragCoord"
-  },
-  {
     "label": "gl_FragData"
   },
   {
-    "label": "gl_FragDepth"
-  },
-  {
     "label": "gl_FrontColor"
-  },
-  {
-    "label": "gl_FrontFacing"
   },
   {
     "label": "gl_FrontLightModelProduct"
@@ -273,16 +303,10 @@
     "label": "gl_Point"
   },
   {
-    "label": "gl_PointCoord"
-  },
-  {
     "label": "gl_PointParameters"
   },
   {
     "label": "gl_PointSize"
-  },
-  {
-    "label": "gl_Position"
   },
   {
     "label": "gl_PrimitiveID"

@@ -11,7 +11,7 @@ import { SliderColumns } from './PlazmaSlider';
 import { StatusBar } from './StatusBar';
 
 import { GlslTokensProvider } from './Glsl/TokensProvider';
-import { GetGlslCompletionProvider } from './Glsl/CompletionProvider';
+import { GlslCompletionProvider } from './Glsl/CompletionProvider';
 import { GlslHoverProvider } from './Glsl/HoverProvider';
 import { ThemeBase16DefaultDark } from './Glsl/ThemeBase16DefaultDark';
 
@@ -299,7 +299,7 @@ class PlazmaMonaco extends React.Component<PM_Props, PM_State> {
     editorWillMount(monaco) {
         monaco.languages.register({ id: 'glsl' });
         monaco.languages.setMonarchTokensProvider('glsl', GlslTokensProvider);
-        monaco.languages.registerCompletionItemProvider('glsl', GetGlslCompletionProvider(monaco));
+        monaco.languages.registerCompletionItemProvider('glsl', GlslCompletionProvider);
         monaco.languages.registerHoverProvider('glsl', GlslHoverProvider);
         monaco.editor.defineTheme('glsl-base16-default-dark', ThemeBase16DefaultDark);
     }

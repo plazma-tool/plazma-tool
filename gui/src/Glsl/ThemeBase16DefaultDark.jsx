@@ -31,6 +31,8 @@ export const ThemeBase16DefaultDark = {
 
         //{ token: 'user-function-name', foreground: c['base0B'] },
 
+        { token: 'trailing-whitespace', foreground: 'ff0000', fontStyle: 'underline' },
+
         // dots, etc
         { token: 'delimiter', foreground: c['base05'] },
         // braces, brackets, parens

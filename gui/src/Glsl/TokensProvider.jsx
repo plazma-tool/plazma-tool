@@ -1,7 +1,7 @@
 // @flow
 
-import { GlslSamplerVariables, GlslImageVariables, GlslBuiltinFunctions, ShadertoyVariables,
-    GlslVectorConstructors, GlslMatrixConstructors } from './CompletionData';
+import { GlslSamplerVariables, GlslPredefinedConstants, GlslImageVariables, GlslBuiltinFunctions,
+    ShadertoyVariables, GlslVectorConstructors, GlslMatrixConstructors } from './CompletionData';
 
 export const GlslTokensProvider = {
 
@@ -62,15 +62,7 @@ export const GlslTokensProvider = {
         'precision',
     ],
 
-    glsl_predefined_constants: [
-        '__FILE__',
-        '__LINE__',
-        '__VERSION__',
-        'GL_compatibility_profile',
-        'GL_core_profile',
-        'GL_es_profile',
-        'GL_ES',
-    ],
+    glsl_predefined_constants: GlslPredefinedConstants.map((i) => i.label),
 
     glsl_operators: [
         '!',
@@ -197,6 +189,9 @@ export const GlslTokensProvider = {
                 '@glsl_illegals': 'glsl-illegal',
                 '@default': 'identifier',
             } }],
+
+            // trailing whitespace
+            [/[ \t\r\n]+$/, 'trailing-whitespace'],
 
             // whitespace
             { include: '@whitespace' },

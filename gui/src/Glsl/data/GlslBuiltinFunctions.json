@@ -1,5 +1,206 @@
 [
   {
+    "label": "radians",
+    "kind": 25,
+    "insertTextRules": 4,
+    "insertText": "radians($1)",
+    "detail": "convert a quantity in degrees to radians",
+    "documentation": {
+      "value": "*Radians*\n\n``` glsl\nfloat radians(float degrees)\nvec2 radians(vec2 degrees)\nvec3 radians(vec3 degrees)\nvec4 radians(vec4 degrees)\n```\n\nThe `radians` function converts degrees to radians. The input parameter\ncan be a floating scalar or a float vector. In case of a float vector all\ncomponents are converted from degrees to radians separately.\n\n- <http://docs.gl/sl4/radians>\n- <https://www.shaderific.com/glsl-functions>\n"
+    }
+  },
+  {
+    "label": "degrees",
+    "kind": 25,
+    "insertTextRules": 4,
+    "insertText": "degrees($1)",
+    "detail": "convert a quantity in radians to degrees",
+    "documentation": {
+      "value": "**Degrees**\n\n``` glsl\nfloat degrees(float radians)\nvec2 degrees(vec2 radians)\nvec3 degrees(vec3 radians)\nvec4 degrees(vec4 radians)\n```\n\nThe `degrees` function converts radians to degrees. The input parameter\ncan be a floating scalar or a float vector. In case of a float vector\nevery component is converted from radians to degrees separately.\n\n- <http://docs.gl/sl4/degrees>\n- <https://www.shaderific.com/glsl-functions>\n"
+    }
+  },
+  {
+    "label": "sin",
+    "detail": "return the sine of the parameter",
+    "documentation": {
+      "value": "**Sine**\n\n``` glsl\nfloat sin(float angle)\nvec2 sin(vec2 angle)\nvec3 sin(vec3 angle)\nvec4 sin(vec4 angle)\n```\n\nThe `sin` function returns the sine of an angle in radians. The input\nparameter can be a floating scalar or a float vector. In case of a float\nvector the sine is calculated separately for every component.\n\n- <http://docs.gl/sl4/sin>\n- <https://www.shaderific.com/glsl-functions>\n"
+    }
+  },
+  {
+    "label": "cos",
+    "detail": "return the cosine of the parameter",
+    "documentation": {
+      "value": "**Cosine**\n\n``` glsl\nfloat cos(float angle)\nvec2 cos(vec2 angle)\nvec3 cos(vec3 angle)\nvec4 cos(vec4 angle)\n```\n\nThe `cos` function returns the cosine of an angle in radians. The input\nparameter can be a floating scalar or a float vector. In case of a float\nvector the cosine is calculated separately for every component.\n\n- <http://docs.gl/sl4/cos>\n- <https://www.shaderific.com/glsl-functions>\n"
+    }
+  },
+  {
+    "label": "clamp",
+    "kind": 25,
+    "insertTextRules": 4,
+    "insertText": "clamp(${1:x}, ${2:minVal}, ${3:maxVal})",
+    "detail": "constrain a value to lie between two further values",
+    "documentation": {
+      "value": "**Clamp**\n\n``` glsl\nfloat clamp(float x, float minVal, float maxVal)\nvec2 clamp(vec2 x, vec2 minVal, vec2 maxVal)\nvec3 clamp(vec3 x, vec3 minVal, vec3 maxVal)\nvec4 clamp(vec4 x, vec4 minVal, vec4 maxVal)\n```\n\nThe `clamp` function returns x if it is larger than minVal and smaller\nthan maxVal. In case x is smaller than minVal, minVal is returned. If x\nis larger than maxVal, maxVal is returned. The input parameters can be\nfloating scalars or float vectors. In case of float vectors the operation\nis done component-wise.\n\n``` glsl\nfloat clamp(float x, float minVal, float maxVal)\nvec2 clamp(vec2 x, float minVal, float maxVal)\nvec3 clamp(vec3 x, float minVal, float maxVal)\nvec4 clamp(vec4 x, flfloat minVal, float maxVal)\n```\n\nThere is also a variation of the `clamp` function where the second and\nthird parameters are always a floating scalars.\n\n- <http://docs.gl/sl4/clamp>\n- <https://www.shaderific.com/glsl-functions>\n"
+    }
+  },
+  {
+    "label": "mix",
+    "kind": 25,
+    "insertTextRules": 4,
+    "insertText": "mix(${1:x}, ${2:y}, ${3:a})",
+    "detail": "linearly interpolate between two values",
+    "documentation": {
+      "value": "**Mix**\n\n``` glsl\nfloat mix(float x, float y, float a)\nvec2 mix(vec2 x, vec2 y, vec2 a)\nvec3 mix(vec3 x, vec3 y, vec3 a)\nvec4 mix(vec4 x, vec4 y, vec4 a)\n```\n\nThe `mix` function returns the linear blend of x and y, i.e. the product of\nx and (1 - a) plus the product of y and a. The input parameters can be\nfloating scalars or float vectors. In case of float vectors the operation\nis done component-wise.\n\n``` glsl\nfloat mix(float x, float y, float a)\nvec2 mix(vec2 x, vec2 y, float a)\nvec3 mix(vec3 x, vec3 y, float a)\nvec4 mix(vec4 x, vec4 y, float a)\n```\n\nThere is also a variation of the `mix` function where the third parameter\nis always a floating scalar.\n\n- <http://docs.gl/sl4/mix>\n- <https://www.shaderific.com/glsl-functions>\n"
+    }
+  },
+  {
+    "label": "step",
+    "kind": 25,
+    "insertTextRules": 4,
+    "insertText": "step(${1:edge}, ${2:x})",
+    "detail": "generate a step function by comparing two values",
+    "documentation": {
+      "value": "**Step**\n\n``` glsl\nfloat step(float edge, float x)\nvec2 step(vec2 edge, vec2 x)\nvec3 step(vec3 edge, vec3 x)\nvec4 step(vec4 edge, vec4 x)\n```\n\nThe `step` function returns 0.0 if x is smaller then edge and otherwise\n1.0. The input parameters can be floating scalars or float vectors. In\ncase of float vectors the operation is done component-wise.\n\n``` glsl\nfloat step(float edge, float x)\nvec2 step(float edge, vec2 x)\nvec3 step(float edge, vec3 x)\nvec4 step(float edge, vec4 x)\n```\n\nThere is also a variation of the `step` function where the edge parameter\nis always a floating scalar.\n\n- <http://docs.gl/sl4/step>\n- <https://www.shaderific.com/glsl-functions>\n"
+    }
+  },
+  {
+    "label": "smoothstep",
+    "kind": 25,
+    "insertTextRules": 4,
+    "insertText": "smoothstep(${1:edge0}, ${2:edge1}, ${3:x})",
+    "detail": "perform Hermite interpolation between two values",
+    "documentation": {
+      "value": "**Smoothstep**\n\n``` glsl\nfloat smoothstep(float edge0, float edge1, float x)\nvec2 smoothstep(vec2 edge0, vec2 edge1, vec2 x)\nvec3 smoothstep(vec3 edge0, vec3 edge1, vec3 x)\nvec4 smoothstep(vec4 edge0, vec4 edge1, vec4 x)\n```\n\nThe `smoothstep` function returns 0.0 if x is smaller then edge0 and 1.0\nif x is larger than edge1. Otherwise the return value is interpolated\nbetween 0.0 and 1.0 using Hermite polynomials. The input parameters can\nbe floating scalars or float vectors. In case of float vectors the\noperation is done component-wise.\n\n``` glsl\nfloat smoothstep(float edge0, float edge1, float x)\nvec2 smoothstep(float edge0, float edge1, vec2 x)\nvec3 smoothstep(float edge0, float edge1, vec3 x)\nvec4 smoothstep(float edge0, float edge1, vec4 x)\n```\n\nThere is also a variation of the `smoothstep` function where the edge0\nand edge1 parameters are always floating scalars.\n\n- <http://docs.gl/sl4/smoothstep>\n- <https://www.shaderific.com/glsl-functions>\n"
+    }
+  },
+  {
+    "label": "length",
+    "kind": 25,
+    "insertTextRules": 4,
+    "insertText": "length($1)",
+    "detail": "calculate the length of a vector",
+    "documentation": {
+      "value": "**Length**\n\n``` glsl\nfloat length(float x)\nfloat length(vec2 x)\nfloat length(vec3 x)\nfloat length(vec4 x)\n```\n\nThe `length` function returns the length of a vector defined by the\nEuclidean norm, i.e. the square root of the sum of the squared\ncomponents. The input parameter can be a floating scalar or a float\nvector. In case of a floating scalar the length function is trivial and\nreturns the absolute value.\n\n- <http://docs.gl/sl4/length>\n- <https://www.shaderific.com/glsl-functions>\n"
+    }
+  },
+  {
+    "label": "distance",
+    "kind": 25,
+    "insertTextRules": 4,
+    "insertText": "distance(${1:p0}, ${2:p1})",
+    "detail": "calculate the distance between two points",
+    "documentation": {
+      "value": "**Distance**\n\n``` glsl\nfloat distance(float p0, float p1)\nfloat distance(vec2 p0, vec2 p1)\nfloat distance(vec3 p0, vec3 p1)\nfloat distance(vec4 p0, vec4 p1)\n```\n\nThe `distance` function returns the distance between two points. The\ndistance of two points is the length of the vector `d = p0 - p1`, that\nstarts at p1 and points to p0. The input parameters can be floating\nscalars or float vectors. In case of floating scalars the `distance`\nfunction is trivial and returns the absolute value of d.\n\n- <http://docs.gl/sl4/distance>\n- <https://www.shaderific.com/glsl-functions>\n"
+    }
+  },
+  {
+    "label": "dot",
+    "kind": 25,
+    "insertTextRules": 4,
+    "insertText": "dot(${1:x}, ${2:y})",
+    "detail": "calculate the dot product of two vectors",
+    "documentation": {
+      "value": "**Dot product**\n\n``` glsl\nfloat dot(float x, float y)\nfloat dot(vec2 x, vec2 y)\nfloat dot(vec3 x, vec3 y)\nfloat dot(vec4 x, vec4 y)\n```\n\nThe `dot` function returns the dot product of the two input parameters,\ni.e. the sum of the component-wise products. If x and y are the same the\nsquare root of the dot product is equivalent to the length of the vector.\nThe input parameters can be floating scalars or float vectors. In case of\nfloating scalars the `dot` function is trivial and returns the product of\nx and y.\n\n- <http://docs.gl/sl4/dot>\n- <https://www.shaderific.com/glsl-functions>\n"
+    }
+  },
+  {
+    "label": "cross",
+    "kind": 25,
+    "insertTextRules": 4,
+    "insertText": "cross(${1:x}, ${2:y})",
+    "detail": "calculate the cross product of two vectors",
+    "documentation": {
+      "value": "**Cross product**\n\n``` glsl\nvec3 cross(vec3 x, vec3 y)\n```\n\nThe `cross` function returns the cross product of the two input\nparameters, i.e. a vector that is perpendicular to the plane containing x\nand y and has a magnitude that is equal to the area of the parallelogram\nthat x and y span. The input parameters can only be 3-component floating\nvectors. The cross product is equivalent to the product of the length of\nthe vectors times the sinus of the (smaller) angle between x and y.\n\n- <http://docs.gl/sl4/cross>\n- <https://www.shaderific.com/glsl-functions>\n"
+    }
+  },
+  {
+    "label": "normalize",
+    "kind": 25,
+    "insertTextRules": 4,
+    "insertText": "normalize($1)",
+    "detail": "calculate the normalize product of two vectors",
+    "documentation": {
+      "value": "**Normalize**\n\n``` glsl\nfloat normalize(float x)\nvec2 normalize(vec2 x)\nvec3 normalize(vec3 x)\nvec4 normalize(vec4 x)\n```\n\nThe `normalize` function returns a vector with length 1.0 that is\nparallel to x, i.e. x divided by its length. The input parameter can be a\nfloating scalar or a float vector. In case of a floating scalar the\n`normalize` function is trivial and returns 1.0.\n\n- <http://docs.gl/sl4/normalize>\n- <https://www.shaderific.com/glsl-functions>\n"
+    }
+  },
+  {
+    "label": "faceforward",
+    "kind": 25,
+    "insertTextRules": 4,
+    "insertText": "faceforward(${1:vec to orient}, ${2:incident vec}, ${3:reference vec})",
+    "detail": "return a vector pointing in the same direction as another",
+    "documentation": {
+      "value": "**Faceforward**\n\n``` glsl\nfloat faceforward(float N, float I, float Nref)\nvec2 faceforward(vec2 N, vec2 I, vec2 Nref)\nvec3 faceforward(vec3 N, vec3 I, vec3 Nref)\nvec4 faceforward(vec4 N, vec4 I, vec4 Nref)\n```\n\nThe `faceforward` function returns a vector that points in the same\ndirection as a reference vector. The function has three input parameters\nof the type floating scalar or float vector: N, the vector to orient, I,\nthe incident vector, and Nref, the reference vector. If the dot product\nof I and Nref is smaller than zero the return value is N. Otherwise -N is\nreturned.\n\n- <http://docs.gl/sl4/faceforward>\n- <https://www.shaderific.com/glsl-functions>\n"
+    }
+  },
+  {
+    "label": "reflect",
+    "kind": 25,
+    "insertTextRules": 4,
+    "insertText": "reflect(${1:incident vec}, ${2:surface normal vec})",
+    "detail": "calculate the reflection direction for an incident vector",
+    "documentation": {
+      "value": "**Reflect**\n\n``` glsl\nfloat reflect(float I, float N)\nvec2 reflect(vec2 I, vec2 N)\nvec3 reflect(vec3 I, vec3 N)\nvec4 reflect(vec4 I, vec4 N)\n```\n\nThe `reflect` function returns a vector that points in the direction of\nreflection. The function has two input parameters of the type floating\nscalar or float vector: I, the incident vector, and N, the normal vector\nof the reflecting surface.\n\nSide note: To obtain the desired result the vector N has to be\nnormalized. The reflection vector always has the same length as the\nincident vector. From this it follows that the reflection vector is\nnormalized if N and I are both normalized.\n\n- <http://docs.gl/sl4/reflect>\n- <https://www.shaderific.com/glsl-functions>\n"
+    }
+  },
+  {
+    "label": "refract",
+    "kind": 25,
+    "insertTextRules": 4,
+    "insertText": "refract(${1:incident vec}, ${2:surface normal vec}, ${3:refraction ratio})",
+    "detail": "calculate the refraction direction for an incident vector",
+    "documentation": {
+      "value": "**Refract**\n\n``` glsl\nfloat refract(float I, float N, float eta)\nvec2 refract(vec2 I, vec2 N, float eta)\nvec3 refract(vec3 I, vec3 N, float eta)\nvec4 refract(vec4 I, vec4 N, float eta)\n```\n\nThe `refract` function returns a vector that points in the direction of\nrefraction. The function has two input parameters of the type floating\nscalar or float vector and one input parameter of the type floating\nscalar: I, the incident vector, N, the normal vector of the refracting\nsurface, and eta, the ratio of indices of refraction.\n\nSide note: To obtain the desired result the vectors I and N have to be\nnormalized.\n\n- <http://docs.gl/sl4/refract>\n- <https://www.shaderific.com/glsl-functions>\n"
+    }
+  },
+  {
+    "label": "matrixCompMult",
+    "detail": "perform a component-wise multiplication of two matrices",
+    "documentation": {
+      "value": "**Component-wise matrix multiplication**\n\n``` glsl\nmat2 matrixCompMult(mat2 x, mat2 y)\nmat3 matrixCompMult(mat3 x, mat3 y)\nmat4 matrixCompMult(mat4 x, mat4 y)\n```\n\nThe `matrixCompMult` function returns a matrix resulting from a\ncomponent-wise multiplication. The function has two input parameters of\nthe type floating point matrix and returns a matrix of the same type. The\nindices of the returned matrix are calculated as follows: `z[i][j] =\nx[i][j] * y[i][j]`.\n\nSide note: This is NOT the matrix multiplication known from linear\nalgebra. To obtain the \"normal\" matrix multiplication the operator is\nused: `z = x * y`.\n\n- <http://docs.gl/sl4/matrixCompMult>\n- <https://www.shaderific.com/glsl-functions>\n"
+    }
+  },
+  {
+    "label": "inverse",
+    "detail": "calculate the inverse of a matrix"
+  },
+  {
+    "label": "transpose",
+    "detail": "calculate the transpose of a matrix"
+  },
+  {
+    "label": "textureCube"
+  },
+  {
+    "label": "texture",
+    "kind": 25,
+    "insertTextRules": 4,
+    "insertText": "texture(${1:sampler}, ${2:uv})",
+    "detail": "retrieves texels from a texture",
+    "documentation": {
+      "value": "**Texture lookup**\n\n``` glsl\ngvec4 texture(gsampler1D sampler, float P, [float bias]);\ngvec4 texture(gsampler2D sampler, vec2 P, [float bias]);\ngvec4 texture(gsampler3D sampler, vec3 P, [float bias]);\ngvec4 texture(gsamplerCube sampler, vec3 P, [float bias]);\n```\n\nThe `texture` function returns a texel, i.e. the (color) value of the\ntexture for the given coordinates.\n\nThere is an optional third input parameter of the type float: `bias`.\nAfter calculating the appropriate level of detail for a texture with\nmipmaps the bias is added before the actual texture lookup operation is\nexecuted.\n\n**NOTE:** `texture2D()` and `textureCube()` is deprecated. Using\n`texture()` is recommended.\n\n- <http://docs.gl/sl4/texture>\n- <https://www.shaderific.com/glsl-functions>\n"
+    }
+  },
+  {
+    "label": "textureLod",
+    "detail": "perform a texture lookup with explicit level-of-detail"
+  },
+  {
+    "label": "textureGrad",
+    "detail": "perform a texture lookup with explicit gradients"
+  },
+  {
+    "label": "textureProj",
+    "detail": "perform a texture lookup with projection"
+  },
+  {
+    "label": "texture2D",
+    "detail": "retrieves texels from a texture",
+    "documentation": {
+      "value": "Sample a 2D texture.\n\n**NOTE:** `texture2D()` is deprecated since OpenGL 3.3. Using `texture()`\nis recommended.\n"
+    }
+  },
+  {
     "label": "abs"
   },
   {
@@ -114,19 +315,7 @@
     "label": "ceil"
   },
   {
-    "label": "clamp"
-  },
-  {
-    "label": "cos"
-  },
-  {
     "label": "cosh"
-  },
-  {
-    "label": "cross"
-  },
-  {
-    "label": "degrees"
   },
   {
     "label": "determinant"
@@ -150,12 +339,6 @@
     "label": "dFdyFine"
   },
   {
-    "label": "distance"
-  },
-  {
-    "label": "dot"
-  },
-  {
     "label": "EmitStreamVertex"
   },
   {
@@ -175,9 +358,6 @@
   },
   {
     "label": "exp2"
-  },
-  {
-    "label": "faceforward"
   },
   {
     "label": "findLSB"
@@ -276,9 +456,6 @@
     "label": "interpolateAtSample"
   },
   {
-    "label": "inverse"
-  },
-  {
     "label": "inversesqrt"
   },
   {
@@ -291,9 +468,6 @@
     "label": "ldexp"
   },
   {
-    "label": "length"
-  },
-  {
     "label": "lessThan"
   },
   {
@@ -304,9 +478,6 @@
   },
   {
     "label": "log2"
-  },
-  {
-    "label": "matrixCompMult"
   },
   {
     "label": "max"
@@ -330,9 +501,6 @@
     "label": "min"
   },
   {
-    "label": "mix"
-  },
-  {
     "label": "mod"
   },
   {
@@ -349,9 +517,6 @@
   },
   {
     "label": "noise4"
-  },
-  {
-    "label": "normalize"
   },
   {
     "label": "not"
@@ -382,15 +547,6 @@
   },
   {
     "label": "pow"
-  },
-  {
-    "label": "radians"
-  },
-  {
-    "label": "reflect"
-  },
-  {
-    "label": "refract"
   },
   {
     "label": "round"
@@ -426,19 +582,10 @@
     "label": "sign"
   },
   {
-    "label": "sin"
-  },
-  {
     "label": "sinh"
   },
   {
-    "label": "smoothstep"
-  },
-  {
     "label": "sqrt"
-  },
-  {
-    "label": "step"
   },
   {
     "label": "tan"
@@ -453,9 +600,6 @@
     "label": "texelFetchOffset"
   },
   {
-    "label": "texture"
-  },
-  {
     "label": "texture1D"
   },
   {
@@ -466,9 +610,6 @@
   },
   {
     "label": "texture1DProjLod"
-  },
-  {
-    "label": "texture2D"
   },
   {
     "label": "texture2DLod"
@@ -492,9 +633,6 @@
     "label": "texture3DProjLod"
   },
   {
-    "label": "textureCube"
-  },
-  {
     "label": "textureCubeLod"
   },
   {
@@ -507,22 +645,13 @@
     "label": "textureGatherOffsets"
   },
   {
-    "label": "textureGrad"
-  },
-  {
     "label": "textureGradOffset"
-  },
-  {
-    "label": "textureLod"
   },
   {
     "label": "textureLodOffset"
   },
   {
     "label": "textureOffset"
-  },
-  {
-    "label": "textureProj"
   },
   {
     "label": "textureProjGrad"
@@ -550,9 +679,6 @@
   },
   {
     "label": "textureSize"
-  },
-  {
-    "label": "transpose"
   },
   {
     "label": "trunc"

@@ -84,13 +84,13 @@ function rgbToVec3(col: RgbValue | RgbaValue): string {
 
 function replaceColorValueInCode(newColorValue: SketchPickerColor, code: string): string {
     const c = newColorValue;
-    let re_color = new RegExp('(vec3 +' + c.name + ' *= *)vec3\\([^\\)]+\\)(; *\\/\\/ *!! color *$)', 'gm');
+    let re_color = new RegExp('(vec3 +' + c.name + ' *= *)vec3\\([^\\)]+\\)(; *\\/\\/ +ui_color *$)', 'gm');
     let newCodeValue = code.replace(re_color, '$1' + rgbToVec3(c.rgb) + '$2');
     return newCodeValue;
 }
 
 function getColorValuesFromCode(code: string): Color[] {
-    let re_color = /vec3 +([^ ]+) *= *vec3\(([^)]+)\); *\/\/ *!! color *$/gm;
+    let re_color = /vec3 +([^ ]+) *= *vec3\(([^)]+)\); *\/\/ +ui_color *$/gm;
     let v = getVec3ValuesFromCode(code, re_color);
     let values = v.map((val) => {
         let c: Color = {

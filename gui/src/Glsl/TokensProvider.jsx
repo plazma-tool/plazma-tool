@@ -163,8 +163,8 @@ export const GlslTokensProvider = {
             // uppercase globals (PI, MAX_DIST), or struct types (Ray)
             [/[A-Z][\w$]*/, 'upcase-name' ],
 
-            // UI widget syntax such as "// !! color"
-            [/\/\/ *!! +[\w ]+$/, 'comment-ui-widget'],
+            // UI widget syntax such as "// ui_color"
+            [/\/\/ +ui_\w+ *$/, 'comment-ui-widget'],
 
             // user function names
             //

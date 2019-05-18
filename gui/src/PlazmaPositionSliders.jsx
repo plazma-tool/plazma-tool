@@ -135,7 +135,7 @@ export function xyzToVec3(pos: XyzValue): string {
 }
 
 function getPositionValuesFromCode(code: string): Position[] {
-    let re_position = /vec3 +([^ ]+) *= *vec3\(([^)]+)\); *\/\/ *!! position *$/gm;
+    let re_position = /vec3 +([^ ]+) *= *vec3\(([^)]+)\); *\/\/ +ui_position *$/gm;
     let v = getVec3ValuesFromCode(code, re_position);
     let values: Position[] = v.map((val) => {
         let a: Position = {
@@ -153,7 +153,7 @@ function getPositionValuesFromCode(code: string): Position[] {
 
 function replacePositionValueInCode(newPositionValue: Position, code: string): string {
     const p = newPositionValue;
-    let re_position = new RegExp('(vec3 +' + p.name + ' *= *)vec3\\([^\\)]+\\)(; *\\/\\/ *!! position *$)', 'gm');
+    let re_position = new RegExp('(vec3 +' + p.name + ' *= *)vec3\\([^\\)]+\\)(; *\\/\\/ +ui_position *$)', 'gm');
     let newCodeValue = code.replace(re_position, '$1' + xyzToVec3(p.xyz) + '$2');
     return newCodeValue;
 }

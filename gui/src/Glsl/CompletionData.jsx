@@ -19,7 +19,7 @@ function p(doc) {
             detail: (i.detail ? i.detail : null),
             insertText: (i.insertText ? i.insertText : i.label),
             documentation: (i.documentation ? i.documentation : null),
-            kind: (i.kind ? i.kind : 17), // 17 = Keyword
+            kind: (i.kind ? i.kind : 17), // 17 = Keyword, 18 = Text, 25 = Snippet
             insertTextRules: (i.insertTextRules ? i.insertTextRules : null),
         };
     });

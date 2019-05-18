@@ -68,13 +68,13 @@ class PlazmaSlider extends React.Component<PS_Props> {
 }
 
 function getSliderValuesFromCode(code: string): Array<SliderValue> {
-    let re_slider = /float +([^ ]+) *= *([0-9.-]+); *\/\/ *!! slider *$/gm;
+    let re_slider = /float +([^ ]+) *= *([0-9.-]+); *\/\/ +ui_slider *$/gm;
     return getFloatValuesFromCode(code, re_slider);
 }
 
 function replaceSliderValueInCode(newSliderValue: SliderValue, code: string): string {
     const x = newSliderValue;
-    let re_slider = new RegExp('(float ' + x.name + ' *= *)[0-9\\.]+(; *\\/\\/ *!! slider *$)', 'gm');
+    let re_slider = new RegExp('(float ' + x.name + ' *= *)[0-9\\.]+(; *\\/\\/ +ui_slider *$)', 'gm');
     let newCodeValue = code.replace(re_slider, '$1' + numToStrPad(x.value / 1000) + '$2');
     return newCodeValue;
 }

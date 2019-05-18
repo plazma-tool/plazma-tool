@@ -18,9 +18,9 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
   vec2 uv = -1.0 + 2.0 * fragCoord.xy / iResolution.xy;
   uv.x *= iResolution.x / iResolution.y;
 
-  vec3 base = vec3(0.1, 0.2, 0.3); // !! color
-  vec3 circle = vec3(0., 0., 1.); // !! color
-  float radius = 0.3; // !! slider
+  vec3 base = vec3(0.1, 0.2, 0.3); // ui_color
+  vec3 circle = vec3(0., 0., 1.); // ui_color
+  float radius = 0.3; // ui_slider
 
   vec3 col = base + circle * (1.0 - smoothstep(radius, radius + 0.01, distance(uv, vec2(0.0))));
 

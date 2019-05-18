@@ -24,8 +24,8 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
   vec2 tex_uv = texCoord * (screenResolution / iResolution);
 
   vec3 base = vec3(texture(backgroundTexture, tex_uv));
-  vec3 circle = vec3(0., 0., 1.); // !! color
-  float radius = 0.3; // !! slider
+  vec3 circle = vec3(0., 0., 1.); // ui_color
+  float radius = 0.3; // ui_slider
 
   vec3 col = base + circle * (1.0 - smoothstep(radius, radius + 0.01, distance(uv, vec2(0.0))));
 

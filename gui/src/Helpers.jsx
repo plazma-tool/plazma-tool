@@ -172,40 +172,45 @@ export type Vec3 = [number, number, number];
 
 export type SliderValue = {
     name: string,
+    line_number: number,
     value: number,
 };
 
-export function getVec3ValuesFromCode(code: string = "", re: RegExp): Array<{name: string, vec: Vec3}> {
-    let values: Array<{name: string, vec: Vec3}> = [];
+export function getVec3ValuesFromCode(code: string = "", re: RegExp): Array<{name: string, line_number: number, vec: Vec3}> {
+    let values: Array<{name: string, line_number: number, vec: Vec3}> = [];
     if (code.length === 0) {
         return values;
     }
 
-    let match_vec3;
-    while ((match_vec3 = re.exec(code)) !== null) {
-        if (match_vec3 !== null) {
-            let name = match_vec3[1].trim();
-            let vec3_components = match_vec3[2].trim();
-            let vec = [];
+    let lines: Array<string> = code.split("\n");
+    lines.forEach((line, idx) => {
+        let match_vec3;
+        while ((match_vec3 = re.exec(line)) !== null) {
+            if (match_vec3 !== null) {
+                let name = match_vec3[1].trim();
+                let vec3_components = match_vec3[2].trim();
+                let vec = [];
 
-            let match_comp = vec3_components.match(/([0-9.-]+)/g);
-            if (match_comp !== null) {
-                match_comp.forEach((i) => {
-                    let n = Number(i);
-                    if (!isNaN(n)) {
-                        vec.push(n);
-                    }
-                });
-                if (vec.length === 3) {
-                    let v = [vec[0], vec[1], vec[2]];
-                    values.push({
-                        name: name,
-                        vec: v,
+                let match_comp = vec3_components.match(/([0-9.-]+)/g);
+                if (match_comp !== null) {
+                    match_comp.forEach((i) => {
+                        let n = Number(i);
+                        if (!isNaN(n)) {
+                            vec.push(n);
+                        }
                     });
+                    if (vec.length === 3) {
+                        let v = [vec[0], vec[1], vec[2]];
+                        values.push({
+                            name: name,
+                            line_number: idx,
+                            vec: v,
+                        });
+                    }
                 }
             }
         }
-    }
+    });
 
     return values;
 }
@@ -216,15 +221,19 @@ export function getFloatValuesFromCode(code: string = "", re: RegExp): Array<Sli
         return values;
     }
 
-    let m;
-    while ((m = re.exec(code)) !== null) {
-        if (m !== null) {
-            values.push({
-                name: m[1].trim(),
-                value: Math.floor(Number(m[2].trim()) * 1000),
-            });
+    let lines: Array<string> = code.split("\n");
+    lines.forEach((line, idx) => {
+        let m;
+        while ((m = re.exec(line)) !== null) {
+            if (m !== null) {
+                values.push({
+                    name: m[1].trim(),
+                    line_number: idx,
+                    value: Math.floor(Number(m[2].trim()) * 1000),
+                });
+            }
         }
-    }
+    });
 
     return values;
 }

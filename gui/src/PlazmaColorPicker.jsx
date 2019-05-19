@@ -36,8 +36,8 @@ export class ColorPickerColumns extends React.Component<CPC_Props> {
 type RgbaValue = { r: number, g: number, b: number, a: number };
 type RgbValue = { r: number, g: number, b: number };
 
-type Color = { name: string, rgba: RgbaValue };
-type SketchPickerColor = { name: string, rgb: { r: number, g: number, b: number } };
+type Color = { name: string, line_number: number, rgba: RgbaValue };
+type SketchPickerColor = { name: string, line_number: number, rgb: { r: number, g: number, b: number } };
 
 type PCP_Props = {
     code: string,
@@ -56,6 +56,7 @@ class PlazmaColorPicker extends React.Component<PCP_Props> {
         let c: Color = this.props.color;
         let newColorValue: SketchPickerColor = {
             name: c.name,
+            line_number: c.line_number,
             rgb: color.rgb,
         };
         this.onChangeLocal(newColorValue);
@@ -65,7 +66,7 @@ class PlazmaColorPicker extends React.Component<PCP_Props> {
         let c = this.props.color;
         return (
             <div className="is-one-quarter">
-              <span>{c.name}</span>
+              <span>{c.name} L{c.line_number + 1}</span>
               <SketchPicker
                 color={c.rgba}
                 onChange={this.onChangeColor}
@@ -85,7 +86,9 @@ function rgbToVec3(col: RgbValue | RgbaValue): string {
 function replaceColorValueInCode(newColorValue: SketchPickerColor, code: string): string {
     const c = newColorValue;
     let re_color = new RegExp('(vec3 +' + c.name + ' *= *)vec3\\([^\\)]+\\)(; *\\/\\/ +ui_color *$)', 'gm');
-    let newCodeValue = code.replace(re_color, '$1' + rgbToVec3(c.rgb) + '$2');
+    let lines = code.split("\n");
+    lines[c.line_number] = lines[c.line_number].replace(re_color, '$1' + rgbToVec3(c.rgb) + '$2');
+    let newCodeValue = lines.join("\n");
     return newCodeValue;
 }
 
@@ -95,6 +98,7 @@ function getColorValuesFromCode(code: string): Color[] {
     let values = v.map((val) => {
         let c: Color = {
             name: val.name,
+            line_number: val.line_number,
             rgba: {
                 r: Math.floor(val.vec[0] * 255),
                 g: Math.floor(val.vec[1] * 255),

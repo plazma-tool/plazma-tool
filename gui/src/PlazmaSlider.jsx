@@ -46,6 +46,7 @@ class PlazmaSlider extends React.Component<PS_Props> {
     onChangeLocal = (x: number) => {
         let newValue: SliderValue = {
             name: this.props.sliderValue.name,
+            line_number: this.props.sliderValue.line_number,
             value: x,
         };
         this.props.onChangeLift(newValue);
@@ -54,7 +55,7 @@ class PlazmaSlider extends React.Component<PS_Props> {
     render() {
         return (
             <div className="is-half">
-              <span>{this.props.sliderValue.name}</span>
+              <span>{this.props.sliderValue.name} L{this.props.sliderValue.line_number + 1}</span>
               <Slider
                 value={this.props.sliderValue.value}
                 step={1}
@@ -75,7 +76,9 @@ function getSliderValuesFromCode(code: string): Array<SliderValue> {
 function replaceSliderValueInCode(newSliderValue: SliderValue, code: string): string {
     const x = newSliderValue;
     let re_slider = new RegExp('(float ' + x.name + ' *= *)[0-9\\.]+(; *\\/\\/ +ui_slider *$)', 'gm');
-    let newCodeValue = code.replace(re_slider, '$1' + numToStrPad(x.value / 1000) + '$2');
+    let lines = code.split("\n");
+    lines[x.line_number] = lines[x.line_number].replace(re_slider, '$1' + numToStrPad(x.value / 1000) + '$2');
+    let newCodeValue = lines.join("\n");
     return newCodeValue;
 }
 

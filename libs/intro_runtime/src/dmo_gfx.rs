@@ -279,7 +279,7 @@ impl DmoGfx {
             let vert_src = str::from_utf8(s).unwrap();
             let ref s = self.context.shader_sources[mesh.frag_src_idx];
             let frag_src = str::from_utf8(s).unwrap();
-            mesh.compile_shaders(vert_src, frag_src, err_msg_buf)?;
+            mesh.compile_program(vert_src, frag_src, err_msg_buf)?;
         }
         Ok(())
     }

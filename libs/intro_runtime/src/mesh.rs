@@ -71,7 +71,7 @@ impl Mesh {
             vao: 0, vbo: 0, ebo: 0,
         };
 
-        mesh.compile_shaders(vert_src, frag_src, err_msg_buf)?;
+        mesh.compile_program(vert_src, frag_src, err_msg_buf)?;
 
         // vao, vbo, ebo
         unsafe {
@@ -164,11 +164,11 @@ impl Mesh {
         Ok(cube)
     }
 
-    pub fn compile_shaders(&mut self,
+    pub fn compile_program(&mut self,
                            vert_src: &str,
                            frag_src: &str,
                            err_msg_buf: &mut [u8; ERR_MSG_LEN])
-                           -> Result<(), RuntimeError>
+        -> Result<(), RuntimeError>
     {
         let vs = compile_shader(vert_src, gl::VERTEX_SHADER, err_msg_buf)?;
         let fs = compile_shader(frag_src, gl::FRAGMENT_SHADER, err_msg_buf)?;

@@ -13,6 +13,19 @@ export const CurrentPage = {
     Library: 9,
 };
 
+export type EditorErrorData = {
+    text: string,
+    id: number,
+};
+
+export type EditorErrorMessage = {
+    file_index: number,
+    line_number: number,
+    error_type: string,
+    error_id: string,
+    error_text: string,
+};
+
 export type ServerMsg = {
     data_type: string,
     data: string,
@@ -245,5 +258,60 @@ export function numToStrPad(x: number): string {
     } else {
         return s.padEnd(5, '0');
     }
+}
+
+export function parseShaderErrorMessage(msg: string): EditorErrorMessage[] {
+    let results: EditorErrorMessage[] = [];
+
+    /*
+    0(10) : warning C7022: unrecognized profile specifier "l"
+    0(10) : error C0502: syntax error at token "l"
+
+    0(10) : warning C7022: unrecognized profile specifier "l"
+    0
+    10
+    warning
+    C7022
+    unrecognized profile specifier "l"
+
+    0(10) : error C0502: syntax error at token "l"
+    0
+    10
+    error
+    C0502
+    syntax error at token "l"
+    */
+
+    let re = /^(\d+)\((\d+)\) *: *(\w+) *(\w+) *: *(.*)$/gm;
+    let match_error;
+    while ((match_error = re.exec(msg)) !== null) {
+        if (match_error !== null) {
+            let file_index = 0;
+            let n = Number(match_error[1].trim());
+            if (!isNaN(n)) {
+                file_index = n;
+            }
+
+            n = Number(match_error[2].trim());
+            let line_number = 0;
+            if (!isNaN(n)) {
+                line_number = n;
+            }
+
+            let error_type = match_error[3].trim();
+            let error_id   = match_error[4].trim();
+            let error_text = match_error[5].trim();
+
+            results.push({
+                file_index: file_index,
+                line_number: line_number,
+                error_type: error_type,
+                error_id: error_id,
+                error_text: error_text,
+            });
+        }
+    }
+
+    return results;
 }
 

@@ -19,6 +19,9 @@ use glutin::{GlWindow, GlContext, EventsLoop, Event, WindowEvent, ElementState};
 use intro_3d::Vector3;
 use rocket_client::SyncClient;
 
+use intro_runtime::error::RuntimeError;
+use crate::error::ToolError;
+
 use crate::server_actor::{ServerActor, ServerState, ServerStateWrap, Sending, Receiving,
 MsgDataType, SetDmoMsg, SetShaderMsg};
 use crate::preview_client::client_actor::{ClientActor, ClientMessage};
@@ -691,8 +694,40 @@ fn render_loop(window: &GlWindow,
                         };
 
                         match state.set_shader(msg.idx, &msg.content) {
-                            Ok(_) => { state.draw_anyway = true; },
-                            Err(e) => error!{"🔥 Can't perform SetShader: {:?}", e},
+                            Ok(_) => {
+                                state.draw_anyway = true;
+
+                                info!("ShaderCompilationSuccess");
+                                let msg = serde_json::to_string(&Sending{
+                                    data_type: MsgDataType::ShaderCompilationSuccess,
+                                    data: "".to_owned(),
+                                }).unwrap();
+                                match server_sender.send(msg) {
+                                    Ok(_) => {},
+                                    Err(e) => error!("🔥 Can't send ShaderCompilationSuccess on server_sender: {:?}", e),
+                                };
+                            },
+                            Err(e) => match e {
+                                ToolError::Runtime(ref e, ref msg) => {
+                                    info!("{:?}, error message:\n{:#?}", e, msg);
+                                    match e {
+                                        RuntimeError::ShaderCompilationFailed => {
+
+                                            let msg = serde_json::to_string(&Sending{
+                                                data_type: MsgDataType::ShaderCompilationFailed,
+                                                data: serde_json::to_string(&msg).unwrap(),
+                                            }).unwrap();
+                                            match server_sender.send(msg) {
+                                                Ok(_) => {},
+                                                Err(e) => error!("🔥 Can't send ShaderCompilationFailed on server_sender: {:?}", e),
+                                            };
+
+                                        },
+                                        _ => error!{"🔥 Can't perform SetShader: {:?}", e},
+                                    }
+                                }
+                                _ => error!{"🔥 Can't perform SetShader: {:?}", e},
+                            },
                         };
                     },
 
@@ -718,6 +753,8 @@ fn render_loop(window: &GlWindow,
                     ShowErrorMessage =>
                         error!{"🔥 Server is sending error: {:?}", message.data},
 
+                    ShaderCompilationSuccess => {},
+                    ShaderCompilationFailed => {},
                     StartPreview => {},
 
                     StopPreview => {
@@ -741,6 +778,7 @@ fn render_loop(window: &GlWindow,
         }
 
         // 00. recompile if flag was set
+        // FIXME process ShaderCompilationFailed
         match state.recompile_dmo() {
             Ok(_) => {},
             Err(e) => error!{"{:?}", e},

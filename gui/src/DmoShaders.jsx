@@ -1,8 +1,8 @@
 // @flow
 import React from 'react';
 import { Panel, PanelBlock, PanelIcon, PanelHeading, Columns, Column } from 'bloomer';
-import { CurrentPage } from './Helpers';
-import type { DmoData } from './Helpers';
+import { CurrentPage, parseShaderErrorMessage } from './Helpers';
+import type { DmoData, EditorErrorMessage, EditorErrorData } from './Helpers';
 
 import MonacoEditor from 'react-monaco-editor';
 import { ColorPickerColumns } from './PlazmaColorPicker';
@@ -103,6 +103,7 @@ export class DmoShadersPanel extends React.Component<DSP_Props> {
 
 type SP_Props = {
     editorContent: string,
+    editorErrorData: ?EditorErrorData,
     onChange_PlazmaMonaco: (newValue: string, e: MessageEvent) => void,
     onChange_ColorPickerColumns: (newValue: string) => void,
     onChange_PositionSlidersColumns: (newValue: string) => void,
@@ -117,6 +118,7 @@ export class ShadersPage extends React.Component<SP_Props> {
                     <Column>
                         <PlazmaMonaco
                             editorContent={this.props.editorContent}
+                            editorErrorData={this.props.editorErrorData}
                             onChangeLift={this.props.onChange_PlazmaMonaco}
                         />
                     </Column>
@@ -189,11 +191,14 @@ class PlazmaMonacoToolbar extends React.Component<PMT_Props> {
 
 type PM_Props = {
     editorContent: string,
+    editorErrorData: ?EditorErrorData,
     onChangeLift: (newValue: string, e: MessageEvent) => void,
 };
 
 type PM_State = {
     editor: MonacoEditor,
+    monaco: any,// FIXME
+    current_decorations: [],
     modelVersions: {
         initialVersion: number,
         currentVersion: number,
@@ -209,6 +214,8 @@ class PlazmaMonaco extends React.Component<PM_Props, PM_State> {
 
         this.state = {
             editor: null,
+            monaco: null,
+            current_decorations: [],
             modelVersions: {
                 initialVersion: 0,
                 currentVersion: 0,
@@ -234,6 +241,7 @@ class PlazmaMonaco extends React.Component<PM_Props, PM_State> {
 
         this.setState({
             editor: editor,
+            monaco: monaco,
             modelVersions: modelVersions,
         });
 
@@ -304,6 +312,56 @@ class PlazmaMonaco extends React.Component<PM_Props, PM_State> {
         monaco.editor.defineTheme('glsl-base16-default-dark', ThemeBase16DefaultDark);
     }
 
+    componentDidUpdate(prevProps) {
+        if (this.state.editor !== null && this.state.monaco !== null) {
+            // compare props to avoid infinite loop
+
+            // If the new prop is null but the prev. prop is not null:
+            // Clear the decorations.
+
+            if ((this.props.editorErrorData === null || typeof this.props.editorErrorData === 'undefined')
+                && (prevProps.editorErrorData !== null && typeof prevProps.editorErrorData !== 'undefined')) {
+
+                    let decorations = this.state.editor.deltaDecorations(
+                        this.state.current_decorations,
+                        [],
+                    );
+                    this.setState({ current_decorations: decorations });
+            }
+
+            // If the prev. prop is null but the new prop is not null:
+            // New decorations, no need to compare id.
+
+            if ((prevProps.editorErrorData === null || typeof prevProps.editorErrorData === 'undefined')
+                && (this.props.editorErrorData !== null && typeof this.props.editorErrorData !== 'undefined')) {
+
+                    let errors: EditorErrorMessage[] = parseShaderErrorMessage(this.props.editorErrorData.text);
+                    let decorations = this.state.editor.deltaDecorations(
+                        this.state.current_decorations,
+                        errorsToDecorations(errors, this.state.monaco),
+                    );
+                    this.setState({ current_decorations: decorations });
+            }
+
+            // If both the new- and prev. props are not null:
+            // New decorations, if the id has changed.
+
+            if (this.props.editorErrorData !== null && typeof this.props.editorErrorData !== 'undefined') {
+                if (prevProps.editorErrorData !== null && typeof prevProps.editorErrorData !== 'undefined') {
+                    if (this.props.editorErrorData.id === prevProps.editorErrorData.id) {
+                        return;
+                    }
+                    let errors: EditorErrorMessage[] = parseShaderErrorMessage(this.props.editorErrorData.text);
+                    let decorations = this.state.editor.deltaDecorations(
+                        this.state.current_decorations,
+                        errorsToDecorations(errors, this.state.monaco),
+                    );
+                    this.setState({ current_decorations: decorations });
+                }
+            }
+        }
+
+    }
     render() {
         const options = {
             language: "glsl",
@@ -336,9 +394,25 @@ class PlazmaMonaco extends React.Component<PM_Props, PM_State> {
 
               <StatusBar
                   editorContent={this.props.editorContent}
+                  editorErrorData={this.props.editorErrorData}
               />
             </div>
         );
     }
 }
+
+function errorsToDecorations(errors, monaco) {
+    let a = errors.map((i) => {
+        return {
+            range: new monaco.Range(i.line_number,1, i.line_number,1),
+            options: {
+                isWholeLine: true,
+                className: 'editor_error_line',
+                linesDecorationsClassName: 'editor_error_margin',
+            },
+        };
+    });
+    return a;
+}
+
 

@@ -41,12 +41,39 @@
   border: none;
 }
 
-//#root .monaco-editor .minimap-slider,// not overriding the minimap, good as is
+// base16 text: #d8d8d8
+$editor-text: #d8d8d8;
+
+// vs-dark default bg: #1e1e1e
+// base16 bg: #1e1e1e
+$editor-bg: #181818;
+
+$error-red-full: hsl(17.0, 100%, 40%);
+$error-red-dark: hsl(17.0, 100%, 5%);
+
+#root .monaco-editor .minimap-slider,// not overriding the minimap, good as is
 #root .monaco-editor,
 #root .monaco-editor-background,
 #root .monaco-editor .inputarea.ime-input,
 #root .monaco-editor .margin {
-  // vs-dark default background-color is #1e1e1e
-  //background-color: #1e1e1e;
-  background-color: #181818;
+  background-color: $editor-bg;
+}
+
+#root .editor_error_margin {
+  background-color: $error-red-full;
+  margin-left: 7px;
+  width: 10px !important;
+}
+
+#root .editor_error_line {
+  background-color: $error-red-dark;
+}
+
+.status-bar {
+  color: $editor-text;
+  background-color: $editor-bg;
+  border-top: 1px solid #8694a4;
+  border-bottom: none;
+  border-left: none;
+  border-right: none;
 }

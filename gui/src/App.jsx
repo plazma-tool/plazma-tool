@@ -18,7 +18,7 @@ import { SyncTracksPage } from './DmoSyncTracks';
 
 import { LibraryPage } from './Library';
 import { CurrentPage } from './Helpers';
-import type { ServerMsg, DmoData } from './Helpers';
+import type { ServerMsg, DmoData, EditorErrorData } from './Helpers';
 
 const PLAZMA_SERVER_PORT = 8080;
 
@@ -33,6 +33,7 @@ type AppState = {
     project_root: ?string,
     dmo_data: ?DmoData,
     editor_content: string,
+    editor_error_data: ?EditorErrorData,
     current_page: number,
     current_shader_index: number,
     current_time: number,
@@ -55,6 +56,7 @@ class App extends Component<{}, AppState> {
             project_root: null,
             dmo_data: null,
             editor_content: "",
+            editor_error_data: null,
             current_page: CurrentPage.Shaders,
             current_shader_index: 0,
             current_time: 0.0,
@@ -194,11 +196,35 @@ class App extends Component<{}, AppState> {
                 break;
 
             case 'PreviewOpened':
-                this.setState({ preview_is_open: true });
+                this.setState({
+                    preview_is_open: true,
+                    editor_error_data: null,
+                });
                 break;
 
             case 'PreviewClosed':
-                this.setState({ preview_is_open: false });
+                this.setState({
+                    preview_is_open: false,
+                    editor_error_data: null,
+                });
+                break;
+
+            case 'ShaderCompilationSuccess':
+                this.setState({ editor_error_data: null });
+                break;
+
+            case 'ShaderCompilationFailed':
+                let error_msg = JSON.parse(msg.data);
+                let id = 0;
+                if (this.state.editor_error_data !== null && typeof this.state.editor_error_data !== 'undefined') {
+                    id = this.state.editor_error_data.id + 1;
+                }
+                this.setState({
+                    editor_error_data: {
+                        id: id,
+                        text: error_msg,
+                    },
+                });
                 break;
 
             default:
@@ -232,6 +258,7 @@ class App extends Component<{}, AppState> {
             this.setState({
                 current_shader_index: idx,
                 editor_content: this.state.dmo_data.context.shader_sources[idx],
+                editor_error_data: null,
             });
         }
     }
@@ -418,6 +445,7 @@ class App extends Component<{}, AppState> {
                     page =
                         <ShadersPage
                             editorContent={this.state.editor_content}
+                            editorErrorData={this.state.editor_error_data}
                             onChange_PlazmaMonaco={this.onEditorChange}
                             onChange_ColorPickerColumns={this.onColorPickerChange}
                             onChange_PositionSlidersColumns={this.onPositionSlidersChange}

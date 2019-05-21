@@ -135,6 +135,8 @@ pub enum MsgDataType {
     SetDmoTime,
     GetDmoTime,
     SetShader,
+    ShaderCompilationSuccess,
+    ShaderCompilationFailed,
     ShowErrorMessage,
     SetSettings,
     StartPreview,
@@ -338,6 +340,38 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                         // state, only pass on the message to the other clients such as the OpenGL
                         // preview.
 
+                        let state = ctx.state().lock().expect("Can't lock ServerState.");
+                        for (id, addr) in &state.clients {
+                            if *id == self.client_id {
+                                continue;
+                            }
+
+                            let resp = Sending {
+                                data_type: message.data_type,
+                                data: message.data.clone(),
+                            };
+                            info!{"Sending: {:?}", &message.data_type};
+                            addr.do_send(resp);
+                        }
+                    },
+
+                    ShaderCompilationSuccess => {
+                        let state = ctx.state().lock().expect("Can't lock ServerState.");
+                        for (id, addr) in &state.clients {
+                            if *id == self.client_id {
+                                continue;
+                            }
+
+                            let resp = Sending {
+                                data_type: message.data_type,
+                                data: message.data.clone(),
+                            };
+                            info!{"Sending: {:?}", &message.data_type};
+                            addr.do_send(resp);
+                        }
+                    },
+
+                    ShaderCompilationFailed => {
                         let state = ctx.state().lock().expect("Can't lock ServerState.");
                         for (id, addr) in &state.clients {
                             if *id == self.client_id {

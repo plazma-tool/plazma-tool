@@ -1,4 +1,4 @@
-use core::{mem, ptr, str};
+use core::{ptr, str};
 use smallvec::SmallVec;
 
 use gl;
@@ -20,7 +20,7 @@ pub fn compile_shader(src: &str,
 
         // have to take the length so that we don't have to pass it as a null-terminated c-string
         let len = src.len() as i32;
-        gl::ShaderSource(shader, 1, mem::transmute( &src.as_ptr() ), &[len] as *const i32);
+        gl::ShaderSource(shader, 1, [src.as_ptr() as *const i8].as_ptr(), [len].as_ptr());
 
         gl::CompileShader(shader);
 

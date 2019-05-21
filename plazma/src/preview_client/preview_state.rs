@@ -154,7 +154,9 @@ impl PreviewState {
         build_image_sources(&mut dmo_gfx, &dmo_data);
         build_settings(&mut dmo_gfx, &dmo_data);
         build_frame_buffers(&mut dmo_gfx, &dmo_data)?;
+        // FIXME process ShaderCompilationFailed
         build_quad_scenes(&mut dmo_gfx, &dmo_data, &track_name_to_idx)?;
+        // FIXME process ShaderCompilationFailed
         build_polygon_context_and_scenes(&mut dmo_gfx,
                                          &dmo_data,
                                          &track_name_to_idx,
@@ -268,10 +270,10 @@ impl PreviewState {
         Ok(())
     }
 
-    pub fn set_shader(&mut self, shader_idx: usize, content: &str) -> Result<(), Box<Error>> {
+    pub fn set_shader(&mut self, shader_idx: usize, content: &str) -> Result<(), ToolError> {
         match self.dmo_gfx.update_shader_src(shader_idx, content) {
             Ok(_) => {},
-            Err(e) => return Err(Box::new(ToolError::Runtime(e, "".to_owned()))),
+            Err(e) => return Err(ToolError::Runtime(e, "".to_owned())),
         };
 
         // Recompile quad scenes which use this shader.
@@ -294,8 +296,11 @@ impl PreviewState {
             match self.dmo_gfx.compile_quad_scene(*scene_idx, &mut err_msg_buf) {
                 Ok(_) => {},
                 Err(e) => {
-                    let msg = String::from_utf8(err_msg_buf.to_vec())?;
-                    return Err(Box::new(ToolError::Runtime(e, msg)));
+                    let msg = match String::from_utf8(err_msg_buf.to_vec()) {
+                        Ok(x) => x,
+                        Err(e) => return Err(ToolError::FromUtf8(e)),
+                    };
+                    return Err(ToolError::Runtime(e, msg));
                 },
             }
         }
@@ -326,8 +331,11 @@ impl PreviewState {
             match self.dmo_gfx.compile_model_shaders(*model_idx, &mut err_msg_buf) {
                 Ok(_) => {},
                 Err(e) => {
-                    let msg = String::from_utf8(err_msg_buf.to_vec())?;
-                    return Err(Box::new(ToolError::Runtime(e, msg)));
+                    let msg = match String::from_utf8(err_msg_buf.to_vec()) {
+                        Ok(x) => x,
+                        Err(e) => return Err(ToolError::FromUtf8(e)),
+                    };
+                    return Err(ToolError::Runtime(e, msg));
                 },
             }
         }

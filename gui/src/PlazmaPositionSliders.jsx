@@ -3,24 +3,33 @@ import React from 'react';
 import { Column  } from 'bloomer';
 import Slider from 'rc-slider';
 import { numToStrPad, getVec3ValuesFromCode } from './Helpers';
+import type { Shader } from './Helpers';
 
 type XyzValue = { x: number, y: number, z: number };
 type Position = { name: string, line_number: number, xyz: XyzValue };
 
 type PSC_Props = {
-    code: string,
-    onChangeLift: (newCodeValue: string) => void,
+    shader: Shader,
+    onChangeLift: (newShader: Shader) => void,
 };
 
 export class PositionSlidersColumns extends React.Component<PSC_Props> {
 
     onChangeLocal = (newPositionValue: Position) => {
-        let newCodeValue = replacePositionValueInCode(newPositionValue, this.props.code);
-        this.props.onChangeLift(newCodeValue);
+        let newCodeValue = replacePositionValueInCode(newPositionValue, this.props.shader.content);
+        let new_shader = {
+            content: newCodeValue,
+            // copy props
+            source_idx: this.props.shader.source_idx,
+            line_number: this.props.shader.line_number,
+            error_data: this.props.shader.error_data,
+            decorations_delta: this.props.shader.decorations_delta,
+        };
+        this.props.onChangeLift(new_shader);
     }
 
     render() {
-        let values = getPositionValuesFromCode(this.props.code);
+        let values = getPositionValuesFromCode(this.props.shader.content);
         let sliders = values.map((position, idx) => {
             return (
                 <PlazmaPositionSliders

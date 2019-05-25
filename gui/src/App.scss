@@ -72,8 +72,34 @@ $error-red-dark: hsl(17.0, 100%, 5%);
 .status-bar {
   color: $editor-text;
   background-color: $editor-bg;
-  border-top: 1px solid #8694a4;
+  border-top: none;
   border-bottom: none;
   border-left: none;
   border-right: none;
 }
+
+.no-margins,
+.no-margins.columns.is-gapless:not(:last-child)
+{
+  margin-top: 0;
+  margin-right: 0;
+  margin-bottom: 0;
+  margin-left: 0;
+}
+
+.shader-name-level {
+  color: darken($editor-text, 20);
+  background-color: darken($editor-bg, 1);
+  padding: 5px;
+}
+
+.shader-name-level.is-selected {
+  color: darken($editor-text, 10);
+  background-color: #000;
+}
+
+.shader-name-level.has-error,
+.shader-name-level.is-selected.has-error {
+  color: $error-red-full;
+}
+

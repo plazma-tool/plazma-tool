@@ -3,22 +3,30 @@ import React from 'react';
 import { Column  } from 'bloomer';
 import Slider from 'rc-slider';
 import { numToStrPad, getFloatValuesFromCode } from './Helpers';
-import type { SliderValue } from './Helpers';
+import type { SliderValue, Shader } from './Helpers';
 
 type SC_Props = {
-    code: string,
-    onChangeLift: (newCodeValue: string) => void,
+    shader: Shader,
+    onChangeLift: (newShader: Shader) => void,
 };
 
 export class SliderColumns extends React.Component<SC_Props> {
 
     onChangeLocal = (newValue: SliderValue) => {
-        let newCodeValue = replaceSliderValueInCode(newValue, this.props.code);
-        this.props.onChangeLift(newCodeValue);
+        let newCodeValue = replaceSliderValueInCode(newValue, this.props.shader.content);
+        let new_shader = {
+            content: newCodeValue,
+            // copy props
+            source_idx: this.props.shader.source_idx,
+            line_number: this.props.shader.line_number,
+            error_data: this.props.shader.error_data,
+            decorations_delta: this.props.shader.decorations_delta,
+        };
+        this.props.onChangeLift(new_shader);
     }
 
     render() {
-        let values = getSliderValuesFromCode(this.props.code);
+        let values = getSliderValuesFromCode(this.props.shader.content);
         let sliders = values.map((value, idx) => {
             return (
                 <PlazmaSlider

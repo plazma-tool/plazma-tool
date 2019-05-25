@@ -3,22 +3,22 @@ import React from 'react';
 import { Columns, Column  } from 'bloomer';
 import { SketchPicker } from 'react-color';
 import { numToStrPad, getVec3ValuesFromCode } from './Helpers';
-import type { InputEvent } from './Helpers';
+import type { InputEvent, Shader } from './Helpers';
 
 type CPC_Props = {
-    code: string,
-    onChangeLift: (newCodeValue: string) => void,
+    shader: Shader,
+    onChangeLift: (newShader: Shader) => void,
 };
 
 export class ColorPickerColumns extends React.Component<CPC_Props> {
     render() {
-        let values = getColorValuesFromCode(this.props.code);
+        let values = getColorValuesFromCode(this.props.shader.content);
         let pickers = values.map((color, idx) => {
             return (
                 <PlazmaColorPicker
                   key={color.name + idx}
-                  code={this.props.code}
                   color={color}
+                  shader={this.props.shader}
                   onChangeLift={this.props.onChangeLift}
                 />
             );
@@ -40,16 +40,24 @@ type Color = { name: string, line_number: number, rgba: RgbaValue };
 type SketchPickerColor = { name: string, line_number: number, rgb: { r: number, g: number, b: number } };
 
 type PCP_Props = {
-    code: string,
-    onChangeLift: (newCodeValue: string) => void,
+    shader: Shader,
+    onChangeLift: (newShader: Shader) => void,
     color: Color,
 };
 
 class PlazmaColorPicker extends React.Component<PCP_Props> {
 
     onChangeLocal = (newColorValue: SketchPickerColor) => {
-        let newCodeValue = replaceColorValueInCode(newColorValue, this.props.code);
-        this.props.onChangeLift(newCodeValue);
+        let newCodeValue = replaceColorValueInCode(newColorValue, this.props.shader.content);
+        let new_shader = {
+            content: newCodeValue,
+            // copy props
+            source_idx: this.props.shader.source_idx,
+            line_number: this.props.shader.line_number,
+            error_data: this.props.shader.error_data,
+            decorations_delta: this.props.shader.decorations_delta,
+        };
+        this.props.onChangeLift(new_shader);
     }
 
     onChangeColor = (color: SketchPickerColor, event: InputEvent) => {

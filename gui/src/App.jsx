@@ -17,8 +17,8 @@ import { TimelinePage } from './DmoTimeline';
 import { SyncTracksPage } from './DmoSyncTracks';
 
 import { LibraryPage } from './Library';
-import { CurrentPage } from './Helpers';
-import type { ServerMsg, DmoData, EditorErrorData } from './Helpers';
+import { CurrentPage, EditorsLayout } from './Helpers';
+import type { ServerMsg, DmoData, Shader, ShaderEditors } from './Helpers';
 
 const PLAZMA_SERVER_PORT = 8080;
 
@@ -32,14 +32,14 @@ type AppState = {
     socket: ?WebSocket,
     project_root: ?string,
     dmo_data: ?DmoData,
-    editor_content: string,
-    editor_error_data: ?EditorErrorData,
+    shaders: Shader[],
+    shader_editors: ShaderEditors,
     current_page: number,
-    current_shader_index: number,
     current_time: number,
     preview_is_open: bool,
     sentUpdateSinceChange: bool,
     updatesToSend: AppUpdates,
+    monacoDidInit: bool
 };
 
 class App extends Component<{}, AppState> {
@@ -55,10 +55,20 @@ class App extends Component<{}, AppState> {
             socket: null,
             project_root: null,
             dmo_data: null,
-            editor_content: "",
-            editor_error_data: null,
+            shaders: [],
+            shader_editors: {
+                layout: EditorsLayout.ThreeMainTop,
+                prev_layout: EditorsLayout.ThreeMainTop,
+                full_height: 800,
+                current_editor_idx: 0,
+                editors: [
+                    { source_idx: 0 },
+                    { source_idx: 1 },
+                    { source_idx: 2 },
+                    { source_idx: 3 },
+                ],
+            },
             current_page: CurrentPage.Shaders,
-            current_shader_index: 0,
             current_time: 0.0,
             preview_is_open: false,
             sentUpdateSinceChange: true,
@@ -67,12 +77,12 @@ class App extends Component<{}, AppState> {
                 SetShader: false,
                 shaderIndexes: [],
             },
+            monacoDidInit: false,
         };
     }
 
     componentDidMount()
     {
-
         this.connectToServerTimerId = window.setInterval(this.connectToServer, 1000);
         this.updateTimerId = window.setInterval(this.sendUpdates, 1000);
         this.getDmoTimeTimerId = window.setInterval(this.getDmoTime, 500);
@@ -104,9 +114,7 @@ class App extends Component<{}, AppState> {
                 socket.addEventListener('open', this.handleSocketOpen);
                 socket.addEventListener('message', this.handleSocketMessage);
 
-                this.setState({
-                    socket: socket,
-                });
+                this.setState({ socket: socket });
             }
 
         } else {
@@ -119,10 +127,7 @@ class App extends Component<{}, AppState> {
             socket.addEventListener('open', this.handleSocketOpen);
             socket.addEventListener('message', this.handleSocketMessage);
 
-            this.setState({
-                socket: socket,
-            });
-
+            this.setState({ socket: socket });
         }
     }
 
@@ -165,18 +170,31 @@ class App extends Component<{}, AppState> {
         if (typeof event.data === 'string') {
             msg = JSON.parse(event.data);
         }
+
+        let shaders = [];
+
         switch (msg.data_type) {
             case 'SetDmo':
                 let dmo_msg = JSON.parse(msg.data);
                 let project_root = dmo_msg.project_root;
                 let d: DmoData = JSON.parse(dmo_msg.dmo_data_json_str);
 
-                let idx = this.state.current_shader_index;
-                let frag_src = d.context.shader_sources[idx];
+                shaders = d.context.shader_sources.map((i, idx) => {
+                    return {
+                        content: i,
+                        file_path: d.context.index.shader_paths[idx],
+                        source_idx: idx,
+                        saved_view_state: null,
+                        error_data: null,
+                        prev_error_data: null,
+                        decorations_delta: [],
+                    };
+                });
+
                 this.setState({
                     project_root: project_root,
                     dmo_data: d,
-                    editor_content: frag_src,
+                    shaders: shaders,
                     // resetUpdates
                     sentUpdateSinceChange: true,
                     updatesToSend: {
@@ -196,35 +214,53 @@ class App extends Component<{}, AppState> {
                 break;
 
             case 'PreviewOpened':
+                // clear possible old errors from shaders
+                shaders = this.state.shaders.map((i) => { i.error_data = null; return i; });
+
                 this.setState({
                     preview_is_open: true,
-                    editor_error_data: null,
+                    shaders: shaders,
                 });
                 break;
 
             case 'PreviewClosed':
+                // clear errors from shaders since we can no longer check by compiling
+                shaders = this.state.shaders.map((i) => { i.error_data = null; return i; });
+
                 this.setState({
                     preview_is_open: false,
-                    editor_error_data: null,
+                    shaders: shaders,
                 });
                 break;
 
             case 'ShaderCompilationSuccess':
-                this.setState({ editor_error_data: null });
+                // clear errors, shaders compiled
+                shaders = this.state.shaders.map((i) => { i.error_data = null; return i; });
+
+                this.setState({ shaders: shaders });
                 break;
 
             case 'ShaderCompilationFailed':
-                let error_msg = JSON.parse(msg.data);
+                let e = JSON.parse(msg.data);
+
+                let src_idx = e.idx;
+                let error_msg = e.error_message;
+
+                shaders = this.state.shaders;
+                let prev = shaders[src_idx].prev_error_data;
+
+                // Should the new error data get an updated id?
+
                 let id = 0;
-                if (this.state.editor_error_data !== null && typeof this.state.editor_error_data !== 'undefined') {
-                    id = this.state.editor_error_data.id + 1;
+                if (prev !== null && typeof prev !== 'undefined') {
+                    id = (error_msg === prev.text) ? prev.id : prev.id + 1;
                 }
-                this.setState({
-                    editor_error_data: {
-                        id: id,
-                        text: error_msg,
-                    },
-                });
+                shaders[src_idx].error_data = {
+                    id: id,
+                    text: error_msg,
+                };
+                this.setState({ shaders: shaders });
+
                 break;
 
             default:
@@ -232,20 +268,29 @@ class App extends Component<{}, AppState> {
         }
     }
 
-    sendUpdatedContent = (newValue: string) =>
+    currentShaderIdx = () =>
+    {
+        let e_idx = this.state.shader_editors.current_editor_idx;
+        return this.state.shader_editors.editors[e_idx].source_idx;
+    }
+
+    sendUpdatedContent = (newShader: Shader) =>
     {
         if (this.state.dmo_data) {
             let d = this.state.dmo_data;
-            let idx = this.state.current_shader_index;
-            d.context.shader_sources[idx] = newValue;
+            let src_idx = newShader.source_idx;
+            d.context.shader_sources[src_idx] = newShader.content;
 
             let a = this.state.updatesToSend;
             a.SetShader = true;
-            a.shaderIndexes.push(this.state.current_shader_index);
+            a.shaderIndexes.push(src_idx);
+
+            let s = this.state.shaders;
+            s[newShader.source_idx] = newShader;
 
             this.setState({
                 dmo_data: d,
-                editor_content: newValue,
+                shaders: s,
                 sentUpdateSinceChange: false,
                 updatesToSend: a,
             });
@@ -255,11 +300,11 @@ class App extends Component<{}, AppState> {
     onDmoShadersMenuChange = (idx: number) =>
     {
         if (this.state.dmo_data !== null && typeof this.state.dmo_data !== 'undefined') {
-            this.setState({
-                current_shader_index: idx,
-                editor_content: this.state.dmo_data.context.shader_sources[idx],
-                editor_error_data: null,
-            });
+            let e_idx = this.state.shader_editors.current_editor_idx;
+            let e = this.state.shader_editors;
+            e.editors[e_idx].source_idx = idx;
+
+            this.setState({ shader_editors: e });
         }
     }
 
@@ -326,19 +371,29 @@ class App extends Component<{}, AppState> {
         }
     }
 
-    onEditorChange = (newValue: string, e: MessageEvent) =>
-    {
-        this.sendUpdatedContent(newValue);
+    onEditorChange = (newShader: Shader) => {
+        this.sendUpdatedContent(newShader);
     }
 
-    onColorPickerChange = (newValue: string) =>
-    {
-        this.sendUpdatedContent(newValue);
+    onEditorFocus = (editorIdx: number) => {
+        let s = this.state.shader_editors;
+        s.current_editor_idx = editorIdx;
+        this.setState({ shader_editors: s });
     }
 
-    onPositionSlidersChange = (newValue: string) =>
-    {
-        this.sendUpdatedContent(newValue);
+    onEditorBlur = (editorIdx: number, viewState: ?{}) => {
+        let src_idx = this.state.shader_editors.editors[editorIdx].source_idx;
+        let s = this.state.shaders;
+        s[src_idx].saved_view_state = viewState;
+        this.setState({ shaders: s });
+    }
+
+    onColorPickerChange = (newShader: Shader) => {
+        this.sendUpdatedContent(newShader);
+    }
+
+    onPositionSlidersChange = (newShader: Shader) => {
+        this.sendUpdatedContent(newShader);
     }
 
     sendUpdates = () => {
@@ -351,8 +406,7 @@ class App extends Component<{}, AppState> {
         }
     }
 
-    sendDmoData = () =>
-    {
+    sendDmoData = () => {
         if (this.state.updatesToSend.SetDmo && this.state.socket) {
             let msg: ServerMsg = {
                 data_type: 'SetDmo',
@@ -444,12 +498,16 @@ class App extends Component<{}, AppState> {
                 case CurrentPage.Shaders:
                     page =
                         <ShadersPage
-                            editorContent={this.state.editor_content}
-                            editorErrorData={this.state.editor_error_data}
+                            shaders={this.state.shaders}
+                            shaderEditors={this.state.shader_editors}
                             onChange_PlazmaMonaco={this.onEditorChange}
+                            onFocus_PlazmaMonaco={this.onEditorFocus}
+                            onBlur_PlazmaMonaco={this.onEditorBlur}
                             onChange_ColorPickerColumns={this.onColorPickerChange}
                             onChange_PositionSlidersColumns={this.onPositionSlidersChange}
                             onChange_SliderColumns={this.onColorPickerChange}
+                            monacoDidInit={this.state.monacoDidInit}
+                            onMonacoDidInit={() => this.setState({ monacoDidInit: true })}
                         />
                         break;
 
@@ -556,6 +614,15 @@ class App extends Component<{}, AppState> {
                     }}
 
                     previewIsOpen={this.state.preview_is_open}
+
+                    currentLayout={this.state.shader_editors.layout}
+
+                    onClick_Layout={(layout_index: number) => {
+                        let e = this.state.shader_editors;
+                        e.prev_layout = e.layout;
+                        e.layout = layout_index;
+                        this.setState({ shader_editors: e });
+                    }}
                 />
 
                 <Columns>
@@ -563,7 +630,7 @@ class App extends Component<{}, AppState> {
                         <Sidebar
                             dmoData={this.state.dmo_data}
                             currentPage={this.state.current_page}
-                            currentShaderIndex={this.state.current_shader_index}
+                            currentShaderIndex={this.currentShaderIdx()}
 
                             onClick_DmoSettingsMenu={() => this.setState({ current_page: CurrentPage.Settings })}
                             onClick_DmoFramebuffersMenu={() => this.setState({ current_page: CurrentPage.Framebuffers })}

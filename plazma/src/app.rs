@@ -23,7 +23,7 @@ use intro_runtime::error::RuntimeError;
 use crate::error::ToolError;
 
 use crate::server_actor::{ServerActor, ServerState, ServerStateWrap, Sending, Receiving,
-MsgDataType, SetDmoMsg, SetShaderMsg};
+MsgDataType, SetDmoMsg, SetShaderMsg, ShaderCompilationFailedMsg};
 use crate::preview_client::client_actor::{ClientActor, ClientMessage};
 
 use crate::preview_client::preview_state::PreviewState;
@@ -708,14 +708,19 @@ fn render_loop(window: &GlWindow,
                                 };
                             },
                             Err(e) => match e {
-                                ToolError::Runtime(ref e, ref msg) => {
-                                    info!("{:?}, error message:\n{:#?}", e, msg);
+                                ToolError::Runtime(ref e, ref error_msg) => {
+                                    info!("{:?}, error message:\n{:#?}", e, error_msg);
                                     match e {
                                         RuntimeError::ShaderCompilationFailed => {
 
+                                            let data = ShaderCompilationFailedMsg {
+                                                idx: msg.idx,
+                                                error_message: error_msg.clone(),
+                                            };
+
                                             let msg = serde_json::to_string(&Sending{
                                                 data_type: MsgDataType::ShaderCompilationFailed,
-                                                data: serde_json::to_string(&msg).unwrap(),
+                                                data: serde_json::to_string(&data).unwrap(),
                                             }).unwrap();
                                             match server_sender.send(msg) {
                                                 Ok(_) => {},

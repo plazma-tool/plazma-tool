@@ -271,6 +271,12 @@ impl PreviewState {
     }
 
     pub fn set_shader(&mut self, shader_idx: usize, content: &str) -> Result<(), ToolError> {
+        // save a copy of the current shader to restore it if the new shader errors
+        let prev_content = match self.dmo_gfx.get_shader_src(shader_idx) {
+            Ok(x) => x,
+            Err(e) => return Err(ToolError::Runtime(e, "".to_owned())),
+        };
+
         match self.dmo_gfx.update_shader_src(shader_idx, content) {
             Ok(_) => {},
             Err(e) => return Err(ToolError::Runtime(e, "".to_owned())),
@@ -296,6 +302,13 @@ impl PreviewState {
             match self.dmo_gfx.compile_quad_scene(*scene_idx, &mut err_msg_buf) {
                 Ok(_) => {},
                 Err(e) => {
+                    // restore the previous shader
+                    match self.dmo_gfx.update_shader_src_from_vec(shader_idx, &prev_content) {
+                        Ok(_) => {},
+                        Err(e) => return Err(ToolError::Runtime(e, "".to_owned())),
+                    };
+
+                    // send error message
                     let msg = match String::from_utf8(err_msg_buf.to_vec()) {
                         Ok(x) => x,
                         Err(e) => return Err(ToolError::FromUtf8(e)),
@@ -331,6 +344,13 @@ impl PreviewState {
             match self.dmo_gfx.compile_model_shaders(*model_idx, &mut err_msg_buf) {
                 Ok(_) => {},
                 Err(e) => {
+                    // restore the previous shader
+                    match self.dmo_gfx.update_shader_src_from_vec(shader_idx, &prev_content) {
+                        Ok(_) => {},
+                        Err(e) => return Err(ToolError::Runtime(e, "".to_owned())),
+                    };
+
+                    // send error message
                     let msg = match String::from_utf8(err_msg_buf.to_vec()) {
                         Ok(x) => x,
                         Err(e) => return Err(ToolError::FromUtf8(e)),

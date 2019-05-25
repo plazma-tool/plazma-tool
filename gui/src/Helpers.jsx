@@ -13,12 +13,45 @@ export const CurrentPage = {
     Library: 9,
 };
 
-export type EditorErrorData = {
+export const EditorsLayout = {
+    OneMax: 1,
+    TwoVertical: 2,
+    TwoHorizontal: 3,
+    ThreeMainLeft: 4,
+    ThreeMainRight: 5,
+    ThreeMainTop: 6,
+    ThreeMainBottom: 7,
+    FourEven: 8,
+};
+
+export type Editor = {
+    source_idx: number,
+};
+
+export type ShaderEditors = {
+    layout: number,
+    prev_layout: number,
+    full_height: number,
+    current_editor_idx: number,
+    editors: Editor[],
+};
+
+export type ShaderErrorData = {
     text: string,
     id: number,
 };
 
-export type EditorErrorMessage = {
+export type Shader = {
+    content: string,
+    file_path: string,
+    source_idx: number,
+    error_data: ?ShaderErrorData,
+    prev_error_data: ?ShaderErrorData,
+    decorations_delta: [],
+    saved_view_state: ?{},
+};
+
+export type ShaderErrorMessage = {
     file_index: number,
     line_number: number,
     error_type: string,
@@ -260,8 +293,8 @@ export function numToStrPad(x: number): string {
     }
 }
 
-export function parseShaderErrorMessage(msg: string): EditorErrorMessage[] {
-    let results: EditorErrorMessage[] = [];
+export function parseShaderErrorText(msg: string): ShaderErrorMessage[] {
+    let results: ShaderErrorMessage[] = [];
 
     /*
     0(10) : warning C7022: unrecognized profile specifier "l"
@@ -313,5 +346,29 @@ export function parseShaderErrorMessage(msg: string): EditorErrorMessage[] {
     }
 
     return results;
+}
+
+/*
+function getShaderIndex(dmoData: DmoData, selectedPath: string) {
+    if (dmoData === null) {
+        return 0;
+    }
+    let idx = dmoData.context.index.shader_path_to_idx[selectedPath];
+    if (idx === null) {
+        console.log("Error: selectedPath not found in shaders");
+        return 0;
+    }
+    let n = Number(idx);
+    if (!isNaN(n)) {
+        return n;
+    } else {
+        console.log("Error, index is not a number");
+        return 0;
+    }
+}
+*/
+
+export function pathBasename(path: string) {
+    return path.replace(/.*\//, '')
 }
 

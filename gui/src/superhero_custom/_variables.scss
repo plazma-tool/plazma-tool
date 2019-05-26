@@ -2,8 +2,12 @@
 // SUPERHERO
 ////////////////////////////////////////////////
 
-$body-size: 12px !default
-$body-line-height: 1.2 !default
+$family-sans-serif: "Iosevka Term Web", monospace;
+$family-monospace: "Iosevka Term Web", monospace;
+$family-code: "Iosevka Term Web", monospace;
+
+$body-size: 12px !default;
+$body-line-height: 1.2 !default;
 
 $grey-darker:  #1f2d3b;
 $grey-dark:    #2B3E50;
@@ -32,9 +36,6 @@ $body-background-color: $grey-darker;
 $footer-background-color: $background;
 
 $border: $grey;
-
-$family-sans-serif: "Iosevka Term Web", monospace;
-$family-monospace: "Iosevka Term Web", monospace;
 
 $text: $grey-lighter;
 $text-strong: darken($grey-lighter, 10);

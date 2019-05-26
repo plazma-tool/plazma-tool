@@ -118,7 +118,7 @@ export class ShadersPage extends React.Component<SP_Props> {
         let current_shader = this.props.shaders[current_src_idx];
 
         let full = this.props.shaderEditors.full_height;
-        let half = Math.floor(full / 2);
+        let half = Math.floor((full - 24) / 2); // 24px = height of the <ShaderStatusBar>
         let editors = [];
         let editor_columns = <div></div>;
 
@@ -510,6 +510,8 @@ class PlazmaMonaco extends React.Component<PM_Props, PM_State> {
             lineNumbers: "on",
             roundedSelection: false,
             scrollBeyondLastLine: true,
+            fontFamily: "Iosevka Term Web",
+            fontSize: "13px",
         };
 
         let is_selected = this.props.editorIdx === this.props.shaderEditors.current_editor_idx;
@@ -520,7 +522,6 @@ class PlazmaMonaco extends React.Component<PM_Props, PM_State> {
                 height={this.props.editorHeight}
                 language="glsl"
                 theme="glsl-base16-default-dark"
-                fontFamily="Iosevka Term Web"
                 value={this.props.shader.content}
                 options={options}
                 onChange={this.onChangeLocal}

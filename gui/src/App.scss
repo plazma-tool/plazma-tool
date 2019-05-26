@@ -90,7 +90,8 @@ $error-red-dark: hsl(17.0, 100%, 5%);
 .shader-name-level {
   color: darken($editor-text, 20);
   background-color: darken($editor-bg, 1);
-  padding: 5px;
+  max-height: 24px; // 2rem
+  min-height: 24px; // 2rem
 }
 
 .shader-name-level.is-selected {

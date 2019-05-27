@@ -187,7 +187,7 @@ class App extends Component<{}, AppState> {
                         saved_view_state: null,
                         error_data: null,
                         prev_error_data: null,
-                        decorations_delta: [],
+                        decoration_ids: [],
                     };
                 });
 
@@ -619,7 +619,6 @@ class App extends Component<{}, AppState> {
 
                     onClick_Layout={(layout_index: number) => {
                         let e = this.state.shader_editors;
-                        e.prev_layout = e.layout;
                         e.layout = layout_index;
                         this.setState({ shader_editors: e });
                     }}

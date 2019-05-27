@@ -408,47 +408,41 @@ class PlazmaMonaco extends React.Component<PM_Props, PM_State> {
 
             // Compare props to avoid infinite loop.
 
-            // Somehow `prevProps.shader.error_data.id` is the same as
-            // `this.props.shader.error_data`, so we save the prev errors to an attribute instead.
+            // `this.shader.error_data.id` is the same as in `prevProps`, so we save the prev errors
+            // to an attribute instead.
 
             let curr = this.props.shader.error_data;
             let prev = this.props.shader.prev_error_data;
 
             if ((curr === null || typeof curr === 'undefined')
                 && (prev !== null && typeof prev !== 'undefined')) {
-
                 // If the new prop is null but the prev. prop is not null:
                 // Clear the decorations.
 
-                console.log("A idx " + this.props.editorIdx + " error ids: prev " + prev.id);
-
-                let delta = this.state.editor.deltaDecorations(
-                    this.props.shader.decorations_delta,
+                let ids = this.state.editor.deltaDecorations(
+                    this.props.shader.decoration_ids,
                     [],
                 );
 
                 let new_shader = this.props.shader;
                 new_shader.prev_error_data = new_shader.error_data;
-                new_shader.decorations_delta = delta;
+                new_shader.decoration_ids = ids;
                 this.props.onChangeLift(new_shader);
 
             } else if ((prev === null || typeof prev === 'undefined')
                 && (curr !== null && typeof curr !== 'undefined')) {
-
                 // If the prev. prop is null but the new prop is not null:
                 // Add all the new decorations.
 
-                console.log("B idx " + this.props.editorIdx + " error ids: curr " + curr.id);
-
                 let errors: ShaderErrorMessage[] = parseShaderErrorText(curr.text);
-                let delta = this.state.editor.deltaDecorations(
+                let ids = this.state.editor.deltaDecorations(
                     [],
                     errorsToDecorations(errors, this.state.monaco),
                 );
 
                 let new_shader = this.props.shader;
                 new_shader.prev_error_data = new_shader.error_data;
-                new_shader.decorations_delta = delta;
+                new_shader.decoration_ids = ids;
                 this.props.onChangeLift(new_shader);
 
             } else if (curr !== null && typeof curr !== 'undefined') {
@@ -458,44 +452,27 @@ class PlazmaMonaco extends React.Component<PM_Props, PM_State> {
 
                     if (curr.id !== prev.id) {
                         // If the error id has changed, update the decorations from an updated error message.
-                        console.log("C idx " + this.props.editorIdx + " error ids: curr " + curr.id + " prev " + prev.id);
 
                         let errors: ShaderErrorMessage[] = parseShaderErrorText(curr.text);
-                        let delta = this.state.editor.deltaDecorations(
-                            this.props.shader.decorations_delta,
+                        let ids = this.state.editor.deltaDecorations(
+                            this.props.shader.decoration_ids,
                             errorsToDecorations(errors, this.state.monaco),
                         );
 
                         let new_shader = this.props.shader;
                         new_shader.prev_error_data = new_shader.error_data;
-                        new_shader.decorations_delta = delta;
+                        new_shader.decoration_ids = ids;
                         this.props.onChangeLift(new_shader);
 
                     } else if (this.props.shader.source_idx !== prevProps.shader.source_idx) {
                         // if the selected shader was changed,
-                        // or the layout changed:
                         // add decorations, no need to save new ids.
-
-                        console.log("D idx " + this.props.editorIdx + " error ids: curr " + curr.id + " prev " + prev.id);
 
                         let errors: ShaderErrorMessage[] = parseShaderErrorText(curr.text);
                         this.state.editor.deltaDecorations(
-                            this.props.shader.decorations_delta,
+                            this.props.shader.decoration_ids,
                             errorsToDecorations(errors, this.state.monaco),
                         );
-
-                    } else if (this.props.shaderEditors.layout !== this.props.shaderEditors.prev_layout) {
-                        console.log("E");
-                        // if the was layout changed:
-                        // add decorations, no need to save new ids.
-
-                        /*
-                        let errors: ShaderErrorMessage[] = parseShaderErrorText(curr.text);
-                        this.state.editor.deltaDecorations(
-                            this.props.shader.decorations_delta,
-                            errorsToDecorations(errors, this.state.monaco),
-                        );
-                        */
 
                     }
                 }

@@ -30,7 +30,6 @@ export type Editor = {
 
 export type ShaderEditors = {
     layout: number,
-    prev_layout: number,
     full_height: number,
     current_editor_idx: number,
     editors: Editor[],
@@ -47,7 +46,7 @@ export type Shader = {
     source_idx: number,
     error_data: ?ShaderErrorData,
     prev_error_data: ?ShaderErrorData,
-    decorations_delta: [],
+    decoration_ids: [],
     saved_view_state: ?{},
 };
 

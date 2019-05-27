@@ -16,7 +16,7 @@ import { GlslHoverProvider } from './Glsl/HoverProvider';
 import { ThemeBase16DefaultDark } from './Glsl/ThemeBase16DefaultDark';
 
 type DSP_Props = {
-    dmoData: DmoData,
+    shaders: Shader[],
     currentPage: number,
     currentIndex: number,
     onClickLift: () => void,
@@ -30,32 +30,31 @@ export class DmoShadersPanel extends React.Component<DSP_Props> {
     }
 
     render() {
-        let paths: Array<[string, mixed]> = [];
-        if (this.props.dmoData !== null) {
-            paths = Object.entries(this.props.dmoData.context.index.shader_path_to_idx);
-        };
-
-        let pathLinks = paths.map((i: [string, mixed]) => {
-            let path_full: string = i[0];
-            let path_index: number = Number(i[1]);
+        let pathLinks = this.props.shaders.map((shader: Shader, shader_idx: number) => {
             let is_active = false;
-            let color = "";
+            let label_color = "";
+            let icon_color = "";
 
-            if (path_index === this.props.currentIndex) {
+            if (shader.error_data !== null && typeof shader.error_data !== 'undefined') {
+                label_color = "error";
+                icon_color = "error";
+            }
+
+            if (shader_idx === this.props.currentIndex) {
                 is_active = true;
-                color = "primary";
+                label_color = "primary";
             }
 
             return (
                 <PanelBlock
-                    key={path_full}
+                    key={shader.file_path + icon_color}
                     isActive={is_active}
-                    hasTextColor={color}
-                    onClick={() => this.onChangeLocal(path_index)}
+                    hasTextColor={label_color}
+                    onClick={() => this.onChangeLocal(shader_idx)}
                     style={{ border: "none" }}
                 >
-                    <PanelIcon className="fa fa-code" />
-                    {pathBasename(path_full)}
+                    <PanelIcon className="fa fa-code" hasTextColor={icon_color} />
+                    {shader.file_path}
                 </PanelBlock>
             );
         });

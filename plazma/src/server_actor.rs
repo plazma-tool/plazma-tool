@@ -169,6 +169,11 @@ pub struct ShaderCompilationFailedMsg {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct ShaderCompilationSuccessMsg {
+    pub idx: usize,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Sending {
     pub data_type: MsgDataType,
     pub data: String,

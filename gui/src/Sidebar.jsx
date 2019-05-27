@@ -1,7 +1,7 @@
 // @flow
 import React from 'react';
 //import { Menu, Button, Icon } from 'bloomer';
-import type { DmoData } from './Helpers';
+import type { DmoData, Shader } from './Helpers';
 
 import { DmoShadersPanel } from './DmoShaders';
 import { DmoFramebuffersPanel } from './DmoFramebuffers';
@@ -14,6 +14,7 @@ import { DmoSettingsPanel } from './DmoSettings';
 
 type S_Props = {
     dmoData: ?DmoData,
+    shaders: Shader[],
     currentPage: number,
     currentShaderIndex: number,
     onClick_DmoSettingsMenu: () => void,
@@ -42,6 +43,7 @@ export class Sidebar extends React.Component<S_Props> {
             <div id="sidebar">
                 <DmoShadersPanel
                     dmoData={this.props.dmoData}
+                    shaders={this.props.shaders}
                     currentPage={this.props.currentPage}
                     currentIndex={this.props.currentShaderIndex}
                     onClickLift={this.props.onClick_DmoShadersMenu}

@@ -234,8 +234,16 @@ class App extends Component<{}, AppState> {
                 break;
 
             case 'ShaderCompilationSuccess':
-                // clear errors, shaders compiled
-                shaders = this.state.shaders.map((i) => { i.error_data = null; return i; });
+                if (msg.data.length > 0) {
+                    // If there is data, it is the shader idx which we tried to updated. Clear the errors on it.
+                    let m = JSON.parse(msg.data);
+                    let s = this.state.shaders;
+                    s[m.idx].error_data = null;
+                    shaders = s;
+                } else {
+                    // Otherwise clear all errors.
+                    shaders = this.state.shaders.map((i) => { i.error_data = null; return i; });
+                }
 
                 this.setState({ shaders: shaders });
                 break;
@@ -628,6 +636,7 @@ class App extends Component<{}, AppState> {
                     <Column isSize={{default: 2}}>
                         <Sidebar
                             dmoData={this.state.dmo_data}
+                            shaders={this.state.shaders}
                             currentPage={this.state.current_page}
                             currentShaderIndex={this.currentShaderIdx()}
 

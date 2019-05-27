@@ -1,0 +1,57 @@
+- label: iTime
+  detail: >-
+    (float) Current time in seconds
+
+- label: iGlobalTime
+  detail: >-
+    (float) Current time in seconds
+
+- label: iChannel{i}
+  detail: >-
+    (sampler2D) Sampler for input texture of index i
+  insertText: iChannel${1:index}
+  kind: 25
+  insertTextRules: 4
+
+- label: iChannelResolution[1-4]
+  detail: >-
+    (vec3) Input texture resolution for each channel
+  insertText: iChannelResolution[${1:index}]
+  kind: 25
+  insertTextRules: 4
+
+- label: iChannelTime
+  detail: >-
+    (float) Time for channel (if video or sound), in seconds
+  insertText: iChannelTime[${1:index}]
+  kind: 25
+  insertTextRules: 4
+
+- label: iDate
+  detail: >-
+    (vec4) Year, month, day, time in seconds in .xyzw
+
+- label: iFrame
+  detail: >-
+    (int) Current frame
+
+- label: iFrameRate
+  detail: >-
+    (float) Number of frames rendered per second
+
+- label: iMouse
+  detail: >-
+    (vec4) xy = current pixel coords (if LMB is down). zw = click pixel
+
+- label: iResolution
+  detail: >-
+    (vec3) The viewport resolution (z is pixel aspect ratio, usually 1.0)
+
+- label: iSampleRate
+  detail: >-
+    (float) The sound sample rate (typically 44100)
+
+- label: iTimeDelta
+  detail: >-
+    (float) Time it takes to render a frame, in seconds
+

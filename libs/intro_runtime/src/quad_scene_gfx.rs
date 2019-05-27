@@ -50,7 +50,7 @@ impl QuadSceneGfx {
                        vert_src: &str,
                        frag_src: &str,
                        err_msg_buf: &mut [u8; ERR_MSG_LEN])
-                       -> Result<(), RuntimeError>
+        -> Result<(), RuntimeError>
     {
         self.quad = Some(Quad::new(vert_src, frag_src, err_msg_buf)?);
         Ok(())
@@ -144,24 +144,20 @@ impl Quad {
     pub fn new(vert_src: &str,
                frag_src: &str,
                err_msg_buf: &mut [u8; ERR_MSG_LEN])
-               -> Result<Quad, RuntimeError>
+        -> Result<Quad, RuntimeError>
     {
-        let vs = compile_shader(vert_src, gl::VERTEX_SHADER, err_msg_buf)?;
-        let fs = compile_shader(frag_src, gl::FRAGMENT_SHADER, err_msg_buf)?;
-        let program = link_program(vs, fs, err_msg_buf)?;
-
-        let mut vao: GLuint = 0;
-        let mut vbo: GLuint = 0;
+        let mut quad = Quad { program: 0, vao: 0, vbo: 0 };
+        quad.compile_program(vert_src, frag_src, err_msg_buf)?;
 
         unsafe {
-            gl::GenVertexArrays(1, &mut vao);
-            gl::GenBuffers(1, &mut vbo);
+            gl::GenVertexArrays(1, &mut quad.vao);
+            gl::GenBuffers(1, &mut quad.vbo);
 
             // VAO
-            gl::BindVertexArray(vao);
+            gl::BindVertexArray(quad.vao);
 
             // VBO
-            gl::BindBuffer(gl::ARRAY_BUFFER, vbo);
+            gl::BindBuffer(gl::ARRAY_BUFFER, quad.vbo);
             gl::BufferData(gl::ARRAY_BUFFER,
                            (QUAD_VERTICES.len() * mem::size_of::<GLfloat>()) as GLsizeiptr,
                            mem::transmute(&QUAD_VERTICES[0]),
@@ -186,18 +182,14 @@ impl Quad {
             gl::BindVertexArray(0);
         }
 
-        Ok(Quad {
-            program: program,
-            vao: vao,
-            vbo: vbo,
-        })
+        Ok(quad)
     }
 
     pub fn compile_program(&mut self,
                            vert_src: &str,
                            frag_src: &str,
                            err_msg_buf: &mut [u8; ERR_MSG_LEN])
-                           -> Result<(), RuntimeError>
+        -> Result<(), RuntimeError>
     {
         let vs = compile_shader(vert_src, gl::VERTEX_SHADER, err_msg_buf)?;
         let fs = compile_shader(frag_src, gl::FRAGMENT_SHADER, err_msg_buf)?;

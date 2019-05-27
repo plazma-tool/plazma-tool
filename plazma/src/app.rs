@@ -19,8 +19,11 @@ use glutin::{GlWindow, GlContext, EventsLoop, Event, WindowEvent, ElementState};
 use intro_3d::Vector3;
 use rocket_client::SyncClient;
 
+use intro_runtime::error::RuntimeError;
+use crate::error::ToolError;
+
 use crate::server_actor::{ServerActor, ServerState, ServerStateWrap, Sending, Receiving,
-MsgDataType, SetDmoMsg, SetShaderMsg};
+MsgDataType, SetDmoMsg, SetShaderMsg, ShaderCompilationFailedMsg, ShaderCompilationSuccessMsg};
 use crate::preview_client::client_actor::{ClientActor, ClientMessage};
 
 use crate::preview_client::preview_state::PreviewState;
@@ -691,8 +694,49 @@ fn render_loop(window: &GlWindow,
                         };
 
                         match state.set_shader(msg.idx, &msg.content) {
-                            Ok(_) => { state.draw_anyway = true; },
-                            Err(e) => error!{"🔥 Can't perform SetShader: {:?}", e},
+                            Ok(_) => {
+                                info!("ShaderCompilationSuccess");
+                                state.draw_anyway = true;
+
+                                let data = ShaderCompilationSuccessMsg {
+                                    idx: msg.idx,
+                                };
+
+                                let msg = serde_json::to_string(&Sending{
+                                    data_type: MsgDataType::ShaderCompilationSuccess,
+                                    data: serde_json::to_string(&data).unwrap(),
+                                }).unwrap();
+                                match server_sender.send(msg) {
+                                    Ok(_) => {},
+                                    Err(e) => error!("🔥 Can't send ShaderCompilationSuccess on server_sender: {:?}", e),
+                                };
+                            },
+                            Err(e) => match e {
+                                ToolError::Runtime(ref e, ref error_msg) => {
+                                    info!("{:?}, error message:\n{:#?}", e, error_msg);
+                                    match e {
+                                        RuntimeError::ShaderCompilationFailed => {
+
+                                            let data = ShaderCompilationFailedMsg {
+                                                idx: msg.idx,
+                                                error_message: error_msg.clone(),
+                                            };
+
+                                            let msg = serde_json::to_string(&Sending{
+                                                data_type: MsgDataType::ShaderCompilationFailed,
+                                                data: serde_json::to_string(&data).unwrap(),
+                                            }).unwrap();
+                                            match server_sender.send(msg) {
+                                                Ok(_) => {},
+                                                Err(e) => error!("🔥 Can't send ShaderCompilationFailed on server_sender: {:?}", e),
+                                            };
+
+                                        },
+                                        _ => error!{"🔥 Can't perform SetShader: {:?}", e},
+                                    }
+                                }
+                                _ => error!{"🔥 Can't perform SetShader: {:?}", e},
+                            },
                         };
                     },
 
@@ -718,6 +762,8 @@ fn render_loop(window: &GlWindow,
                     ShowErrorMessage =>
                         error!{"🔥 Server is sending error: {:?}", message.data},
 
+                    ShaderCompilationSuccess => {},
+                    ShaderCompilationFailed => {},
                     StartPreview => {},
 
                     StopPreview => {
@@ -741,6 +787,7 @@ fn render_loop(window: &GlWindow,
         }
 
         // 00. recompile if flag was set
+        // FIXME process ShaderCompilationFailed
         match state.recompile_dmo() {
             Ok(_) => {},
             Err(e) => error!{"{:?}", e},

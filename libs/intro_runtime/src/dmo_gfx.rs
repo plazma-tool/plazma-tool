@@ -185,6 +185,21 @@ impl DmoGfx {
         self.sync.update_vars(&mut self.context)
     }
 
+    pub fn get_shader_src(&mut self,
+                          idx: usize)
+        -> Result<SmallVec<[u8; 1024]>, RuntimeError>
+    {
+        if idx < self.context.shader_sources.len() {
+            let mut s = SmallVec::new();
+            for i in self.context.shader_sources[idx].iter() {
+                s.push(*i);
+            }
+            return Ok(s);
+        } else {
+            return Err(ShaderSourceIdxIsOutOfBounds);
+        }
+    }
+
     pub fn update_shader_src(&mut self,
                              idx: usize,
                              frag_src: &str)
@@ -193,6 +208,23 @@ impl DmoGfx {
         if idx < self.context.shader_sources.len() {
             let mut s = SmallVec::new();
             for i in frag_src.as_bytes().iter() {
+                s.push(*i);
+            }
+            self.context.shader_sources[idx] = s;
+        } else {
+            return Err(ShaderSourceIdxIsOutOfBounds);
+        }
+        Ok(())
+    }
+
+    pub fn update_shader_src_from_vec(&mut self,
+                                      idx: usize,
+                                      frag_src_vec: &SmallVec<[u8; 1024]>)
+        -> Result<(), RuntimeError>
+    {
+        if idx < self.context.shader_sources.len() {
+            let mut s = SmallVec::new();
+            for i in frag_src_vec.iter() {
                 s.push(*i);
             }
             self.context.shader_sources[idx] = s;
@@ -279,7 +311,7 @@ impl DmoGfx {
             let vert_src = str::from_utf8(s).unwrap();
             let ref s = self.context.shader_sources[mesh.frag_src_idx];
             let frag_src = str::from_utf8(s).unwrap();
-            mesh.compile_shaders(vert_src, frag_src, err_msg_buf)?;
+            mesh.compile_program(vert_src, frag_src, err_msg_buf)?;
         }
         Ok(())
     }

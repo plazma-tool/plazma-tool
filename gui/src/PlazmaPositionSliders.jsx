@@ -3,24 +3,33 @@ import React from 'react';
 import { Column  } from 'bloomer';
 import Slider from 'rc-slider';
 import { numToStrPad, getVec3ValuesFromCode } from './Helpers';
+import type { Shader } from './Helpers';
 
 type XyzValue = { x: number, y: number, z: number };
-type Position = { name: string, xyz: XyzValue };
+type Position = { name: string, line_number: number, xyz: XyzValue };
 
 type PSC_Props = {
-    code: string,
-    onChangeLift: (newCodeValue: string) => void,
+    shader: Shader,
+    onChangeLift: (newShader: Shader) => void,
 };
 
 export class PositionSlidersColumns extends React.Component<PSC_Props> {
 
     onChangeLocal = (newPositionValue: Position) => {
-        let newCodeValue = replacePositionValueInCode(newPositionValue, this.props.code);
-        this.props.onChangeLift(newCodeValue);
+        let newCodeValue = replacePositionValueInCode(newPositionValue, this.props.shader.content);
+        let new_shader = {
+            content: newCodeValue,
+            // copy props
+            source_idx: this.props.shader.source_idx,
+            line_number: this.props.shader.line_number,
+            error_data: this.props.shader.error_data,
+            decorations_delta: this.props.shader.decorations_delta,
+        };
+        this.props.onChangeLift(new_shader);
     }
 
     render() {
-        let values = getPositionValuesFromCode(this.props.code);
+        let values = getPositionValuesFromCode(this.props.shader.content);
         let sliders = values.map((position, idx) => {
             return (
                 <PlazmaPositionSliders
@@ -48,7 +57,7 @@ class PlazmaPositionSliders extends React.Component<PPS_Props> {
         let p = this.props.position;
         return (
             <div className="is-half">
-              <span>{p.name}</span>
+              <span>{p.name} L{p.line_number + 1}</span>
               <PositionSliders
                 position={p}
                 onChangeLift={this.props.onChangeLift}
@@ -66,6 +75,7 @@ class PositionSliders extends React.Component<PPS_Props> {
 
         let newPositionValue: Position = {
             name: this.props.position.name,
+            line_number: this.props.position.line_number,
             xyz: xyz,
         };
         this.props.onChangeLift(newPositionValue);
@@ -77,6 +87,7 @@ class PositionSliders extends React.Component<PPS_Props> {
 
         let newPositionValue = {
             name: this.props.position.name,
+            line_number: this.props.position.line_number,
             xyz: xyz,
         };
         this.props.onChangeLift(newPositionValue);
@@ -88,6 +99,7 @@ class PositionSliders extends React.Component<PPS_Props> {
 
         let newPositionValue = {
             name: this.props.position.name,
+            line_number: this.props.position.line_number,
             xyz: xyz,
         };
         this.props.onChangeLift(newPositionValue);
@@ -135,11 +147,12 @@ export function xyzToVec3(pos: XyzValue): string {
 }
 
 function getPositionValuesFromCode(code: string): Position[] {
-    let re_position = /vec3 +([^ ]+) *= *vec3\(([^)]+)\); *\/\/ *!! position *$/gm;
+    let re_position = /vec3 +([^ ]+) *= *vec3\(([^)]+)\); *\/\/ +ui_position *$/gm;
     let v = getVec3ValuesFromCode(code, re_position);
     let values: Position[] = v.map((val) => {
         let a: Position = {
             name: val.name,
+            line_number: val.line_number,
             xyz: {
                 x: Math.floor(val.vec[0] * 1000),
                 y: Math.floor(val.vec[1] * 1000),
@@ -153,8 +166,10 @@ function getPositionValuesFromCode(code: string): Position[] {
 
 function replacePositionValueInCode(newPositionValue: Position, code: string): string {
     const p = newPositionValue;
-    let re_position = new RegExp('(vec3 +' + p.name + ' *= *)vec3\\([^\\)]+\\)(; *\\/\\/ *!! position *$)', 'gm');
-    let newCodeValue = code.replace(re_position, '$1' + xyzToVec3(p.xyz) + '$2');
+    let re_position = new RegExp('(vec3 +' + p.name + ' *= *)vec3\\([^\\)]+\\)(; *\\/\\/ +ui_position *$)', 'gm');
+    let lines = code.split("\n");
+    lines[p.line_number] = lines[p.line_number].replace(re_position, '$1' + xyzToVec3(p.xyz) + '$2');
+    let newCodeValue = lines.join("\n");
     return newCodeValue;
 }
 

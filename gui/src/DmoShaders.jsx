@@ -1,43 +1,22 @@
 // @flow
 import React from 'react';
-import { Panel, PanelBlock, PanelIcon, PanelHeading, Columns, Column } from 'bloomer';
-import { CurrentPage } from './Helpers';
-import type { DmoData } from './Helpers';
+import { Panel, PanelBlock, PanelIcon, PanelHeading, Columns, Column, Level, LevelItem, LevelLeft } from 'bloomer';
+import { CurrentPage, EditorsLayout, parseShaderErrorText, pathBasename } from './Helpers';
+import type { DmoData, Shader, ShaderEditors, ShaderErrorMessage } from './Helpers';
 
 import MonacoEditor from 'react-monaco-editor';
 import { ColorPickerColumns } from './PlazmaColorPicker';
 import { PositionSlidersColumns } from './PlazmaPositionSliders';
 import { SliderColumns } from './PlazmaSlider';
+import { MessageArea } from './MessageArea';
 
-// TODO Use a collapsed and expanded state. Click on the menu label expands a
-// tree. Selecting a shader opens it in the editor.
-
-/*
-function getShaderIndex(dmoData: DmoData, selectedPath: string) {
-    if (dmoData === null) {
-        return 0;
-    }
-    let idx = dmoData.context.index.shader_path_to_idx[selectedPath];
-    if (idx === null) {
-        console.log("Error: selectedPath not found in shaders");
-        return 0;
-    }
-    let n = Number(idx);
-    if (!isNaN(n)) {
-        return n;
-    } else {
-        console.log("Error, index is not a number");
-        return 0;
-    }
-}
-*/
-
-function pathBasename(path: string) {
-    return path.replace(/.*\//, '')
-}
+import { GlslTokensProvider } from './Glsl/TokensProvider';
+import { GlslCompletionProvider } from './Glsl/CompletionProvider';
+import { GlslHoverProvider } from './Glsl/HoverProvider';
+import { ThemeBase16DefaultDark } from './Glsl/ThemeBase16DefaultDark';
 
 type DSP_Props = {
-    dmoData: DmoData,
+    shaders: Shader[],
     currentPage: number,
     currentIndex: number,
     onClickLift: () => void,
@@ -51,35 +30,40 @@ export class DmoShadersPanel extends React.Component<DSP_Props> {
     }
 
     render() {
-        let paths: Array<[string, mixed]> = [];
-        if (this.props.dmoData !== null) {
-            paths = Object.entries(this.props.dmoData.context.index.shader_path_to_idx);
-        };
+        let pathLinks = this.props.shaders
+        // map first to preserve the index order
+            .map((shader: Shader, shader_idx: number) => {
+                let is_active = false;
+                let label_color = "";
+                let icon_color = "";
 
-        let pathLinks = paths.map((i: [string, mixed]) => {
-            let path_full: string = i[0];
-            let path_index: number = Number(i[1]);
-            let is_active = false;
-            let color = "";
+                if (shader.error_data !== null && typeof shader.error_data !== 'undefined') {
+                    label_color = "error";
+                    icon_color = "error";
+                }
 
-            if (path_index === this.props.currentIndex) {
-                is_active = true;
-                color = "primary";
-            }
+                if (shader_idx === this.props.currentIndex) {
+                    is_active = true;
+                    label_color = "primary";
+                }
 
-            return (
-                <PanelBlock
-                    key={path_full}
-                    isActive={is_active}
-                    hasTextColor={color}
-                    onClick={() => this.onChangeLocal(path_index)}
-                    style={{ border: "none" }}
-                >
-                    <PanelIcon className="fa fa-code" />
-                    {pathBasename(path_full)}
-                </PanelBlock>
-            );
-        });
+                return ({
+                    file_path: shader.file_path,
+                    item: <PanelBlock
+                        key={shader.file_path + label_color + icon_color}
+                        isActive={is_active}
+                        hasTextColor={label_color}
+                        onClick={() => this.onChangeLocal(shader_idx)}
+                        style={{ border: "none" }}
+                    >
+                        <PanelIcon className="fa fa-code" hasTextColor={icon_color} />
+                        {shader.file_path}
+                    </PanelBlock>
+                });
+            })
+        // filter out the builtin shaders
+            .filter((i) => !i.file_path.startsWith('data_builtin_'))
+            .map((i) => i.item);
 
         let color = "";
         if (this.props.currentPage === CurrentPage.Shaders) {
@@ -96,36 +80,158 @@ export class DmoShadersPanel extends React.Component<DSP_Props> {
 }
 
 type SP_Props = {
-    editorContent: string,
-    onChange_PlazmaMonaco: (newValue: string, e: MessageEvent) => void,
-    onChange_ColorPickerColumns: (newValue: string) => void,
-    onChange_PositionSlidersColumns: (newValue: string) => void,
-    onChange_SliderColumns: (newValue: string) => void,
+    shaders: Shader[],
+    shaderEditors: ShaderEditors,
+    onChange_PlazmaMonaco: (newShader: Shader) => void,
+    onFocus_PlazmaMonaco: (editorIdx: number) => void,
+    onBlur_PlazmaMonaco: (editorIdx: number, viewState: {}) => void,
+    onChange_ColorPickerColumns: (newShader: Shader) => void,
+    onChange_PositionSlidersColumns: (newShader: Shader) => void,
+    onChange_SliderColumns: (newShader: Shader) => void,
+    monacoDidInit: bool,
+    onMonacoDidInit: () => void,
 };
 
 export class ShadersPage extends React.Component<SP_Props> {
+
+    createEditorsWithHeights = (heights?: number[]): MonacoEditor[] => {
+        let a = this.props.shaderEditors.editors.map((i, idx) => {
+            let h = Math.floor(this.props.shaderEditors.full_height / 2);
+            if (heights !== null && typeof heights !== 'undefined') {
+                h = (heights[idx] !== null && typeof heights[idx] !== 'undefined') ? heights[idx] : h;
+            }
+            return (
+                <PlazmaMonaco
+                    key={'PlazmaMonaco_'+idx}
+                    editorIdx={idx}
+                    editorHeight={h}
+                    shaderEditors={this.props.shaderEditors}
+                    shader={this.props.shaders[i.source_idx]}
+                    onChangeLift={this.props.onChange_PlazmaMonaco}
+                    onFocusLift={this.props.onFocus_PlazmaMonaco}
+                    onBlurLift={this.props.onBlur_PlazmaMonaco}
+                    monacoDidInit={this.props.monacoDidInit}
+                    onMonacoDidInit={this.props.onMonacoDidInit}
+                />
+            );
+        });
+        return a;
+    }
+
     render() {
+        let current_src_idx = this.props.shaderEditors.editors[this.props.shaderEditors.current_editor_idx].source_idx;
+        let current_shader = this.props.shaders[current_src_idx];
+
+        let full = this.props.shaderEditors.full_height;
+        let half = Math.floor((full - 24) / 2); // 24px = height of the <ShaderStatusBar>
+        let editors = [];
+        let editor_columns = <div></div>;
+
+        switch (this.props.shaderEditors.layout) {
+            case EditorsLayout.OneMax:
+                editors = this.createEditorsWithHeights([full]);
+                editor_columns = <Column> {editors[0]} </Column>;
+                break;
+
+            case EditorsLayout.TwoVertical:
+                editors = this.createEditorsWithHeights([full, full]);
+                editor_columns = [
+                    <Column key='Col_1'> {editors[0]} </Column>,
+                    <Column key='Col_2'> {editors[1]} </Column>
+                ];
+                break;
+
+            case EditorsLayout.TwoHorizontal:
+                editors = this.createEditorsWithHeights([half, half]);
+                editor_columns =
+                    <Column>
+                        {editors[0]}
+                        {editors[1]}
+                    </Column>;
+                break;
+
+            case EditorsLayout.ThreeMainLeft:
+                editors = this.createEditorsWithHeights([full, half, half]);
+                editor_columns = [
+                    <Column key='Col_1'> {editors[0]} </Column>,
+                    <Column key='Col_2'>
+                        {editors[1]}
+                        {editors[2]}
+                    </Column>
+                ];
+                break;
+
+            case EditorsLayout.ThreeMainRight:
+                editors = this.createEditorsWithHeights([full, half, half]);
+                editor_columns = [
+                    <Column key='Col_1'>
+                        {editors[1]}
+                        {editors[2]}
+                    </Column>,
+                    <Column key='Col_2'> {editors[0]} </Column>,
+                ];
+                break;
+
+            case EditorsLayout.ThreeMainTop:
+                editors = this.createEditorsWithHeights([half, half, half]);
+                editor_columns = [
+                    <Column key='Col_1' isSize='full'> {editors[0]} </Column>,
+                    <Column key='Col_2' isSize='1/2'> {editors[1]} </Column>,
+                    <Column key='Col_3' isSize='1/2'> {editors[2]} </Column>,
+                ];
+                break;
+
+            case EditorsLayout.ThreeMainBottom:
+                editors = this.createEditorsWithHeights([half, half, half]);
+                editor_columns = [
+                    <Column key='Col_1' isSize='1/2'> {editors[1]} </Column>,
+                    <Column key='Col_2' isSize='1/2'> {editors[2]} </Column>,
+                    <Column key='Col_3' isSize='full'> {editors[0]} </Column>,
+                ];
+                break;
+
+            case EditorsLayout.FourEven:
+                editors = this.createEditorsWithHeights([half, half, half, half]);
+                editor_columns = [
+                    <Column key='Col_1' isSize='1/2'>
+                        {editors[0]}
+                        {editors[2]}
+                    </Column>,
+                    <Column key='Col_2' isSize='1/2'>
+                        {editors[1]}
+                        {editors[3]}
+                    </Column>,
+                ];
+                break;
+
+            default:
+                editors = <div><p>Unknown layout.</p></div>;
+        }
+
+
         return(
             <div>
-                <Columns>
+                <Columns isGapless={true} className="no-margins" isMultiline={true}>
+                    {editor_columns}
+                </Columns>
+
+                <Columns isGapless={true}>
                     <Column>
-                        <PlazmaMonaco
-                            editorContent={this.props.editorContent}
-                            onChangeLift={this.props.onChange_PlazmaMonaco}
-                        />
+                        <MessageArea shader={current_shader} />
                     </Column>
                 </Columns>
+
                 <Columns>
                     <ColorPickerColumns
-                        code={this.props.editorContent}
+                        shader={current_shader}
                         onChangeLift={this.props.onChange_ColorPickerColumns}
                     />
                     <PositionSlidersColumns
-                        code={this.props.editorContent}
+                        shader={current_shader}
                         onChangeLift={this.props.onChange_PositionSlidersColumns}
                     />
                     <SliderColumns
-                        code={this.props.editorContent}
+                        shader={current_shader}
                         onChangeLift={this.props.onChange_SliderColumns}
                     />
                 </Columns>
@@ -134,60 +240,21 @@ export class ShadersPage extends React.Component<SP_Props> {
     }
 }
 
-function UndoRedoButton(props) {
-    return (
-        <button onClick={props.onClick} disabled={props.disabled}>{props.label}</button>
-    );
-}
-
-type PMT_Props = {
-    editor: MonacoEditor,
-    undoDisabled: bool,
-    redoDisabled: bool,
-};
-
-class PlazmaMonacoToolbar extends React.Component<PMT_Props> {
-
-    undoAction(editor) {
-        if (editor) {
-            editor.trigger('aaaa', 'undo', 'aaaa');
-            editor.focus();
-        }
-    }
-
-    redoAction(editor) {
-        if (editor) {
-            editor.trigger('aaaa', 'redo', 'aaaa');
-            editor.focus();
-        }
-    }
-
-    render() {
-        return (
-            <div className="toolbar">
-              <UndoRedoButton
-                onClick={() => this.undoAction(this.props.editor)}
-                disabled={this.props.undoDisabled}
-                label="Undo"
-              />
-
-              <UndoRedoButton
-                onClick={() => this.redoAction(this.props.editor)}
-                disabled={this.props.redoDisabled}
-                label="Redo"
-              />
-            </div>
-        );
-    }
-}
-
 type PM_Props = {
-    editorContent: string,
-    onChangeLift: (newValue: string, e: MessageEvent) => void,
+    shader: Shader,
+    editorIdx: number,
+    editorHeight: number,
+    shaderEditors: ShaderEditors,
+    onChangeLift: (newShader: Shader) => void,
+    onBlurLift: (editorIdx: number, viewState: {}) => void,
+    onFocusLift: (editorIdx: number) => void,
+    monacoDidInit: bool,
+    onMonacoDidInit: () => void,
 };
 
 type PM_State = {
     editor: MonacoEditor,
+    monaco: any,// FIXME
     modelVersions: {
         initialVersion: number,
         currentVersion: number,
@@ -203,6 +270,7 @@ class PlazmaMonaco extends React.Component<PM_Props, PM_State> {
 
         this.state = {
             editor: null,
+            monaco: null,
             modelVersions: {
                 initialVersion: 0,
                 currentVersion: 0,
@@ -226,17 +294,37 @@ class PlazmaMonaco extends React.Component<PM_Props, PM_State> {
 
         window.addEventListener('resize', this.onResize);
 
-        this.setState({
-            editor: editor,
-            modelVersions: modelVersions,
+        editor.onDidFocusEditorText(() => {
+            this.props.onFocusLift(this.props.editorIdx);
         });
 
-        editor.focus();
-        editor.setPosition({ lineNumber: 1, column: 1 });
+        editor.onDidBlurEditorText(() => {
+            this.props.onBlurLift(
+                this.props.editorIdx,
+                this.state.editor.saveViewState(),
+            );
+        });
+
+        let vs = this.props.shader.saved_view_state;
+        if (vs !== null && typeof vs !== 'undefined') {
+            editor.restoreViewState(vs);
+        }
+
+        if (this.props.shaderEditors.current_editor_idx === this.props.editorIdx) {
+            editor.focus();
+        }
+
+        this.setState({
+            editor: editor,
+            monaco: monaco,
+            modelVersions: modelVersions,
+        });
     }
 
-    onChangeLocal = (newValue, e) => {
-        this.props.onChangeLift(newValue, e);
+    onChangeLocal = (newValue: string, e: MessageEvent) => {
+        let new_shader = this.props.shader;
+        new_shader.content = newValue;
+        this.props.onChangeLift(new_shader);
         this.updateVersions();
     }
 
@@ -290,52 +378,189 @@ class PlazmaMonaco extends React.Component<PM_Props, PM_State> {
         });
     }
 
-    editorWillMount(monaco) {
-        monaco.languages.register({ id: 'glsl' });
-        monaco.languages.setMonarchTokensProvider('glsl', {
-            comments: {
-                "lineComment": "//",
-                "blockComment": [ "/*", "*/" ]
-            },
-            brackets: [
-                ["{", "}", "delimiter.curly"],
-                //["[", "]", "delimiter.bracket"],
-                //["(", ")", "delimiter.round"],
-            ],
-            tokenizer: {
-                root: [],
-            },
-        });
+    editorWillMount = (monaco) => {
+        // make sure to run the init calls only once
+        if (!this.props.monacoDidInit && this.props.editorIdx === 0) {
+            monaco.languages.register({ id: 'glsl' });
+            monaco.languages.setMonarchTokensProvider('glsl', GlslTokensProvider);
+            monaco.languages.registerCompletionItemProvider('glsl', GlslCompletionProvider);
+            monaco.languages.registerHoverProvider('glsl', GlslHoverProvider);
+            monaco.editor.defineTheme('glsl-base16-default-dark', ThemeBase16DefaultDark);
+            this.props.onMonacoDidInit();
+        }
+    }
+
+    componentDidUpdate(prevProps) {
+        if (this.state.editor !== null && this.state.monaco !== null) {
+
+            // if the user selected a new shader to be displayed in this editor
+            if (this.props.shader.source_idx !== prevProps.shader.source_idx) {
+
+                // and if this is the current editor, return focus to it
+                if (this.props.shaderEditors.current_editor_idx === this.props.editorIdx) {
+                    this.state.editor.focus();
+                }
+
+                // if the selected shader has a saved view, restore it
+                let vs = this.props.shader.saved_view_state;
+                if (vs !== null && typeof vs !== 'undefined') {
+                    this.state.editor.restoreViewState(this.props.shader.saved_view_state);
+                }
+
+            }
+
+            // Clear or add decorations.
+
+            // Compare props to avoid infinite loop.
+
+            // `this.shader.error_data.id` is the same as in `prevProps`, so we save the prev errors
+            // to an attribute instead.
+
+            let curr = this.props.shader.error_data;
+            let prev = this.props.shader.prev_error_data;
+
+            if ((curr === null || typeof curr === 'undefined')
+                && (prev !== null && typeof prev !== 'undefined')) {
+                // If the new prop is null but the prev. prop is not null:
+                // Clear the decorations.
+
+                let ids = this.state.editor.deltaDecorations(
+                    this.props.shader.decoration_ids,
+                    [],
+                );
+
+                let new_shader = this.props.shader;
+                new_shader.prev_error_data = new_shader.error_data;
+                new_shader.decoration_ids = ids;
+                this.props.onChangeLift(new_shader);
+
+            } else if ((prev === null || typeof prev === 'undefined')
+                && (curr !== null && typeof curr !== 'undefined')) {
+                // If the prev. prop is null but the new prop is not null:
+                // Add all the new decorations.
+
+                let errors: ShaderErrorMessage[] = parseShaderErrorText(curr.text);
+                let ids = this.state.editor.deltaDecorations(
+                    [],
+                    errorsToDecorations(errors, this.state.monaco),
+                );
+
+                let new_shader = this.props.shader;
+                new_shader.prev_error_data = new_shader.error_data;
+                new_shader.decoration_ids = ids;
+                this.props.onChangeLift(new_shader);
+
+            } else if (curr !== null && typeof curr !== 'undefined') {
+                if (prev !== null && typeof prev !== 'undefined') {
+
+                    // If both the new- and prev. props are not null:
+
+                    if (curr.id !== prev.id) {
+                        // If the error id has changed, update the decorations from an updated error message.
+
+                        let errors: ShaderErrorMessage[] = parseShaderErrorText(curr.text);
+                        let ids = this.state.editor.deltaDecorations(
+                            this.props.shader.decoration_ids,
+                            errorsToDecorations(errors, this.state.monaco),
+                        );
+
+                        let new_shader = this.props.shader;
+                        new_shader.prev_error_data = new_shader.error_data;
+                        new_shader.decoration_ids = ids;
+                        this.props.onChangeLift(new_shader);
+
+                    } else if (this.props.shader.source_idx !== prevProps.shader.source_idx) {
+                        // if the selected shader was changed,
+                        // add decorations, no need to save new ids.
+
+                        let errors: ShaderErrorMessage[] = parseShaderErrorText(curr.text);
+                        this.state.editor.deltaDecorations(
+                            this.props.shader.decoration_ids,
+                            errorsToDecorations(errors, this.state.monaco),
+                        );
+
+                    }
+                }
+            }
+        }
     }
 
     render() {
         const options = {
             language: "glsl",
+            theme: "glsl-base16-default-dark",
             lineNumbers: "on",
             roundedSelection: false,
             scrollBeyondLastLine: true,
+            fontFamily: "Iosevka Term Web",
+            fontSize: "13px",
         };
+
+        let is_selected = this.props.editorIdx === this.props.shaderEditors.current_editor_idx;
 
         return (
             <div>
-              <PlazmaMonacoToolbar
-                editor={this.state.editor}
-                undoDisabled={this.state.undoDisabled}
-                redoDisabled={this.state.redoDisabled}
-              />
-
               <MonacoEditor
-                //width="800"
-                height="600"
+                height={this.props.editorHeight}
                 language="glsl"
-                theme="vs-dark"
-                value={this.props.editorContent}
+                theme="glsl-base16-default-dark"
+                value={this.props.shader.content}
                 options={options}
                 onChange={this.onChangeLocal}
                 editorWillMount={this.editorWillMount}
                 editorDidMount={this.editorDidMount}
               />
-            </div>
+
+              <ShaderStatusBar
+                  shader={this.props.shader}
+                  isSelected={is_selected}
+              />
+          </div>
+        );
+    }
+}
+
+function errorsToDecorations(errors, monaco) {
+    let a = errors.map((i) => {
+        return {
+            range: new monaco.Range(i.line_number,1, i.line_number,1),
+            options: {
+                isWholeLine: true,
+                className: 'editor_error_line',
+                linesDecorationsClassName: 'editor_error_margin',
+            },
+        };
+    });
+    return a;
+}
+
+type SSB_Props = {
+    shader: Shader,
+    isSelected: bool,
+};
+
+export class ShaderStatusBar extends React.Component<SSB_Props> {
+    render() {
+
+        let class_name = ["shader-name-level"];
+        if (this.props.isSelected) {
+            class_name.push("is-selected");
+        }
+        let err = this.props.shader.error_data;
+        if (err !== null && typeof err !== 'undefined') {
+            if (err.text.length > 0) {
+                class_name.push("has-error");
+            }
+        }
+
+        return (
+            <Level className={class_name.join(" ")}>
+                <LevelLeft>
+                    <LevelItem>
+                        {this.props.shader.file_path}
+                    </LevelItem>
+                </LevelLeft>
+            </Level>
         );
     }
 }

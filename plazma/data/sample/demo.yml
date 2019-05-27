@@ -32,7 +32,7 @@ context:
 
   polygon_scenes:
 
-    - name: "cubes and suzanne"
+    - name: "cubes and dragon"
       scene_objects:
 
         # When drawing a polygon mesh, uniform locations 0, 1, 2, 3 are
@@ -57,13 +57,13 @@ context:
             - Vec3: [ 7, "Light_Pos_X", "Light_Pos_Y", "Light_Pos_Z" ]
           binding_to_buffers: []
 
-        - name: "suzanne"
+        - name: "dragon"
           position:
-            Fixed: [ 4.0, 0.0, 0.0 ]
+            Fixed: [ 4.0, -1.0, 0.0 ]
           euler_rotation:
-            Fixed: [ 0.0, -45.0, 0.0 ]
+            Fixed: [ 0.0, -12.0, 0.0 ]
           scale:
-            Fixed: 1.0
+            Fixed: 0.2
           layout_to_vars:
             - Float: [ 4, "Time" ]
             - Vec2: [ 5, "Window_Width", "Window_Height" ]
@@ -144,11 +144,11 @@ context:
         frag_src_path: "./data/cube_one.frag"
         obj_path: ""
 
-      - name: "suzanne"
+      - name: "dragon"
         model_type: Obj
         vert_src_path: "./data/scene_object.vert"
-        frag_src_path: "./data/suzanne.frag"
-        obj_path: "./data/suzanne.obj"
+        frag_src_path: "./data/dragon.frag"
+        obj_path: "./data/dragon_10k.obj"
 
       #- name: "light"
       #  model_type: Cube
@@ -204,7 +204,7 @@ timeline:
             - Draw_Quad_Scene: "circle"
             - Target_Buffer: "RESULT_IMAGE"
             - Clear: [ 0, 0, 0, 0 ]
-            - Draw_Poly_Scene: "cubes and suzanne"
+            - Draw_Poly_Scene: "cubes and dragon"
 
         - start: 100.0
           end: 200.0

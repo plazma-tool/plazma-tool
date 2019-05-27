@@ -1,0 +1,47 @@
+[
+  {
+    "label": "bvec2"
+  },
+  {
+    "label": "bvec3"
+  },
+  {
+    "label": "bvec4"
+  },
+  {
+    "label": "dvec2"
+  },
+  {
+    "label": "dvec3"
+  },
+  {
+    "label": "dvec4"
+  },
+  {
+    "label": "ivec2"
+  },
+  {
+    "label": "ivec3"
+  },
+  {
+    "label": "ivec4"
+  },
+  {
+    "label": "uvec2"
+  },
+  {
+    "label": "uvec3"
+  },
+  {
+    "label": "uvec4"
+  },
+  {
+    "label": "vec2"
+  },
+  {
+    "label": "vec3"
+  },
+  {
+    "label": "vec4"
+  }
+]

@@ -1,0 +1,40 @@
+[
+  {
+    "label": "for(;;)",
+    "detail": "for(;;) {}",
+    "insertText": "for (${1:init}; ${2:cond}; ${3:step}) {\n  ${4:body}\n}",
+    "documentation": {
+      "value": "For Loop"
+    },
+    "kind": 25,
+    "insertTextRules": 4
+  },
+  {
+    "label": "while()",
+    "detail": "while() {}",
+    "insertText": "while (${1:cond}) {\n  ${2:body}\n}",
+    "documentation": {
+      "value": "While Loop"
+    },
+    "kind": 25,
+    "insertTextRules": 4
+  },
+  {
+    "label": "dowhile",
+    "detail": "do {} while()",
+    "insertText": "do {\n  ${2:body}\n} while (${1:cond});",
+    "documentation": "While Loop",
+    "kind": 25,
+    "insertTextRules": 4
+  },
+  {
+    "label": "ifelse",
+    "detail": "if () {} else {}",
+    "insertText": "if (${1:condition}) {\n  ${2:true}\n} else {\n  ${3:false}\n}",
+    "documentation": {
+      "value": "If-Else Statement"
+    },
+    "kind": 25,
+    "insertTextRules": 4
+  }
+]

@@ -1,10 +1,12 @@
 use std::{fmt, error};
 use std::str;
 use std::error::Error;
+use std::string::FromUtf8Error;
 use intro_runtime::error::RuntimeError;
 
 pub enum ToolError {
     Runtime(RuntimeError, String),
+    FromUtf8(FromUtf8Error),
     AudioTrackDoesntExists(String),
     NameAlreadyExists,
     NoQuad,
@@ -66,6 +68,7 @@ impl fmt::Debug for ToolError {
                 CantOpenImage => "Can't open image",
             },
 
+            ToolError::FromUtf8(_) => "Error converting byte buffer to utf8",
             ToolError::AudioTrackDoesntExists(_) => "Audio track doesn't exists",
             ToolError::NoQuad => "No Quad",
             ToolError::UiError(_) => "UI Error",
@@ -94,6 +97,7 @@ impl error::Error for ToolError {
     fn description(&self) -> &str {
         match *self {
             ToolError::Runtime(_, ref s) => s.trim(),
+            ToolError::FromUtf8(_) => "Error converting byte buffer to utf8",
             ToolError::AudioTrackDoesntExists(ref s) =>  s.trim(),
             ToolError::NoQuad => "No Quad",
             ToolError::UiError(ref s) => s.trim(),

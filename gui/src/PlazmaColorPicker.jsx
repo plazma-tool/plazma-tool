@@ -3,22 +3,22 @@ import React from 'react';
 import { Columns, Column  } from 'bloomer';
 import { SketchPicker } from 'react-color';
 import { numToStrPad, getVec3ValuesFromCode } from './Helpers';
-import type { InputEvent } from './Helpers';
+import type { InputEvent, Shader } from './Helpers';
 
 type CPC_Props = {
-    code: string,
-    onChangeLift: (newCodeValue: string) => void,
+    shader: Shader,
+    onChangeLift: (newShader: Shader) => void,
 };
 
 export class ColorPickerColumns extends React.Component<CPC_Props> {
     render() {
-        let values = getColorValuesFromCode(this.props.code);
+        let values = getColorValuesFromCode(this.props.shader.content);
         let pickers = values.map((color, idx) => {
             return (
                 <PlazmaColorPicker
                   key={color.name + idx}
-                  code={this.props.code}
                   color={color}
+                  shader={this.props.shader}
                   onChangeLift={this.props.onChangeLift}
                 />
             );
@@ -36,26 +36,35 @@ export class ColorPickerColumns extends React.Component<CPC_Props> {
 type RgbaValue = { r: number, g: number, b: number, a: number };
 type RgbValue = { r: number, g: number, b: number };
 
-type Color = { name: string, rgba: RgbaValue };
-type SketchPickerColor = { name: string, rgb: { r: number, g: number, b: number } };
+type Color = { name: string, line_number: number, rgba: RgbaValue };
+type SketchPickerColor = { name: string, line_number: number, rgb: { r: number, g: number, b: number } };
 
 type PCP_Props = {
-    code: string,
-    onChangeLift: (newCodeValue: string) => void,
+    shader: Shader,
+    onChangeLift: (newShader: Shader) => void,
     color: Color,
 };
 
 class PlazmaColorPicker extends React.Component<PCP_Props> {
 
     onChangeLocal = (newColorValue: SketchPickerColor) => {
-        let newCodeValue = replaceColorValueInCode(newColorValue, this.props.code);
-        this.props.onChangeLift(newCodeValue);
+        let newCodeValue = replaceColorValueInCode(newColorValue, this.props.shader.content);
+        let new_shader = {
+            content: newCodeValue,
+            // copy props
+            source_idx: this.props.shader.source_idx,
+            line_number: this.props.shader.line_number,
+            error_data: this.props.shader.error_data,
+            decorations_delta: this.props.shader.decorations_delta,
+        };
+        this.props.onChangeLift(new_shader);
     }
 
     onChangeColor = (color: SketchPickerColor, event: InputEvent) => {
         let c: Color = this.props.color;
         let newColorValue: SketchPickerColor = {
             name: c.name,
+            line_number: c.line_number,
             rgb: color.rgb,
         };
         this.onChangeLocal(newColorValue);
@@ -65,7 +74,7 @@ class PlazmaColorPicker extends React.Component<PCP_Props> {
         let c = this.props.color;
         return (
             <div className="is-one-quarter">
-              <span>{c.name}</span>
+              <span>{c.name} L{c.line_number + 1}</span>
               <SketchPicker
                 color={c.rgba}
                 onChange={this.onChangeColor}
@@ -84,17 +93,20 @@ function rgbToVec3(col: RgbValue | RgbaValue): string {
 
 function replaceColorValueInCode(newColorValue: SketchPickerColor, code: string): string {
     const c = newColorValue;
-    let re_color = new RegExp('(vec3 +' + c.name + ' *= *)vec3\\([^\\)]+\\)(; *\\/\\/ *!! color *$)', 'gm');
-    let newCodeValue = code.replace(re_color, '$1' + rgbToVec3(c.rgb) + '$2');
+    let re_color = new RegExp('(vec3 +' + c.name + ' *= *)vec3\\([^\\)]+\\)(; *\\/\\/ +ui_color *$)', 'gm');
+    let lines = code.split("\n");
+    lines[c.line_number] = lines[c.line_number].replace(re_color, '$1' + rgbToVec3(c.rgb) + '$2');
+    let newCodeValue = lines.join("\n");
     return newCodeValue;
 }
 
 function getColorValuesFromCode(code: string): Color[] {
-    let re_color = /vec3 +([^ ]+) *= *vec3\(([^)]+)\); *\/\/ *!! color *$/gm;
+    let re_color = /vec3 +([^ ]+) *= *vec3\(([^)]+)\); *\/\/ +ui_color *$/gm;
     let v = getVec3ValuesFromCode(code, re_color);
     let values = v.map((val) => {
         let c: Color = {
             name: val.name,
+            line_number: val.line_number,
             rgba: {
                 r: Math.floor(val.vec[0] * 255),
                 g: Math.floor(val.vec[1] * 255),

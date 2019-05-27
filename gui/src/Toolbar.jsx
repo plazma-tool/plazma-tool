@@ -6,6 +6,7 @@ import logo from './idea.svg';
 import { Input, Title, Box, Modal, ModalBackground, ModalContent, ModalClose, Delete, Field, Control, Button, Navbar, NavbarBrand, NavbarItem, Icon, NavbarBurger, NavbarMenu,
     NavbarStart, NavbarEnd, NavbarLink, NavbarDropdown, NavbarDivider } from 'bloomer';
 
+import { EditorsLayout } from './Helpers';
 import type { InputEvent } from './Helpers';
 
 type OPFM_Props = {
@@ -80,10 +81,12 @@ class OpenPreview extends React.Component<{ isOpen: bool, onClick: () => void, }
 }
 
 type T_Props = {
+    currentLayout: number,
     onClick_Library: () => void,
     onClick_Preview: () => void,
     onClick_Exit: () => void,
     previewIsOpen: bool,
+    onClick_Layout: (layout_index: number) => void,
 };
 
 type T_State= {
@@ -167,6 +170,11 @@ export class Toolbar extends React.Component<T_Props, T_State> {
                             </NavbarDropdown>
                         </NavbarItem>
 
+                        <LayoutNavbarItem
+                            currentLayout={this.props.currentLayout}
+                            onClickLift={this.props.onClick_Layout}
+                        />
+
                     </NavbarStart>
 
                     <NavbarEnd>
@@ -202,6 +210,50 @@ export class Toolbar extends React.Component<T_Props, T_State> {
                     onClick_Close={() => this.setState({ opfm_is_active: false })}
                 />
             </Navbar>
+        );
+    }
+}
+
+
+type LNI_Props = {
+    currentLayout: number,
+    onClickLift: (layout_index: number) => void,
+};
+
+export class LayoutNavbarItem extends React.Component<LNI_Props> {
+
+    render() {
+
+        let items = [
+            EditorsLayout.OneMax,
+            EditorsLayout.TwoVertical,
+            EditorsLayout.TwoHorizontal,
+            EditorsLayout.ThreeMainLeft,
+            EditorsLayout.ThreeMainRight,
+            EditorsLayout.ThreeMainTop,
+            EditorsLayout.ThreeMainBottom,
+            EditorsLayout.FourEven,
+        ].map((i) => {
+            return (
+                <NavbarItem
+                    key={'layout_' + i}
+                    onClick={() => this.props.onClickLift(i)}
+                >
+                    <Icon className="fa fa-cloud-upload-alt" />
+                    <span>{i}</span>
+                </NavbarItem>
+            );
+        });
+
+        return (
+            <NavbarItem hasDropdown isHoverable>
+                <NavbarLink>
+                    <Icon className="fa fa-save" />
+                </NavbarLink>
+                <NavbarDropdown>
+                    {items}
+                </NavbarDropdown>
+            </NavbarItem>
         );
     }
 }

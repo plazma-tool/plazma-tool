@@ -30,34 +30,40 @@ export class DmoShadersPanel extends React.Component<DSP_Props> {
     }
 
     render() {
-        let pathLinks = this.props.shaders.map((shader: Shader, shader_idx: number) => {
-            let is_active = false;
-            let label_color = "";
-            let icon_color = "";
+        let pathLinks = this.props.shaders
+        // map first to preserve the index order
+            .map((shader: Shader, shader_idx: number) => {
+                let is_active = false;
+                let label_color = "";
+                let icon_color = "";
 
-            if (shader.error_data !== null && typeof shader.error_data !== 'undefined') {
-                label_color = "error";
-                icon_color = "error";
-            }
+                if (shader.error_data !== null && typeof shader.error_data !== 'undefined') {
+                    label_color = "error";
+                    icon_color = "error";
+                }
 
-            if (shader_idx === this.props.currentIndex) {
-                is_active = true;
-                label_color = "primary";
-            }
+                if (shader_idx === this.props.currentIndex) {
+                    is_active = true;
+                    label_color = "primary";
+                }
 
-            return (
-                <PanelBlock
-                    key={shader.file_path + icon_color}
-                    isActive={is_active}
-                    hasTextColor={label_color}
-                    onClick={() => this.onChangeLocal(shader_idx)}
-                    style={{ border: "none" }}
-                >
-                    <PanelIcon className="fa fa-code" hasTextColor={icon_color} />
-                    {shader.file_path}
-                </PanelBlock>
-            );
-        });
+                return ({
+                    file_path: shader.file_path,
+                    item: <PanelBlock
+                        key={shader.file_path + label_color + icon_color}
+                        isActive={is_active}
+                        hasTextColor={label_color}
+                        onClick={() => this.onChangeLocal(shader_idx)}
+                        style={{ border: "none" }}
+                    >
+                        <PanelIcon className="fa fa-code" hasTextColor={icon_color} />
+                        {shader.file_path}
+                    </PanelBlock>
+                });
+            })
+        // filter out the builtin shaders
+            .filter((i) => !i.file_path.startsWith('data_builtin_'))
+            .map((i) => i.item);
 
         let color = "";
         if (this.props.currentPage === CurrentPage.Shaders) {

@@ -47,7 +47,9 @@ export const ThemeBase16DefaultDark = {
         { token: 'number.float', foreground: c['base09'] },
         { token: 'number.hex', foreground: c['base09'] },
 
-        { token: 'comment', foreground: c['base03'] },
+        // green color for comments, because people like to write tutorials in the shaders
+        { token: 'comment', foreground: c['base0B'] },
+        // gray lines for widget syntax
         { token: 'comment-ui-widget', foreground: c['base03'], fontStyle: 'italic underline' },
 
         { token: 'glsl-keyword', foreground: c['base0E'] },

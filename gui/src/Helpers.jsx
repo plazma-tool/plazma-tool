@@ -2,15 +2,10 @@
 
 // No index 0, to avoid == problems.
 export const CurrentPage = {
-    Settings: 1,
+    Library: 1,
     Shaders: 2,
-    Framebuffers: 3,
-    QuadScenes: 4,
-    PolygonScenes: 5,
-    Models: 6,
-    Timeline: 7,
-    SyncTracks: 8,
-    Library: 9,
+    Settings: 3,
+    DmoData: 4,
 };
 
 export const EditorsLayout = {

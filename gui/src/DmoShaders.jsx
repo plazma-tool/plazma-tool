@@ -1,8 +1,8 @@
 // @flow
 import React from 'react';
 import { Panel, PanelBlock, PanelIcon, PanelHeading, Columns, Column, Level, LevelItem, LevelLeft } from 'bloomer';
-import { CurrentPage, EditorsLayout, parseShaderErrorText, pathBasename } from './Helpers';
-import type { DmoData, Shader, ShaderEditors, ShaderErrorMessage } from './Helpers';
+import { CurrentPage, EditorsLayout, parseShaderErrorText } from './Helpers';
+import type { Shader, ShaderEditors, ShaderErrorMessage } from './Helpers';
 
 import MonacoEditor from 'react-monaco-editor';
 import { ColorPickerColumns } from './PlazmaColorPicker';

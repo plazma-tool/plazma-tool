@@ -9,14 +9,9 @@ import { TimeScrub } from './TimeScrub';
 
 import { SettingsPage } from './DmoSettings';
 import { ShadersPage } from './DmoShaders';
-import { FramebuffersPage } from './DmoFramebuffers';
-import { QuadScenesPage } from './DmoQuadScenes';
-import { PolygonScenesPage } from './DmoPolygonScenes';
-import { ModelsPage } from './DmoModels';
-import { TimelinePage } from './DmoTimeline';
-import { SyncTracksPage } from './DmoSyncTracks';
-
+import { DmoDataPage } from './DmoData';
 import { LibraryPage } from './Library';
+
 import { CurrentPage, EditorsLayout } from './Helpers';
 import type { ServerMsg, DmoData, Shader, ShaderEditors } from './Helpers';
 
@@ -62,10 +57,10 @@ class App extends Component<{}, AppState> {
                 full_height: 800,
                 current_editor_idx: 0,
                 editors: [
-                    { source_idx: 0 },
-                    { source_idx: 1 },
                     { source_idx: 2 },
                     { source_idx: 3 },
+                    { source_idx: 4 },
+                    { source_idx: 5 },
                 ],
             },
             current_page: CurrentPage.Shaders,
@@ -334,37 +329,12 @@ class App extends Component<{}, AppState> {
         console.log("TODO: implement onChange_ShadersPage(msg)");
     }
 
-    onChange_FramebuffersPage = (msg: ServerMsg) =>
-    {
-        console.log("TODO: implement onChange_FramebuffersPage(msg)");
-    }
-
-    onChange_QuadScenesPage = (msg: ServerMsg) =>
-    {
-        console.log("TODO: implement onChange_QuadScenesPage(msg)");
-    }
-
-    onChange_PolygonScenesPage = (msg: ServerMsg) =>
-    {
-        console.log("TODO: implement onChange_PolygonScenesPage(msg)");
-    }
-
-    onChange_ModelsPage = (msg: ServerMsg) =>
-    {
-        console.log("TODO: implement onChange_ModelsPage(msg)");
-    }
-
-    onChange_TimelinePage = (msg: ServerMsg) =>
-    {
-        console.log("TODO: implement onChange_TimelinePage(msg)");
-    }
-
-    onChange_SyncTracksPage = (msg: ServerMsg) =>
-    {
-        console.log("TODO: implement onChange_SyncTracksPage(msg)");
-    }
-
     onChange_LibraryPage = (msg: ServerMsg) =>
+    {
+        console.log("TODO: implement onChange_LibraryPage(msg)");
+    }
+
+    onChange_DmoDataPage = (msg: ServerMsg) =>
     {
         console.log("TODO: implement onChange_LibraryPage(msg)");
     }
@@ -495,11 +465,11 @@ class App extends Component<{}, AppState> {
 
             switch (this.state.current_page) {
 
-                case CurrentPage.Settings:
+                case CurrentPage.Library:
                     page =
-                        <SettingsPage
+                        <LibraryPage
                             dmoData={this.state.dmo_data}
-                            onChangeLift={this.onChange_SettingsPage}
+                            onChangeLift={this.onChange_LibraryPage}
                         />;
                     break;
 
@@ -519,59 +489,19 @@ class App extends Component<{}, AppState> {
                         />
                         break;
 
-                case CurrentPage.Framebuffers:
+                case CurrentPage.Settings:
                     page =
-                        <FramebuffersPage
+                        <SettingsPage
                             dmoData={this.state.dmo_data}
-                            onChangeLift={this.onChange_FramebuffersPage}
+                            onChangeLift={this.onChange_SettingsPage}
                         />;
                     break;
 
-                case CurrentPage.QuadScenes:
+                case CurrentPage.DmoData:
                     page =
-                        <QuadScenesPage
+                        <DmoDataPage
                             dmoData={this.state.dmo_data}
-                            onChangeLift={this.onChange_QuadScenesPage}
-                        />;
-                    break;
-
-                case CurrentPage.PolygonScenes:
-                    page =
-                        <PolygonScenesPage
-                            dmoData={this.state.dmo_data}
-                            onChangeLift={this.onChange_PolygonScenesPage}
-                        />;
-                    break;
-
-                case CurrentPage.Models:
-                    page =
-                        <ModelsPage
-                            dmoData={this.state.dmo_data}
-                            onChangeLift={this.onChange_ModelsPage}
-                        />;
-                    break;
-
-                case CurrentPage.Timeline:
-                    page =
-                        <TimelinePage
-                            dmoData={this.state.dmo_data}
-                            onChangeLift={this.onChange_TimelinePage}
-                        />;
-                    break;
-
-                case CurrentPage.SyncTracks:
-                    page =
-                        <SyncTracksPage
-                            dmoData={this.state.dmo_data}
-                            onChangeLift={this.onChange_SyncTracksPage}
-                        />;
-                    break;
-
-                case CurrentPage.Library:
-                    page =
-                        <LibraryPage
-                            dmoData={this.state.dmo_data}
-                            onChangeLift={this.onChange_LibraryPage}
+                            onChangeLift={this.onChange_DmoDataPage}
                         />;
                     break;
 
@@ -640,14 +570,9 @@ class App extends Component<{}, AppState> {
                             currentPage={this.state.current_page}
                             currentShaderIndex={this.currentShaderIdx()}
 
-                            onClick_DmoSettingsMenu={() => this.setState({ current_page: CurrentPage.Settings })}
-                            onClick_DmoFramebuffersMenu={() => this.setState({ current_page: CurrentPage.Framebuffers })}
-                            onClick_DmoQuadScenesMenu={() => this.setState({ current_page: CurrentPage.QuadScenes })}
-                            onClick_DmoPolygonScenesMenu={() => this.setState({ current_page: CurrentPage.PolygonScenes })}
                             onClick_DmoShadersMenu={() => this.setState({ current_page: CurrentPage.Shaders })}
-                            onClick_DmoModelsMenu={() => this.setState({ current_page: CurrentPage.Models })}
-                            onClick_DmoTimelineMenu={() => this.setState({ current_page: CurrentPage.Timeline })}
-                            onClick_DmoSyncTracksMenu={() => this.setState({ current_page: CurrentPage.SyncTracks })}
+                            onClick_DmoSettingsMenu={() => this.setState({ current_page: CurrentPage.Settings })}
+                            onClick_DmoDataMenu={() => this.setState({ current_page: CurrentPage.DmoData })}
 
                             onChange_DmoShadersMenu={this.onDmoShadersMenuChange}
                         />

@@ -51,6 +51,10 @@ $editor-bg: #181818;
 $error-red-full: hsl(17.0, 100%, 40%);
 $error-red-dark: hsl(17.0, 100%, 5%);
 
+.editors-column {
+  background-color: $editor-bg;
+}
+
 #root .monaco-editor .minimap-slider,// not overriding the minimap, good as is
 #root .monaco-editor,
 #root .monaco-editor-background,

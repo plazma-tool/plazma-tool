@@ -2,6 +2,7 @@
 import React, { Component } from 'react';
 //import * as ReactDOM from 'react-dom';
 import { Columns, Column } from 'bloomer';
+import Hotkeys from 'react-hot-keys';
 
 import { Toolbar } from './Toolbar';
 import { Sidebar } from './Sidebar';
@@ -13,7 +14,7 @@ import { DmoDataPage } from './DmoData';
 import { LibraryPage } from './Library';
 
 import { CurrentPage, EditorsLayout } from './Helpers';
-import type { ServerMsg, DmoData, Shader, ShaderEditors } from './Helpers';
+import type { ServerMsg, DmoData, Shader, ShaderEditors, ViewState } from './Helpers';
 
 const PLAZMA_SERVER_PORT = 8080;
 
@@ -29,6 +30,7 @@ type AppState = {
     dmo_data: ?DmoData,
     shaders: Shader[],
     shader_editors: ShaderEditors,
+    view: ViewState,
     current_page: number,
     current_time: number,
     preview_is_open: bool,
@@ -62,6 +64,12 @@ class App extends Component<{}, AppState> {
                     { source_idx: 4 },
                     { source_idx: 5 },
                 ],
+            },
+            view: {
+                time_scrub: true,
+                sidebar: true,
+                toolbar: true,
+                editors_only: false,
             },
             current_page: CurrentPage.Shaders,
             current_time: 0.0,
@@ -379,6 +387,10 @@ class App extends Component<{}, AppState> {
         this.setState({ shaders: s });
     }
 
+    onEditorKey = (key: string) => {
+        this.onKeyUp(key, {}, { key: key });
+    }
+
     onColorPickerChange = (newShader: Shader) => {
         this.sendUpdatedContent(newShader);
     }
@@ -467,6 +479,37 @@ class App extends Component<{}, AppState> {
         this.sendMsgOnSocket(msg);
     }
 
+    onKeyUp = (keyName, e, handle) => {
+        let view = this.state.view;
+        switch (handle.key) {
+
+            case 'f8':
+                view.time_scrub = !view.time_scrub;
+                break;
+
+            case 'f9':
+                view.sidebar = !view.sidebar;
+                break;
+
+            case 'f10':
+                view.toolbar = !view.toolbar;
+                break;
+
+            case 'f11':
+                view.editors_only = !view.editors_only;
+                break;
+
+            default:
+                break;
+        }
+
+        this.setState({ view: view });
+    }
+
+    onKeyDown = (keyName, e, handle) => {
+        //console.log("onKeyDown", keyName, e, handle)
+    }
+
     render()
     {
         let page;
@@ -494,6 +537,7 @@ class App extends Component<{}, AppState> {
                             onChange_PlazmaMonaco={this.onEditorChange}
                             onFocus_PlazmaMonaco={this.onEditorFocus}
                             onBlur_PlazmaMonaco={this.onEditorBlur}
+                            onKey_PlazmaMonaco={this.onEditorKey}
                             onChange_ColorPickerColumns={this.onColorPickerChange}
                             onChange_PositionSlidersColumns={this.onPositionSlidersChange}
                             onChange_SliderColumns={this.onColorPickerChange}
@@ -529,55 +573,69 @@ class App extends Component<{}, AppState> {
         }
 
         return (
-            <div className="App">
+            <Hotkeys
+                keyName="f8,f9,f10,f11"
+                onKeyDown={this.onKeyDown}
+                onKeyUp={this.onKeyUp}
+            >
+                <div className="App">
 
-                <Toolbar
-                    onClick_Library={() => this.setState({ current_page: CurrentPage.Library })}
+                    <Toolbar
+                        isHidden={!this.state.view.toolbar || this.state.view.editors_only}
 
-                    onClick_Preview={() => {
-                        if (this.state.preview_is_open) {
+                        view={this.state.view}
 
-                            console.log("Send to server: StopPreview");
+                        onClick_Library={() => this.setState({ current_page: CurrentPage.Library })}
+
+                        onClick_Preview={() => {
+                            if (this.state.preview_is_open) {
+
+                                console.log("Send to server: StopPreview");
+                                let m: ServerMsg = {
+                                    data_type: 'StopPreview',
+                                    data: '',
+                                };
+                                this.sendMsgOnSocket(m);
+
+                            } else {
+
+                                console.log("Send to server: StartPreview");
+                                let m: ServerMsg = {
+                                    data_type: 'StartPreview',
+                                    data: '',
+                                };
+                                this.sendMsgOnSocket(m);
+
+                            }
+                        } }
+
+                        onClick_Exit={() => {
+                            console.log("Send to server: ExitApp");
                             let m: ServerMsg = {
-                                data_type: 'StopPreview',
+                                data_type: 'ExitApp',
                                 data: '',
                             };
                             this.sendMsgOnSocket(m);
+                        }}
 
-                        } else {
+                        previewIsOpen={this.state.preview_is_open}
 
-                            console.log("Send to server: StartPreview");
-                            let m: ServerMsg = {
-                                data_type: 'StartPreview',
-                                data: '',
-                            };
-                            this.sendMsgOnSocket(m);
+                        currentLayout={this.state.shader_editors.layout}
 
-                        }
-                    } }
+                        onClick_Layout={(layout_index: number) => {
+                            let e = this.state.shader_editors;
+                            e.layout = layout_index;
+                            this.setState({ shader_editors: e });
+                        }}
 
-                    onClick_Exit={() => {
-                        console.log("Send to server: ExitApp");
-                        let m: ServerMsg = {
-                            data_type: 'ExitApp',
-                            data: '',
-                        };
-                        this.sendMsgOnSocket(m);
-                    }}
+                        onClick_View={(view: ViewState) => this.setState({ view: view })}
+                    />
 
-                    previewIsOpen={this.state.preview_is_open}
-
-                    currentLayout={this.state.shader_editors.layout}
-
-                    onClick_Layout={(layout_index: number) => {
-                        let e = this.state.shader_editors;
-                        e.layout = layout_index;
-                        this.setState({ shader_editors: e });
-                    }}
-                />
-
-                <Columns>
-                    <Column isSize={{default: 2}}>
+                <Columns isGapless={true}>
+                    <Column
+                        isSize={{default: 2}}
+                        isHidden={!this.state.view.sidebar || this.state.view.editors_only}
+                    >
                         <Sidebar
                             dmoData={this.state.dmo_data}
                             shaders={this.state.shaders}
@@ -591,18 +649,19 @@ class App extends Component<{}, AppState> {
                             onChange_DmoShadersMenu={this.onDmoShadersMenuChange}
                         />
                     </Column>
-                    <Column>
+                    <Column className="editors-column">
                         {page}
                     </Column>
                 </Columns>
 
                 <TimeScrub
+                    isHidden={!this.state.view.time_scrub || this.state.view.editors_only}
                     dmoData={this.state.dmo_data}
                     currentTime={this.state.current_time}
                     onChangeLift={this.onTimeScrubChange}
                 />
-
             </div>
+        </Hotkeys>
         );
     }
 }

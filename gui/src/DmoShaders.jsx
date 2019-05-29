@@ -85,6 +85,7 @@ type SP_Props = {
     onChange_PlazmaMonaco: (newShader: Shader) => void,
     onFocus_PlazmaMonaco: (editorIdx: number) => void,
     onBlur_PlazmaMonaco: (editorIdx: number, viewState: {}) => void,
+    onKey_PlazmaMonaco: (key: string) => void,
     onChange_ColorPickerColumns: (newShader: Shader) => void,
     onChange_PositionSlidersColumns: (newShader: Shader) => void,
     onChange_SliderColumns: (newShader: Shader) => void,
@@ -110,6 +111,7 @@ export class ShadersPage extends React.Component<SP_Props> {
                     onChangeLift={this.props.onChange_PlazmaMonaco}
                     onFocusLift={this.props.onFocus_PlazmaMonaco}
                     onBlurLift={this.props.onBlur_PlazmaMonaco}
+                    onKeyLift={this.props.onKey_PlazmaMonaco}
                     monacoDidInit={this.props.monacoDidInit}
                     onMonacoDidInit={this.props.onMonacoDidInit}
                 />
@@ -248,6 +250,7 @@ type PM_Props = {
     onChangeLift: (newShader: Shader) => void,
     onBlurLift: (editorIdx: number, viewState: {}) => void,
     onFocusLift: (editorIdx: number) => void,
+    onKeyLift: (key: string) => void,
     monacoDidInit: bool,
     onMonacoDidInit: () => void,
 };
@@ -313,6 +316,14 @@ class PlazmaMonaco extends React.Component<PM_Props, PM_State> {
         if (this.props.shaderEditors.current_editor_idx === this.props.editorIdx) {
             editor.focus();
         }
+
+        let bindings = [];
+        bindings.push(editor.addCommand( monaco.KeyCode.F8, () => { this.props.onKeyLift('f8'); }));
+        bindings.push(editor.addCommand( monaco.KeyCode.F9, () => { this.props.onKeyLift('f9'); }));
+        bindings.push(editor.addCommand( monaco.KeyCode.F10, () => { this.props.onKeyLift('f10'); }));
+        bindings.push(editor.addCommand( monaco.KeyCode.F11, () => { this.props.onKeyLift('f11'); }));
+
+        // When cleaning up remember to call myBinding.dispose()
 
         this.setState({
             editor: editor,

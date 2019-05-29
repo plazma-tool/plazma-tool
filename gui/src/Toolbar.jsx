@@ -17,7 +17,7 @@ import { Input, Title, Box, Modal, ModalBackground, ModalContent, ModalClose, De
     NavbarEnd, NavbarLink, NavbarDropdown, NavbarDivider } from 'bloomer';
 
 import { EditorsLayout } from './Helpers';
-import type { InputEvent } from './Helpers';
+import type { InputEvent, ViewState } from './Helpers';
 
 type OPFM_Props = {
     isActive: bool,
@@ -84,19 +84,25 @@ class OpenPreview extends React.Component<{ isOpen: bool, onClick: () => void, }
 
         return (
             <NavbarItem onClick={this.props.onClick}>
-                <Button isColor={color} >{text}</Button>
+                <Button isColor={color} >
+                    <Icon className="fas fa-window-maximize" />
+                    <span>{text}</span>
+                </Button>
             </NavbarItem>
         );
     }
 }
 
 type T_Props = {
+    isHidden: bool,
     currentLayout: number,
     onClick_Library: () => void,
     onClick_Preview: () => void,
     onClick_Exit: () => void,
     previewIsOpen: bool,
+    view: ViewState,
     onClick_Layout: (layout_index: number) => void,
+    onClick_View: (view: ViewState) => void,
 };
 
 type T_State= {
@@ -117,10 +123,40 @@ export class Toolbar extends React.Component<T_Props, T_State> {
 
     onClickNav = () => {}
 
-    render()
-    {
+    render() {
+        if (this.props.isHidden) {
+            return (<div style={{display: 'none'}}></div>);
+        }
+
+        let view_menus = [
+            { name: 'time_scrub',   label: "Show Time Scrub (F8)" },
+            { name: 'sidebar',      label: "Show Sidebar (F9)" },
+            { name: 'toolbar',      label: "Show Toolbar (F10)" },
+            { name: 'editors_only', label: "Show Editors Only (F11)" },
+        ];
+
+        let view_items = view_menus.map((i) => {
+            let icon = "";
+            if (this.props.view[i.name]) {
+                icon = <Icon className="fas fa-check-square" />;
+            } else {
+                icon = <Icon className="far fa-square" />;
+            }
+            let value = this.props.view[i.name];
+            return (
+                <NavbarItem key={'view_'+i.name+String(value)} onClick={() => {
+                    let view = this.props.view;
+                    view[i.name] = !view[i.name];
+                    this.props.onClick_View(view);
+                }}>
+                {icon}
+                <span>{i.label}</span>
+            </NavbarItem>
+            );
+        });
+
         return (
-            <Navbar style={{ marginBottom: '10px' }}>
+            <Navbar>
 
                 <NavbarBrand>
                     <NavbarItem>
@@ -138,28 +174,30 @@ export class Toolbar extends React.Component<T_Props, T_State> {
                 <NavbarMenu isActive={this.state.isActive} onClick={this.onClickNav}>
 
                     <NavbarStart>
+
                         <NavbarItem>
-                            <Field isGrouped>
-                                <Control>
-                                    <Button onClick={this.props.onClick_Library}>
-                                        <Icon className="fa fa-th-list" />
-                                        {/* <span>Library</span> */}
-                                    </Button>
-                                </Control>
-                            </Field>
+                            <Button onClick={this.props.onClick_Library}>
+                                <Icon className="fa fa-th-list" />
+                                <span>Library</span>
+                            </Button>
                         </NavbarItem>
 
                         <NavbarItem hasDropdown isHoverable>
                             <NavbarLink>
-                                <Icon className="fa fa-folder-open" />
+                                <Icon className="fa fa-folder" />
+                                <span>File</span>
                             </NavbarLink>
                             <NavbarDropdown>
 
                                 <NavbarItem onClick={() => this.setState({ opfm_is_active: true })}>
-                                    Open Project from File ...
+                                    <Icon className="fa fa-file-alt" />
+                                    <span>Open Project from File ...</span>
                                 </NavbarItem>
 
-                                {/* <NavbarItem>Import from Shadertoy ...</NavbarItem> */}
+                                <NavbarItem>
+                                    <Icon className="fa fa-paper-plane" />
+                                    <span>Import from Shadertoy ...</span>
+                                </NavbarItem>
 
                             </NavbarDropdown>
                         </NavbarItem>
@@ -167,16 +205,30 @@ export class Toolbar extends React.Component<T_Props, T_State> {
                         <NavbarItem hasDropdown isHoverable>
                             <NavbarLink>
                                 <Icon className="fa fa-save" />
+                                <span>Save</span>
                             </NavbarLink>
                             <NavbarDropdown>
+
                                 <NavbarItem>
-                                    <Icon className="fa fa-download" />
-                                    <span>Save as File ...</span>
+                                    <Icon className="fa fa-save" />
+                                    <span>Save</span>
                                 </NavbarItem>
+
                                 <NavbarItem>
                                     <Icon className="fa fa-cloud-upload-alt" />
                                     <span>Publish on Shadertoy ...</span>
                                 </NavbarItem>
+
+                            </NavbarDropdown>
+                        </NavbarItem>
+
+                        <NavbarItem hasDropdown isHoverable>
+                            <NavbarLink>
+                                <Icon className="fa fa-book-open" />
+                                <span>View</span>
+                            </NavbarLink>
+                            <NavbarDropdown>
+                                {view_items}
                             </NavbarDropdown>
                         </NavbarItem>
 
@@ -194,7 +246,10 @@ export class Toolbar extends React.Component<T_Props, T_State> {
                         />
 
                         <NavbarItem hasDropdown isHoverable>
-                            <NavbarLink>Info</NavbarLink>
+                            <NavbarLink>
+                                <Icon className="fas fa-info-circle" />
+                                <span>Help</span>
+                            </NavbarLink>
                             <NavbarDropdown>
                                 <NavbarItem>One A</NavbarItem>
                                 <NavbarItem>Two B</NavbarItem>
@@ -204,7 +259,9 @@ export class Toolbar extends React.Component<T_Props, T_State> {
                         </NavbarItem>
 
                         <NavbarItem onClick={this.props.onClick_Exit}>
-                            <Delete />
+                            <NavbarLink className="is-arrowless">
+                                <Icon className="fas fa-times-circle" />
+                            </NavbarLink>
                         </NavbarItem>
 
                     </NavbarEnd>
@@ -306,6 +363,7 @@ export class LayoutNavbarItem extends React.Component<LNI_Props> {
             <NavbarItem hasDropdown isHoverable>
                 <NavbarLink>
                     {i.comp}
+                    <span>Layout</span>
                 </NavbarLink>
                 <NavbarDropdown>
                     {items}

@@ -1,6 +1,5 @@
 // @flow
 import React from 'react';
-//import { Menu, Button, Icon } from 'bloomer';
 import type { DmoData, Shader } from './Helpers';
 
 import { DmoShadersPanel } from './DmoShaders';

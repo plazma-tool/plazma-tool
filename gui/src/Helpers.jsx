@@ -19,6 +19,13 @@ export const EditorsLayout = {
     FourEven: 8,
 };
 
+export type ViewState = {
+    time_scrub: bool,
+    sidebar: bool,
+    toolbar: bool,
+    editors_only: bool,
+}
+
 export type Editor = {
     source_idx: number,
 };

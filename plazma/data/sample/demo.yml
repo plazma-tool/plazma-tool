@@ -1,5 +1,14 @@
 # Demo description, this will be deserialiazed into DmoData.
 
+metadata:
+  title: "Sample Project"
+  description: ""
+  tags: ""
+  author: ""
+  url: ""
+  created: ""
+  updated: ""
+
 settings:
   start_full_screen: false
   audio_play_on_start: true

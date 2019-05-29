@@ -4,7 +4,7 @@ import React from 'react';
 import type { DmoData, Shader } from './Helpers';
 
 import { DmoShadersPanel } from './DmoShaders';
-import { DmoSettingsPanel } from './DmoSettings';
+import { DmoPropertiesPanel } from './DmoProperties';
 import { DmoDataPanel } from './DmoData';
 
 type S_Props = {
@@ -13,8 +13,8 @@ type S_Props = {
     currentPage: number,
     currentShaderIndex: number,
     onClick_DmoShadersMenu: () => void,
-    onClick_DmoSettingsMenu: () => void,
     onClick_DmoDataMenu: () => void,
+    onClick_DmoPropertiesMenu: () => void,
     onChange_DmoShadersMenu: (idx: number) => void,
 };
 
@@ -31,6 +31,11 @@ export class Sidebar extends React.Component<S_Props> {
 
         return (
             <div id="sidebar">
+                <DmoPropertiesPanel
+                    currentPage={this.props.currentPage}
+                    onClickLift={this.props.onClick_DmoPropertiesMenu}
+                />
+
                 <DmoShadersPanel
                     dmoData={this.props.dmoData}
                     shaders={this.props.shaders}
@@ -40,15 +45,11 @@ export class Sidebar extends React.Component<S_Props> {
                     onChangeLift={this.props.onChange_DmoShadersMenu}
                 />
 
-                <DmoSettingsPanel
-                    currentPage={this.props.currentPage}
-                    onClickLift={this.props.onClick_DmoSettingsMenu}
-                />
-
                 <DmoDataPanel
                     currentPage={this.props.currentPage}
                     onClickLift={this.props.onClick_DmoDataMenu}
                 />
+
             </div>
         );
         }

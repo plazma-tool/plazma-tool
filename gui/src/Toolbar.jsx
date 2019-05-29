@@ -1,10 +1,20 @@
 // @flow
 import React from 'react';
 
-import logo from './idea.svg';
+import logo from './images/idea.svg';
 
-import { Input, Title, Box, Modal, ModalBackground, ModalContent, ModalClose, Delete, Field, Control, Button, Navbar, NavbarBrand, NavbarItem, Icon, NavbarBurger, NavbarMenu,
-    NavbarStart, NavbarEnd, NavbarLink, NavbarDropdown, NavbarDivider } from 'bloomer';
+import { ReactComponent as Layout01 } from './images/layout-01.svg';
+import { ReactComponent as Layout02 } from './images/layout-02.svg';
+import { ReactComponent as Layout03 } from './images/layout-03.svg';
+import { ReactComponent as Layout04 } from './images/layout-04.svg';
+import { ReactComponent as Layout05 } from './images/layout-05.svg';
+import { ReactComponent as Layout06 } from './images/layout-06.svg';
+import { ReactComponent as Layout07 } from './images/layout-07.svg';
+import { ReactComponent as Layout08 } from './images/layout-08.svg';
+
+import { Input, Title, Box, Modal, ModalBackground, ModalContent, ModalClose, Delete, Field,
+    Control, Button, Navbar, NavbarBrand, NavbarItem, Icon, NavbarBurger, NavbarMenu, NavbarStart,
+    NavbarEnd, NavbarLink, NavbarDropdown, NavbarDivider } from 'bloomer';
 
 import { EditorsLayout } from './Helpers';
 import type { InputEvent } from './Helpers';
@@ -224,31 +234,78 @@ export class LayoutNavbarItem extends React.Component<LNI_Props> {
 
     render() {
 
-        let items = [
-            EditorsLayout.OneMax,
-            EditorsLayout.TwoVertical,
-            EditorsLayout.TwoHorizontal,
-            EditorsLayout.ThreeMainLeft,
-            EditorsLayout.ThreeMainRight,
-            EditorsLayout.ThreeMainTop,
-            EditorsLayout.ThreeMainBottom,
-            EditorsLayout.FourEven,
-        ].map((i) => {
+        let fill = '#dee5ed';
+        let style = { marginRight: 10 };
+
+        let items_data = [
+            {
+                label: "One Max",
+                comp: <Layout01 width='16px' height='16px' fill={fill} style={style} />,
+                idx: EditorsLayout.OneMax,
+            },
+
+            {
+                label: "Two Vertical",
+                comp: <Layout02 width='16px' height='16px' fill={fill} style={style} />,
+                idx: EditorsLayout.TwoVertical,
+            },
+
+            {
+                label: "Two Horizontal",
+                comp: <Layout03 width='16px' height='16px' fill={fill} style={style} />,
+                idx: EditorsLayout.TwoHorizontal,
+            },
+
+            {
+                label: "Three, Main Left",
+                comp: <Layout04 width='16px' height='16px' fill={fill} style={style} />,
+                idx: EditorsLayout.ThreeMainLeft,
+            },
+
+            {
+                label: "Three, Main Right",
+                comp: <Layout05 width='16px' height='16px' fill={fill} style={style} />,
+                idx: EditorsLayout.ThreeMainRight,
+            },
+
+            {
+                label: "Three, Main Top",
+                comp: <Layout06 width='16px' height='16px' fill={fill} style={style} />,
+                idx: EditorsLayout.ThreeMainTop,
+            },
+
+            {
+                label: "Three, Main Bottom",
+                comp: <Layout07 width='16px' height='16px' fill={fill} style={style} />,
+                idx: EditorsLayout.ThreeMainBottom,
+            },
+
+            {
+                label: "Four Even",
+                comp: <Layout08 width='16px' height='16px' fill={fill} style={style} />,
+                idx: EditorsLayout.FourEven,
+            },
+        ];
+
+
+        let items = items_data.map((i) => {
             return (
                 <NavbarItem
-                    key={'layout_' + i}
-                    onClick={() => this.props.onClickLift(i)}
+                    key={'layout_' + i.idx}
+                    onClick={() => this.props.onClickLift(i.idx)}
                 >
-                    <Icon className="fa fa-cloud-upload-alt" />
-                    <span>{i}</span>
+                    {i.comp}
+                    <span>{i.label}</span>
                 </NavbarItem>
             );
         });
 
+        let i = items_data[this.props.currentLayout - 1];
+
         return (
             <NavbarItem hasDropdown isHoverable>
                 <NavbarLink>
-                    <Icon className="fa fa-save" />
+                    {i.comp}
                 </NavbarLink>
                 <NavbarDropdown>
                     {items}

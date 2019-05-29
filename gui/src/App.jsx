@@ -7,7 +7,7 @@ import { Toolbar } from './Toolbar';
 import { Sidebar } from './Sidebar';
 import { TimeScrub } from './TimeScrub';
 
-import { SettingsPage } from './DmoSettings';
+import { PropertiesPage } from './DmoProperties';
 import { ShadersPage } from './DmoShaders';
 import { DmoDataPage } from './DmoData';
 import { LibraryPage } from './Library';
@@ -311,7 +311,7 @@ class App extends Component<{}, AppState> {
         }
     }
 
-    onChange_SettingsPage = (msg: ServerMsg) =>
+    onChange_Settings = (msg: ServerMsg) =>
     {
         if (msg.data_type === 'SetSettings') {
             if (this.state.dmo_data !== null && typeof this.state.dmo_data !== 'undefined') {
@@ -322,6 +322,19 @@ class App extends Component<{}, AppState> {
         }
         console.log('Sending server: SetSettings');
         this.sendMsgOnSocket(msg);
+    }
+
+    onChange_Metadata = (msg: ServerMsg) =>
+    {
+        if (msg.data_type === 'SetMetadata') {
+            if (this.state.dmo_data !== null && typeof this.state.dmo_data !== 'undefined') {
+                let d = this.state.dmo_data;
+                d.metadata = JSON.parse(msg.data);
+                this.setState({ dmo_data: d });
+            }
+        }
+        // As it is now, Metadata doesn't have to be sent to the server since it doesn't use it. It
+        // will be saved to the YAML when the project DmoData is saved.
     }
 
     onChange_ShadersPage = (msg: ServerMsg) =>
@@ -489,11 +502,12 @@ class App extends Component<{}, AppState> {
                         />
                         break;
 
-                case CurrentPage.Settings:
+                case CurrentPage.Properties:
                     page =
-                        <SettingsPage
+                        <PropertiesPage
                             dmoData={this.state.dmo_data}
-                            onChangeLift={this.onChange_SettingsPage}
+                            onChange_Metadata={this.onChange_Metadata}
+                            onChange_Settings={this.onChange_Settings}
                         />;
                     break;
 
@@ -571,8 +585,8 @@ class App extends Component<{}, AppState> {
                             currentShaderIndex={this.currentShaderIdx()}
 
                             onClick_DmoShadersMenu={() => this.setState({ current_page: CurrentPage.Shaders })}
-                            onClick_DmoSettingsMenu={() => this.setState({ current_page: CurrentPage.Settings })}
                             onClick_DmoDataMenu={() => this.setState({ current_page: CurrentPage.DmoData })}
+                            onClick_DmoPropertiesMenu={() => this.setState({ current_page: CurrentPage.Properties })}
 
                             onChange_DmoShadersMenu={this.onDmoShadersMenuChange}
                         />

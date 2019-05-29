@@ -4,7 +4,7 @@
 export const CurrentPage = {
     Library: 1,
     Shaders: 2,
-    Settings: 3,
+    Properties: 3,
     DmoData: 4,
 };
 
@@ -194,6 +194,15 @@ export type Timeline = {
 };
 
 export type DmoData = {
+    metadata: {
+        title: string,
+        description: string,
+        tags: string,
+        author: string,
+        url: string,
+        created: string,
+        updated: string,
+    },
     settings: {
         start_full_screen: bool,
         audio_play_on_start: bool,

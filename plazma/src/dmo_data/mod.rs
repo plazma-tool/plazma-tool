@@ -21,6 +21,9 @@ use crate::dmo_data::timeline::{Timeline, TimeTrack, SceneBlock, DrawOp};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DmoData {
+    /// Project metadata.
+    pub metadata: Metadata,
+
     /// User preferences and playback options.
     pub settings: Settings,
 
@@ -56,6 +59,7 @@ pub struct ProjectData {
 impl Default for DmoData {
     fn default() -> DmoData {
         DmoData {
+            metadata: Metadata::default(),
             settings: Settings::default(),
             context: ContextData::default(),
             timeline: Timeline::default(),
@@ -427,6 +431,31 @@ impl Default for Settings {
             mouse_sensitivity: 0.5,
             movement_sensitivity: 0.5,
             total_length: 60.0,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Metadata {
+    pub title: String,
+    pub description: String,
+    pub tags: String,
+    pub author: String,
+    pub url: String,
+    pub created: String,
+    pub updated: String,
+}
+
+impl Default for Metadata {
+    fn default() -> Metadata {
+        Metadata {
+            title: "New Project".to_owned(),
+            description: "".to_owned(),
+            tags: "".to_owned(),
+            author: "".to_owned(),
+            url: "".to_owned(),
+            created: "".to_owned(),
+            updated: "".to_owned(),
         }
     }
 }

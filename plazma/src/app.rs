@@ -759,6 +759,8 @@ fn render_loop(window: &GlWindow,
                         state.dmo_gfx.settings = settings;
                     },
 
+                    SetMetadata => {},
+
                     ShowErrorMessage =>
                         error!{"🔥 Server is sending error: {:?}", message.data},
 

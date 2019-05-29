@@ -139,6 +139,7 @@ pub enum MsgDataType {
     ShaderCompilationFailed,
     ShowErrorMessage,
     SetSettings,
+    SetMetadata,
     StartPreview,
     StopPreview,
     PreviewOpened,
@@ -431,6 +432,8 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                             }
                         }
                     },
+
+                    SetMetadata => {}
 
                     ShowErrorMessage => {
                         // Client is sending error message to server.

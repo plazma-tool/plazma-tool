@@ -296,6 +296,7 @@ class PlazmaMonaco extends React.Component<PM_Props, PM_State> {
         // https://github.com/Microsoft/monaco-editor/issues/28
 
         window.addEventListener('resize', this.onResize);
+        window.addEventListener('layout_changed', this.onResize);
 
         editor.onDidFocusEditorText(() => {
             this.props.onFocusLift(this.props.editorIdx);
@@ -317,13 +318,10 @@ class PlazmaMonaco extends React.Component<PM_Props, PM_State> {
             editor.focus();
         }
 
-        let bindings = [];
-        bindings.push(editor.addCommand( monaco.KeyCode.F8, () => { this.props.onKeyLift('f8'); }));
-        bindings.push(editor.addCommand( monaco.KeyCode.F9, () => { this.props.onKeyLift('f9'); }));
-        bindings.push(editor.addCommand( monaco.KeyCode.F10, () => { this.props.onKeyLift('f10'); }));
-        bindings.push(editor.addCommand( monaco.KeyCode.F11, () => { this.props.onKeyLift('f11'); }));
-
-        // When cleaning up remember to call myBinding.dispose()
+        editor.addCommand( monaco.KeyCode.F8, () => { this.props.onKeyLift('f8'); });
+        editor.addCommand( monaco.KeyCode.F9, () => { this.props.onKeyLift('f9'); });
+        editor.addCommand( monaco.KeyCode.F10, () => { this.props.onKeyLift('f10'); });
+        editor.addCommand( monaco.KeyCode.F11, () => { this.props.onKeyLift('f11'); });
 
         this.setState({
             editor: editor,

@@ -36,6 +36,7 @@ type AppState = {
     preview_is_open: bool,
     sentUpdateSinceChange: bool,
     updatesToSend: AppUpdates,
+    events: {},
     monacoDidInit: bool
 };
 
@@ -79,6 +80,9 @@ class App extends Component<{}, AppState> {
                 SetDmo: false,
                 SetShader: false,
                 shaderIndexes: [],
+            },
+            events: {
+                layout_changed: new Event('layout_changed'),
             },
             monacoDidInit: false,
         };
@@ -485,18 +489,22 @@ class App extends Component<{}, AppState> {
 
             case 'f8':
                 view.time_scrub = !view.time_scrub;
+                window.setTimeout(() => { window.dispatchEvent(this.state.events.layout_changed); }, 100);
                 break;
 
             case 'f9':
                 view.sidebar = !view.sidebar;
+                window.setTimeout(() => { window.dispatchEvent(this.state.events.layout_changed); }, 100);
                 break;
 
             case 'f10':
                 view.toolbar = !view.toolbar;
+                window.setTimeout(() => { window.dispatchEvent(this.state.events.layout_changed); }, 100);
                 break;
 
             case 'f11':
                 view.editors_only = !view.editors_only;
+                window.setTimeout(() => { window.dispatchEvent(this.state.events.layout_changed); }, 100);
                 break;
 
             default:

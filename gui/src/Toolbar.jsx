@@ -96,6 +96,7 @@ class OpenPreview extends React.Component<{ isOpen: bool, onClick: () => void, }
 type T_Props = {
     isHidden: bool,
     currentLayout: number,
+    onClick_OpenProject: () => void,
     onClick_Library: () => void,
     onClick_Preview: () => void,
     onClick_Exit: () => void,
@@ -189,7 +190,9 @@ export class Toolbar extends React.Component<T_Props, T_State> {
                             </NavbarLink>
                             <NavbarDropdown>
 
-                                <NavbarItem onClick={() => this.setState({ opfm_is_active: true })}>
+                                {/*<NavbarItem onClick={() => this.setState({ opfm_is_active: true })}>*/}
+
+                                <NavbarItem onClick={this.props.onClick_OpenProject}>
                                     <Icon className="fa fa-file-alt" />
                                     <span>Open Project from File ...</span>
                                 </NavbarItem>

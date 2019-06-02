@@ -27,6 +27,7 @@ type AppUpdates = {
 type AppState = {
     socket: ?WebSocket,
     project_root: ?string,
+    demo_yml_path: ?string,
     dmo_data: ?DmoData,
     shaders: Shader[],
     shader_editors: ShaderEditors,
@@ -52,18 +53,18 @@ class App extends Component<{}, AppState> {
         this.state = {
             socket: null,
             project_root: null,
+            demo_yml_path: null,
             dmo_data: null,
             shaders: [],
             shader_editors: {
-                layout: EditorsLayout.ThreeMainTop,
-                prev_layout: EditorsLayout.ThreeMainTop,
+                layout: EditorsLayout.OneMax,
                 full_height: 800,
                 current_editor_idx: 0,
                 editors: [
                     { source_idx: 2 },
-                    { source_idx: 3 },
-                    { source_idx: 4 },
-                    { source_idx: 5 },
+                    { source_idx: 2 },
+                    { source_idx: 2 },
+                    { source_idx: 2 },
                 ],
             },
             view: {
@@ -181,9 +182,14 @@ class App extends Component<{}, AppState> {
         let shaders = [];
 
         switch (msg.data_type) {
+            case 'NoOp':
+                break;
+
             case 'SetDmo':
+                console.log('Received SetDmo.');
                 let dmo_msg = JSON.parse(msg.data);
                 let project_root = dmo_msg.project_root;
+                let demo_yml_path = dmo_msg.demo_yml_path;
                 let d: DmoData = JSON.parse(dmo_msg.dmo_data_json_str);
 
                 shaders = d.context.shader_sources.map((i, idx) => {
@@ -200,6 +206,7 @@ class App extends Component<{}, AppState> {
 
                 this.setState({
                     project_root: project_root,
+                    demo_yml_path: demo_yml_path,
                     dmo_data: d,
                     shaders: shaders,
                     // resetUpdates
@@ -419,6 +426,7 @@ class App extends Component<{}, AppState> {
                 data_type: 'SetDmo',
                 data: JSON.stringify({
                     project_root: this.state.project_root,
+                    demo_yml_path: this.state.demo_yml_path,
                     dmo_data_json_str: JSON.stringify(this.state.dmo_data),
                 }),
             };
@@ -477,8 +485,12 @@ class App extends Component<{}, AppState> {
         }
     }
 
-    getDmoTime = () =>
-    {
+    sendOpenProject = () => {
+        let msg: ServerMsg = { data_type: 'OpenProjectFileDialog', data: '' };
+        this.sendMsgOnSocket(msg);
+    }
+
+    getDmoTime = () => {
         let msg: ServerMsg = { data_type: 'GetDmoTime', data: '' };
         this.sendMsgOnSocket(msg);
     }
@@ -592,6 +604,8 @@ class App extends Component<{}, AppState> {
                         isHidden={!this.state.view.toolbar || this.state.view.editors_only}
 
                         view={this.state.view}
+
+                        onClick_OpenProject={this.sendOpenProject}
 
                         onClick_Library={() => this.setState({ current_page: CurrentPage.Library })}
 

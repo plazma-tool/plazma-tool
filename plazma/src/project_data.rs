@@ -1,8 +1,11 @@
+use std::fs::File;
+use std::io::prelude::*;
 use std::path::PathBuf;
 use std::error::Error;
 
 use crate::utils::file_to_string;
 use crate::dmo_data::DmoData;
+use crate::error::ToolError;
 
 pub struct ProjectData {
     pub project_root: Option<PathBuf>,
@@ -36,6 +39,36 @@ impl ProjectData {
                 dmo_data: DmoData::new_minimal()?,
             })
         }
+    }
+
+    pub fn write_shaders(&self) -> Result<(), Box<Error>> {
+        if let Some(ref project_root) = self.project_root {
+
+            for (path, idx) in self.dmo_data.context.index.get_shader_path_to_idx().iter() {
+                if path.starts_with("data_builtin_") {
+                    continue;
+                }
+
+                let shader_path = project_root.join(PathBuf::from(&path));
+
+                let mut file = match File::create(&shader_path) {
+                    Ok(f) => f,
+                    Err(e) => return Err(Box::new(e)),
+                };
+
+                match file.write_all(self.dmo_data.context.shader_sources[*idx].as_bytes()) {
+                    Ok(_) => {},
+                    Err(e) => return Err(Box::new(e)),
+                }
+
+                info!{"Wrote {} bytes to {:?}", self.dmo_data.context.shader_sources[*idx].len(), &shader_path};
+
+            }
+        } else {
+            return Err(Box::new(ToolError::MissingProjectRoot));
+        }
+
+        Ok(())
     }
 }
 

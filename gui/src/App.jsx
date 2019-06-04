@@ -610,6 +610,11 @@ class App extends Component<{}, AppState> {
                             this.sendMsgOnSocket(msg);
                         }}
 
+                        onClick_SaveProject={() => {
+                            let msg: ServerMsg = { data_type: 'SaveProject', data: '' };
+                            this.sendMsgOnSocket(msg);
+                        }}
+
                         onClick_Library={() => this.setState({ current_page: CurrentPage.Library })}
 
                         onClick_Preview={() => {

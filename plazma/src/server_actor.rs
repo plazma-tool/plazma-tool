@@ -194,6 +194,7 @@ pub enum MsgDataType {
     OpenProjectFileDialog,
     OpenProjectFilePath,
     ReloadProject,
+    SaveProject,
     ExitApp,
 }
 
@@ -337,11 +338,19 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                     // Client is requesting time. Send the message to other clients to respond.
                     GetDmoTime => self.repeat_message_to_others(&ctx, &message),
 
-                    // Client is sending a shader to be updated. We are not storing the shader
-                    // sources in the DmoData, so we don't have to update it in the server
-                    // state, only pass on the message to the other clients such as the OpenGL
-                    // preview.
-                    SetShader => self.repeat_message_to_others(&ctx, &message),
+                    // Client is sending a shader to be updated. Repeat the message to the other
+                    // clients such as the OpenGL preview, and update DmoData in the server state.
+                    SetShader => {
+                        self.repeat_message_to_others(&ctx, &message);
+
+                        match serde_json::from_str::<SetShaderMsg>(&message.data) {
+                            Ok(shader_msg) => {
+                                let mut state = ctx.state().lock().expect("👿 Can't lock ServerState.");
+                                state.project_data.dmo_data.context.shader_sources[shader_msg.idx] = shader_msg.content;
+                            },
+                            Err(e) => error!("🔥 Error deserializing SetShaderMsg: {:?}", e),
+                        }
+                    },
 
                     ShaderCompilationSuccess => self.repeat_message_to_others(&ctx, &message),
 
@@ -547,6 +556,22 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
 
                         let mut state = ctx.state().lock().expect("👿 Can't lock ServerState.");
                         state.project_data = project_data;
+                    },
+
+                    SaveProject => {
+                        // If demo_yml_path is None, open a dialog to choose the project_root folder, and then:
+                        // - write the demo.yml
+                        // - write the shaders
+                        //
+                        // If there is already a path:
+                        // - write the shaders
+
+                        let state = ctx.state().lock().expect("👿 Can't lock ServerState.");
+                        match state.project_data.write_shaders() {
+                            Ok(_) => {},
+                            // TODO show the error in the UI
+                            Err(e) => error!{"🔥 Couldn't write shaders: {:?}", e},
+                        }
                     },
 
                     ExitApp => {

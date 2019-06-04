@@ -96,6 +96,7 @@ class OpenPreview extends React.Component<{ isOpen: bool, onClick: () => void, }
 type T_Props = {
     isHidden: bool,
     currentLayout: number,
+    onClick_SaveProject: () => void,
     onClick_OpenProject: () => void,
     onClick_ReloadProject: () => void,
     onClick_Library: () => void,
@@ -203,12 +204,14 @@ export class Toolbar extends React.Component<T_Props, T_State> {
                                     <span>Open</span>
                                 </NavbarItem>
 
+                                {/*
                                 <NavbarItem onClick={() => { console.log('TODO'); }}>
                                     <Icon className="fa fa-file-alt" />
                                     <span>Open Recent</span>
                                 </NavbarItem>
+                                */}
 
-                                <NavbarItem onClick={() => { console.log('TODO'); }}>
+                                <NavbarItem onClick={this.props.onClick_SaveProject}>
                                     <Icon className="fa fa-save" />
                                     <span>Save</span>
                                 </NavbarItem>
@@ -218,6 +221,7 @@ export class Toolbar extends React.Component<T_Props, T_State> {
                                     <span>Reload Project From Disk</span>
                                 </NavbarItem>
 
+                                {/*
                                 <NavbarItem onClick={() => { console.log('TODO'); }}>
                                     <Icon className="fa fa-file-import" />
                                     <span>Import from Shadertoy...</span>
@@ -232,6 +236,7 @@ export class Toolbar extends React.Component<T_Props, T_State> {
                                     <Icon className="fa fa-cog" />
                                     <span>User Preferences...</span>
                                 </NavbarItem>
+                                */}
 
                             </NavbarDropdown>
                         </NavbarItem>

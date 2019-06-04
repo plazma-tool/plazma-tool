@@ -212,6 +212,10 @@ impl DataIndex {
         Ok(*idx)
     }
 
+    pub fn get_shader_path_to_idx(&self) -> BTreeMap<String, usize> {
+        self.shader_path_to_idx.clone()
+    }
+
     pub fn get_image_index(&self, path: &str) -> Result<usize, Box<Error>> {
         let idx = self.image_path_to_idx.get(path).ok_or(format!{"no such image path: {}", path})?;
         Ok(*idx)

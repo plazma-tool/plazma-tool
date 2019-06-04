@@ -97,6 +97,7 @@ type T_Props = {
     isHidden: bool,
     currentLayout: number,
     onClick_OpenProject: () => void,
+    onClick_ReloadProject: () => void,
     onClick_Library: () => void,
     onClick_Preview: () => void,
     onClick_Exit: () => void,
@@ -192,34 +193,44 @@ export class Toolbar extends React.Component<T_Props, T_State> {
 
                                 {/*<NavbarItem onClick={() => this.setState({ opfm_is_active: true })}>*/}
 
+                                <NavbarItem onClick={() => { console.log('TODO'); }}>
+                                    <Icon className="fa fa-plus-square" />
+                                    <span>New...</span>
+                                </NavbarItem>
+
                                 <NavbarItem onClick={this.props.onClick_OpenProject}>
                                     <Icon className="fa fa-file-alt" />
-                                    <span>Open Project from File ...</span>
+                                    <span>Open</span>
                                 </NavbarItem>
 
-                                <NavbarItem>
-                                    <Icon className="fa fa-paper-plane" />
-                                    <span>Import from Shadertoy ...</span>
+                                <NavbarItem onClick={() => { console.log('TODO'); }}>
+                                    <Icon className="fa fa-file-alt" />
+                                    <span>Open Recent</span>
                                 </NavbarItem>
 
-                            </NavbarDropdown>
-                        </NavbarItem>
-
-                        <NavbarItem hasDropdown isHoverable>
-                            <NavbarLink>
-                                <Icon className="fa fa-save" />
-                                <span>Save</span>
-                            </NavbarLink>
-                            <NavbarDropdown>
-
-                                <NavbarItem>
+                                <NavbarItem onClick={() => { console.log('TODO'); }}>
                                     <Icon className="fa fa-save" />
                                     <span>Save</span>
                                 </NavbarItem>
 
-                                <NavbarItem>
-                                    <Icon className="fa fa-cloud-upload-alt" />
-                                    <span>Publish on Shadertoy ...</span>
+                                <NavbarItem onClick={this.props.onClick_ReloadProject}>
+                                    <Icon className="fa fa-redo" />
+                                    <span>Reload Project From Disk</span>
+                                </NavbarItem>
+
+                                <NavbarItem onClick={() => { console.log('TODO'); }}>
+                                    <Icon className="fa fa-file-import" />
+                                    <span>Import from Shadertoy...</span>
+                                </NavbarItem>
+
+                                <NavbarItem onClick={() => { console.log('TODO'); }}>
+                                    <Icon className="fa fa-paper-plane" />
+                                    <span>Publish on Shadertoy...</span>
+                                </NavbarItem>
+
+                                <NavbarItem onClick={() => { console.log('TODO'); }}>
+                                    <Icon className="fa fa-cog" />
+                                    <span>User Preferences...</span>
                                 </NavbarItem>
 
                             </NavbarDropdown>

@@ -193,6 +193,7 @@ pub enum MsgDataType {
     StartDialogs,
     OpenProjectFileDialog,
     OpenProjectFilePath,
+    ReloadProject,
     ExitApp,
 }
 
@@ -494,6 +495,37 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                         // Build a new ProjectData and send it to all clients.
 
                         let project_data = match ProjectData::new(Some(yml_path)) {
+                            Ok(x) => x,
+                            Err(e) => {
+                                error!("🔥 Failed to build ProjectData: {:?}", e);
+                                return;
+                            }
+                        };
+
+                        // Send SetDmo
+                        let resp = Sending {
+                            data_type: SetDmo,
+                            data: serde_json::to_string(&SetDmoMsg {
+                                project_root: project_data.project_root.clone(),
+                                demo_yml_path: project_data.demo_yml_path.clone(),
+                                dmo_data_json_str: serde_json::to_string(&project_data.dmo_data).unwrap(),
+                            }).unwrap(),
+                        };
+
+                        self.send_message_to_everyone(&ctx, &resp);
+
+                        let mut state = ctx.state().lock().expect("👿 Can't lock ServerState.");
+                        state.project_data = project_data;
+                    },
+
+                    ReloadProject => {
+                        let demo_yml_path: Option<PathBuf>;
+                        {
+                            let state = ctx.state().lock().expect("👿 Can't lock ServerState.");
+                            demo_yml_path = state.project_data.demo_yml_path.clone();
+                        }
+
+                        let project_data = match ProjectData::new(demo_yml_path) {
                             Ok(x) => x,
                             Err(e) => {
                                 error!("🔥 Failed to build ProjectData: {:?}", e);

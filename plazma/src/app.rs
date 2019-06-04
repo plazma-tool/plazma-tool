@@ -795,6 +795,7 @@ fn render_loop(window: &GlWindow,
                     StartDialogs => {},
                     OpenProjectFileDialog => {},
                     OpenProjectFilePath => {},
+                    ReloadProject => {},
 
                     ExitApp => {
                         info!("render_loop() Received ExitApp.");
@@ -1247,6 +1248,7 @@ fn dialogs_loop(client_receiver: mpsc::Receiver<String>,
                     },
 
                     OpenProjectFilePath => {},
+                    ReloadProject => {},
 
                     ExitApp => {
                         info!("dialogs_loop() Received ExitApp.");

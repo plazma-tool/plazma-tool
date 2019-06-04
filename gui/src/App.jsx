@@ -485,11 +485,6 @@ class App extends Component<{}, AppState> {
         }
     }
 
-    sendOpenProject = () => {
-        let msg: ServerMsg = { data_type: 'OpenProjectFileDialog', data: '' };
-        this.sendMsgOnSocket(msg);
-    }
-
     getDmoTime = () => {
         let msg: ServerMsg = { data_type: 'GetDmoTime', data: '' };
         this.sendMsgOnSocket(msg);
@@ -605,7 +600,15 @@ class App extends Component<{}, AppState> {
 
                         view={this.state.view}
 
-                        onClick_OpenProject={this.sendOpenProject}
+                        onClick_OpenProject={() => {
+                            let msg: ServerMsg = { data_type: 'OpenProjectFileDialog', data: '' };
+                            this.sendMsgOnSocket(msg);
+                        }}
+
+                        onClick_ReloadProject={() => {
+                            let msg: ServerMsg = { data_type: 'ReloadProject', data: '' };
+                            this.sendMsgOnSocket(msg);
+                        }}
 
                         onClick_Library={() => this.setState({ current_page: CurrentPage.Library })}
 

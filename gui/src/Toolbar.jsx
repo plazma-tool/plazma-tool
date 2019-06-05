@@ -14,53 +14,92 @@ import { ReactComponent as Layout08 } from './images/layout-08.svg';
 
 import { Input, Title, Box, Modal, ModalBackground, ModalContent, ModalClose, Delete, Field,
     Control, Button, Navbar, NavbarBrand, NavbarItem, Icon, NavbarBurger, NavbarMenu, NavbarStart,
-    NavbarEnd, NavbarLink, NavbarDropdown, NavbarDivider } from 'bloomer';
+    NavbarEnd, NavbarLink, NavbarDropdown, NavbarDivider, Columns, Column, Label } from 'bloomer';
 
-import { EditorsLayout } from './Helpers';
+import { EditorsLayout, NewProjectTemplate } from './Helpers';
 import type { InputEvent, ViewState } from './Helpers';
 
-type OPFM_Props = {
+type NPM_Props = {
     isActive: bool,
     onClick_Close: () => void,
-    onChange_File: (e: InputEvent) => void,
+    onClick_New: (template: number) => void,
 };
 
-class OpenProjectFileModal extends React.Component<OPFM_Props> {
-    render()
-    {
+class NewProjectModal extends React.Component<NPM_Props> {
+    render() {
         return (
             <Modal isActive={this.props.isActive}>
                 <ModalBackground />
-                <ModalContent>
+                <ModalContent style={{width: '700px'}}>
 
                     <Box>
                         <Title isSpaced isSize={5} hasTextAlign="centered">
-                            Open a Project From File
+                            New Project
                             <Delete isPulled="right" onClick={this.props.onClick_Close} />
                         </Title>
 
-                        <Field>
-                            <Control>
-                                <div className="file is-centered is-boxed">
-                                    <label className="file-label">
-                                        <Input
-                                            className="file-input"
-                                            onChange={this.props.onChange_File}
-                                            type="file"
-                                            name="project_file"
-                                        />
-                                            <span className="file-cta">
-                                                <span className="file-icon">
-                                                    <i className="fas fa-upload"></i>
-                                                </span>
-                                                <span className="file-label">
-                                                    Choose a file…
-                                                </span>
-                                            </span>
-                                        </label>
-                                    </div>
-                            </Control>
-                        </Field>
+                        <Columns isVCentered>
+                            <Column isSize={2}> Custom </Column>
+                            <Column>
+                                <Field isGrouped>
+                                    <Control onClick={() => { this.props.onClick_New(NewProjectTemplate.QuadShader); }}>
+                                        <Button>Quad Shader</Button>
+                                    </Control>
+
+                                    <Control onClick={() => { this.props.onClick_New(NewProjectTemplate.PolygonScene); }}>
+                                        <Button>Polygon Scene</Button>
+                                    </Control>
+                                </Field>
+                            </Column>
+                        </Columns>
+
+                        <Columns isVCentered>
+                            <Column isSize={2}> Shadertoy </Column>
+
+                            <Column>
+                                <Field isGrouped>
+                                    <Control onClick={() => { this.props.onClick_New(NewProjectTemplate.ShadertoyDefault); }}>
+                                        <Button>Default</Button>
+                                    </Control>
+
+                                    <Control onClick={() => { this.props.onClick_New(NewProjectTemplate.ShadertoyRaymarch); }}>
+                                        <Button>Raymarch</Button>
+                                    </Control>
+
+                                    <Control onClick={() => { this.props.onClick_New(NewProjectTemplate.ShadertoyTunnel); }}>
+                                        <Button>Tunnel</Button>
+                                    </Control>
+
+                                    <Control onClick={() => { this.props.onClick_New(NewProjectTemplate.ShadertoyVolumetric); }}>
+                                        <Button>Volumetric</Button>
+                                    </Control>
+
+                                    <Control onClick={() => { this.props.onClick_New(NewProjectTemplate.ShadertoyLattice); }}>
+                                        <Button>Lattice</Button>
+                                    </Control>
+
+                                    <Control onClick={() => { this.props.onClick_New(NewProjectTemplate.ShadertoyFractal); }}>
+                                        <Button>Fractal</Button>
+                                    </Control>
+
+                                    <Control onClick={() => { this.props.onClick_New(NewProjectTemplate.ShadertoyPbr); }}>
+                                        <Button>PBR Material</Button>
+                                    </Control>
+                                </Field>
+                            </Column>
+                        </Columns>
+
+                        <Columns isVCentered>
+                            <Column isSize={2}> Bonzomatic </Column>
+
+                            <Column>
+                                <Field isGrouped>
+                                    <Control onClick={() => { this.props.onClick_New(NewProjectTemplate.BonzomaticTunnel); }}>
+                                        <Button>Tunnel</Button>
+                                    </Control>
+                                </Field>
+                            </Column>
+                        </Columns>
                     </Box>
 
                 </ModalContent>
@@ -69,6 +108,53 @@ class OpenProjectFileModal extends React.Component<OPFM_Props> {
         );
     }
 }
+
+type IFStoy_Props = {
+    isActive: bool,
+    onClick_Close: () => void,
+    onChange_Search: (e: InputEvent) => void,
+};
+
+class ImportFromShadertoyModal extends React.Component<IFStoy_Props> {
+    render() {
+        return (
+            <Modal isActive={this.props.isActive}>
+                <ModalBackground />
+                <ModalContent style={{width: '700px'}}>
+
+                    <Box>
+                        <Title isSpaced isSize={5} hasTextAlign="centered">
+                            Import From Shadertoy
+                            <Delete isPulled="right" onClick={this.props.onClick_Close} />
+                        </Title>
+
+                        <Field>
+                            <Label> By URL: </Label>
+                            <Control>
+                                <Input type="text" placeholder='https://shadertoy.com/...' />
+                            </Control>
+                        </Field>
+
+                        <Field>
+                            <Label> Search: </Label>
+                            <Control>
+                                <Input
+                                    onChange={this.props.onChange_Search}
+                                    type="text"
+                                    placeholder='...'
+                                />
+                            </Control>
+                        </Field>
+
+                    </Box>
+
+                </ModalContent>
+                <ModalClose onClick={this.props.onClick_Close} />
+            </Modal>
+        );
+    }
+}
+
 
 class OpenPreview extends React.Component<{ isOpen: bool, onClick: () => void, }> {
     render() {
@@ -96,6 +182,7 @@ class OpenPreview extends React.Component<{ isOpen: bool, onClick: () => void, }
 type T_Props = {
     isHidden: bool,
     currentLayout: number,
+    onClick_New: (template: number) => void,
     onClick_SaveProject: () => void,
     onClick_OpenProject: () => void,
     onClick_ReloadProject: () => void,
@@ -110,7 +197,8 @@ type T_Props = {
 
 type T_State= {
     isActive: bool,
-    opfm_is_active: bool,
+    new_project_modal_is_active: bool,
+    import_from_shadertoy_modal_is_active: bool,
 };
 
 export class Toolbar extends React.Component<T_Props, T_State> {
@@ -120,7 +208,8 @@ export class Toolbar extends React.Component<T_Props, T_State> {
 
         this.state = {
             isActive: false,
-            opfm_is_active: false,
+            new_project_modal_is_active: false,
+            import_from_shadertoy_modal_is_active: false,
         };
     }
 
@@ -147,7 +236,7 @@ export class Toolbar extends React.Component<T_Props, T_State> {
             }
             let value = this.props.view[i.name];
             return (
-                <NavbarItem key={'view_'+i.name+String(value)} onClick={() => {
+                <NavbarItem href="#" key={'view_'+i.name+String(value)} onClick={() => {
                     let view = this.props.view;
                     view[i.name] = !view[i.name];
                     this.props.onClick_View(view);
@@ -192,47 +281,50 @@ export class Toolbar extends React.Component<T_Props, T_State> {
                             </NavbarLink>
                             <NavbarDropdown>
 
-                                {/*<NavbarItem onClick={() => this.setState({ opfm_is_active: true })}>*/}
-
-                                <NavbarItem onClick={() => { console.log('TODO'); }}>
+                                <NavbarItem href="#" onClick={() => this.setState({ new_project_modal_is_active: true })}>
                                     <Icon className="fa fa-plus-square" />
                                     <span>New...</span>
                                 </NavbarItem>
 
-                                <NavbarItem onClick={this.props.onClick_OpenProject}>
+                                <NavbarItem href="#" onClick={() => this.setState({ import_from_shadertoy_modal_is_active: true })}>
+                                    <Icon className="fa fa-plus-square" />
+                                    <span>Import...</span>
+                                </NavbarItem>
+
+                                <NavbarItem href="#" onClick={this.props.onClick_OpenProject}>
                                     <Icon className="fa fa-file-alt" />
                                     <span>Open</span>
                                 </NavbarItem>
 
                                 {/*
-                                <NavbarItem onClick={() => { console.log('TODO'); }}>
+                                <NavbarItem href="#" onClick={() => { console.log('TODO'); }}>
                                     <Icon className="fa fa-file-alt" />
                                     <span>Open Recent</span>
                                 </NavbarItem>
                                 */}
 
-                                <NavbarItem onClick={this.props.onClick_SaveProject}>
+                                <NavbarItem href="#" onClick={this.props.onClick_SaveProject}>
                                     <Icon className="fa fa-save" />
                                     <span>Save</span>
                                 </NavbarItem>
 
-                                <NavbarItem onClick={this.props.onClick_ReloadProject}>
+                                <NavbarItem href="#" onClick={this.props.onClick_ReloadProject}>
                                     <Icon className="fa fa-redo" />
                                     <span>Reload Project From Disk</span>
                                 </NavbarItem>
 
                                 {/*
-                                <NavbarItem onClick={() => { console.log('TODO'); }}>
+                                <NavbarItem href="#" onClick={() => { console.log('TODO'); }}>
                                     <Icon className="fa fa-file-import" />
                                     <span>Import from Shadertoy...</span>
                                 </NavbarItem>
 
-                                <NavbarItem onClick={() => { console.log('TODO'); }}>
+                                <NavbarItem href="#" onClick={() => { console.log('TODO'); }}>
                                     <Icon className="fa fa-paper-plane" />
                                     <span>Publish on Shadertoy...</span>
                                 </NavbarItem>
 
-                                <NavbarItem onClick={() => { console.log('TODO'); }}>
+                                <NavbarItem href="#" onClick={() => { console.log('TODO'); }}>
                                     <Icon className="fa fa-cog" />
                                     <span>User Preferences...</span>
                                 </NavbarItem>
@@ -270,10 +362,10 @@ export class Toolbar extends React.Component<T_Props, T_State> {
                                 <span>Help</span>
                             </NavbarLink>
                             <NavbarDropdown>
-                                <NavbarItem>One A</NavbarItem>
-                                <NavbarItem>Two B</NavbarItem>
+                                <NavbarItem href="#">One A</NavbarItem>
+                                <NavbarItem href="#">Two B</NavbarItem>
                                 <NavbarDivider />
-                                <NavbarItem>Two A</NavbarItem>
+                                <NavbarItem href="#">Two A</NavbarItem>
                             </NavbarDropdown>
                         </NavbarItem>
 
@@ -287,13 +379,30 @@ export class Toolbar extends React.Component<T_Props, T_State> {
 
                 </NavbarMenu>
 
-                <OpenProjectFileModal
-                    isActive={this.state.opfm_is_active}
-                    onChange_File={(e: InputEvent) => {
-                        console.log("File name: '" + e.currentTarget.files[0].name + "'");
-                        this.setState({ opfm_is_active: false });
+                <NewProjectModal
+                    isActive={this.state.new_project_modal_is_active}
+                    onClick_Close={() => this.setState({ new_project_modal_is_active: false })}
+                    onClick_New={(template: number) => {
+                        this.props.onClick_New(template);
+                        this.setState({ new_project_modal_is_active: false });
                     }}
-                    onClick_Close={() => this.setState({ opfm_is_active: false })}
+                    onChange_Search={(e: InputEvent) => {
+                        console.log('search', e.currentTarget.value);
+                    }}
+
+                    //onChange_File={(e: InputEvent) => {
+                    //    console.log("File name: '" + e.currentTarget.files[0].name + "'");
+                    //    this.setState({ new_project_modal_is_active: false });
+                    //}}
+
+                />
+
+                <ImportFromShadertoyModal
+                    isActive={this.state.import_from_shadertoy_modal_is_active}
+                    onClick_Close={() => this.setState({ import_from_shadertoy_modal_is_active: false })}
+                    onChange_Search={(e: InputEvent) => {
+                        console.log('search', e.currentTarget.value);
+                    }}
                 />
             </Navbar>
         );
@@ -367,6 +476,7 @@ export class LayoutNavbarItem extends React.Component<LNI_Props> {
         let items = items_data.map((i) => {
             return (
                 <NavbarItem
+                    href="#"
                     key={'layout_' + i.idx}
                     onClick={() => this.props.onClickLift(i.idx)}
                 >

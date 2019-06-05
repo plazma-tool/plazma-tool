@@ -19,6 +19,19 @@ export const EditorsLayout = {
     FourEven: 8,
 };
 
+export const NewProjectTemplate = {
+    QuadShader: 1,
+    PolygonScene: 2,
+    ShadertoyDefault: 3,
+    ShadertoyRaymarch: 4,
+    ShadertoyTunnel: 5,
+    ShadertoyVolumetric: 6,
+    ShadertoyLattice: 7,
+    ShadertoyFractal: 8,
+    ShadertoyPbr: 9,
+    BonzomaticTunnel: 10,
+};
+
 export type ViewState = {
     time_scrub: bool,
     sidebar: bool,

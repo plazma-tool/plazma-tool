@@ -600,6 +600,10 @@ class App extends Component<{}, AppState> {
 
                         view={this.state.view}
 
+                        onClick_New={(template: number) => {
+                            console.log('template', template);
+                        }}
+
                         onClick_OpenProject={() => {
                             let msg: ServerMsg = { data_type: 'OpenProjectFileDialog', data: '' };
                             this.sendMsgOnSocket(msg);

@@ -14,14 +14,8 @@ export class SliderColumns extends React.Component<SC_Props> {
 
     onChangeLocal = (newValue: SliderValue) => {
         let newCodeValue = replaceSliderValueInCode(newValue, this.props.shader.content);
-        let new_shader = {
-            content: newCodeValue,
-            // copy props
-            source_idx: this.props.shader.source_idx,
-            line_number: this.props.shader.line_number,
-            error_data: this.props.shader.error_data,
-            decorations_delta: this.props.shader.decorations_delta,
-        };
+        let new_shader = this.props.shader;
+        new_shader.content = newCodeValue;
         this.props.onChangeLift(new_shader);
     }
 

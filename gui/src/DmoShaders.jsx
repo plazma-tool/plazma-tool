@@ -62,7 +62,13 @@ export class DmoShadersPanel extends React.Component<DSP_Props> {
                 });
             })
         // filter out the builtin shaders
-            .filter((i) => !i.file_path.startsWith('data_builtin_'))
+            .filter((i) => {
+                if (i.file_path !== null && typeof i.file_path !== 'undefined') {
+                    return !i.file_path.startsWith('data_builtin_');
+                } else {
+                    return false;
+                };
+            })
             .map((i) => i.item);
 
         let color = "";

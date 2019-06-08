@@ -1,0 +1,48 @@
+metadata:
+  title: "Untitled"
+  description: ""
+  tags: ""
+  author: ""
+  url: ""
+  created: ""
+  updated: ""
+
+settings:
+  start_full_screen: false
+  audio_play_on_start: false
+  mouse_sensitivity: 0.5
+  movement_sensitivity: 0.5
+  total_length: 240.0
+
+context:
+  quad_scenes:
+
+    - name: "buf_image"
+      vert_src_path: "./data/screen_quad.vert"
+      frag_src_path: "./data/buf_image.frag"
+      layout_to_vars:
+        - Float: [ 0, "Time" ]
+        - Vec2: [ 1, "Window_Width", "Window_Height" ]
+        - Vec2: [ 2, "Screen_Width", "Screen_Height" ]
+      binding_to_buffers: []
+
+  polygon_scenes: []
+  polygon_context:
+    models: []
+  frame_buffers: []
+  sync_tracks_path: ""
+  shader_sources: []
+
+timeline:
+
+  tracks:
+
+    - scene_blocks:
+
+        - start: 0.0
+          end: 240.0
+          draw_ops:
+            - Target_Buffer: "RESULT_IMAGE"
+            - Clear: [ 0, 0, 0, 0 ]
+            - Draw_Quad_Scene: "buf_image"
+

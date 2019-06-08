@@ -10,7 +10,7 @@ use rand::Rng;
 use actix_web::ws;
 use actix_web::actix::*;
 
-use crate::project_data::ProjectData;
+use crate::project_data::{ProjectData, NewProjectTemplate};
 use crate::app::AppInfo;
 
 /// How often heartbeat pings are sent
@@ -56,7 +56,7 @@ impl ServerState {
         let state = ServerState {
             app_info: app_info,
             webview_sender_arc: webview_sender_arc,
-            project_data: ProjectData::new(demo_yml_path)?,
+            project_data: ProjectData::new(demo_yml_path, false)?,
             clients: HashMap::new(),
             preview_child: None,
             dialogs_child: None,
@@ -195,6 +195,7 @@ pub enum MsgDataType {
     OpenProjectFilePath,
     ReloadProject,
     SaveProject,
+    NewProject,
     ExitApp,
 }
 
@@ -206,6 +207,7 @@ pub struct SetDmoMsg {
     pub project_root: Option<PathBuf>,
     pub demo_yml_path: Option<PathBuf>,
     pub dmo_data_json_str: String,
+    pub embedded: bool,
 }
 
 /// Message to update the content of a specific shader.
@@ -224,6 +226,11 @@ pub struct ShaderCompilationFailedMsg {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ShaderCompilationSuccessMsg {
     pub idx: usize,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct NewProjectMsg {
+    pub template: NewProjectTemplate,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -295,6 +302,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                                     project_root: state.project_data.project_root.clone(),
                                     demo_yml_path: state.project_data.demo_yml_path.clone(),
                                     dmo_data_json_str: serde_json::to_string(&state.project_data.dmo_data).unwrap(),
+                                    embedded: state.project_data.embedded,
                                 }).unwrap(),
                             };
                         }
@@ -503,7 +511,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
 
                         // Build a new ProjectData and send it to all clients.
 
-                        let project_data = match ProjectData::new(Some(yml_path)) {
+                        let project_data = match ProjectData::new(Some(yml_path), false) {
                             Ok(x) => x,
                             Err(e) => {
                                 error!("🔥 Failed to build ProjectData: {:?}", e);
@@ -518,6 +526,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                                 project_root: project_data.project_root.clone(),
                                 demo_yml_path: project_data.demo_yml_path.clone(),
                                 dmo_data_json_str: serde_json::to_string(&project_data.dmo_data).unwrap(),
+                                embedded: project_data.embedded,
                             }).unwrap(),
                         };
 
@@ -534,7 +543,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                             demo_yml_path = state.project_data.demo_yml_path.clone();
                         }
 
-                        let project_data = match ProjectData::new(demo_yml_path) {
+                        let project_data = match ProjectData::new(demo_yml_path, false) {
                             Ok(x) => x,
                             Err(e) => {
                                 error!("🔥 Failed to build ProjectData: {:?}", e);
@@ -549,6 +558,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                                 project_root: project_data.project_root.clone(),
                                 demo_yml_path: project_data.demo_yml_path.clone(),
                                 dmo_data_json_str: serde_json::to_string(&project_data.dmo_data).unwrap(),
+                                embedded: project_data.embedded,
                             }).unwrap(),
                         };
 
@@ -572,6 +582,45 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                             // TODO show the error in the UI
                             Err(e) => error!{"🔥 Couldn't write shaders: {:?}", e},
                         }
+                    },
+
+                    NewProject => {
+                        // Starting a new project selects a template and reads its files from the
+                        // embedded assets.
+
+                        let template: NewProjectTemplate = match serde_json::from_str::<NewProjectMsg>(&message.data) {
+                            Ok(x) => x.template,
+                            Err(e) => {
+                                error!("🔥 Deserializing failed: {:?}", e);
+                                return;
+                            },
+                        };
+
+                        // Build a new ProjectData and send it to all clients.
+
+                        let project_data = match ProjectData::new_from_embedded_template(template) {
+                            Ok(x) => x,
+                            Err(e) => {
+                                error!("🔥 Failed to build ProjectData: {:?}", e);
+                                return;
+                            }
+                        };
+
+                        // Send SetDmo
+                        let resp = Sending {
+                            data_type: SetDmo,
+                            data: serde_json::to_string(&SetDmoMsg {
+                                project_root: project_data.project_root.clone(),
+                                demo_yml_path: project_data.demo_yml_path.clone(),
+                                dmo_data_json_str: serde_json::to_string(&project_data.dmo_data).unwrap(),
+                                embedded: project_data.embedded,
+                            }).unwrap(),
+                        };
+
+                        self.send_message_to_everyone(&ctx, &resp);
+
+                        let mut state = ctx.state().lock().expect("👿 Can't lock ServerState.");
+                        state.project_data = project_data;
                     },
 
                     ExitApp => {

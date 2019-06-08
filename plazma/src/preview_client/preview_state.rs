@@ -25,6 +25,7 @@ use intro_runtime::types::{PixelFormat, ValueVec3, ValueFloat, BufferMapping, Un
 use rocket_sync::{SyncDevice, SyncTrack, TrackKey, code_to_key};
 use rocket_client::SyncClient;
 
+use crate::project_data::get_template_asset_string;
 use crate::dmo_data::{DmoData, ProjectData};
 use crate::server_actor::SetDmoMsg;
 use crate::error::ToolError;
@@ -95,7 +96,7 @@ impl PreviewState {
         if let Some(ref yml_path) = state.project_data.demo_yml_path {
             info!("PreviewState::new() with yml_path {:?} and build_dmo_gfx_from_yml_str()", &yml_path);
             let text: String = file_to_string(&yml_path)?;
-            state.build_dmo_gfx_from_yml_str(&text, true, true, window_width, window_height, None)?;
+            state.build_dmo_gfx_from_yml_str(&text, true, true, window_width, window_height, None, false)?;
         } else {
             info!("PreviewState::new() with build_dmo_gfx_minimal()");
             // Start with a minimal demo until we receive update from the server. This will be compiled
@@ -132,7 +133,8 @@ impl PreviewState {
                                        dmo_data: &DmoData,
                                        window_width: f64,
                                        window_height: f64,
-                                       camera: Option<Camera>)
+                                       camera: Option<Camera>,
+                                       embedded: bool)
         -> Result<(), Box<Error>>
     {
         // NOTE Must use window size for screen size as well
@@ -148,7 +150,8 @@ impl PreviewState {
         let (track_names, track_name_to_idx) =
             build_track_names(&mut dmo_gfx,
                               &dmo_data,
-                              &self.project_data.project_root)?;
+                              &self.project_data.project_root,
+                              embedded)?;
 
         build_shader_sources(&mut dmo_gfx, &dmo_data);
         build_image_sources(&mut dmo_gfx, &dmo_data);
@@ -160,7 +163,8 @@ impl PreviewState {
         build_polygon_context_and_scenes(&mut dmo_gfx,
                                          &dmo_data,
                                          &track_name_to_idx,
-                                         &self.project_data.project_root)?;
+                                         &self.project_data.project_root,
+                                         embedded)?;
         build_timeline(&mut dmo_gfx, &dmo_data)?;
 
         self.track_names = track_names;
@@ -179,17 +183,20 @@ impl PreviewState {
                                       read_image_paths: bool,
                                       window_width: f64,
                                       window_height: f64,
-                                      camera: Option<Camera>)
+                                      camera: Option<Camera>,
+                                      embedded: bool)
         -> Result<(), Box<Error>>
     {
         let dmo_data: DmoData = DmoData::new_from_yml_str(&yml_str,
                                                           &self.project_data.project_root,
                                                           read_shader_paths,
-                                                          read_image_paths)?;
+                                                          read_image_paths,
+                                                          embedded)?;
         self.build_dmo_gfx_from_dmo_data(&dmo_data,
                                          window_width,
                                          window_height,
-                                         camera)?;
+                                         camera,
+                                         embedded)?;
         Ok(())
     }
 
@@ -206,11 +213,13 @@ impl PreviewState {
         let dmo_data: DmoData = DmoData::new_from_json_str(&msg.dmo_data_json_str,
                                                            &self.project_data.project_root,
                                                            read_shader_paths,
-                                                           read_image_paths)?;
+                                                           read_image_paths,
+                                                           msg.embedded)?;
         self.build_dmo_gfx_from_dmo_data(&dmo_data,
                                          window_width,
                                          window_height,
-                                         camera)?;
+                                         camera,
+                                         msg.embedded)?;
         Ok(())
     }
 
@@ -220,7 +229,7 @@ impl PreviewState {
         -> Result<(), Box<Error>>
     {
         let dmo_data: DmoData = DmoData::new_minimal()?;
-        self.build_dmo_gfx_from_dmo_data(&dmo_data, window_width, window_height, None)?;
+        self.build_dmo_gfx_from_dmo_data(&dmo_data, window_width, window_height, None, false)?;
         Ok(())
     }
 
@@ -723,7 +732,8 @@ fn builtin_to_idx(track_name_to_idx: &BTreeMap<String, usize>,
 
 fn build_track_names(dmo_gfx: &mut DmoGfx,
                      dmo_data: &DmoData,
-                     project_root: &Option<PathBuf>)
+                     project_root: &Option<PathBuf>,
+                     embedded: bool)
     -> Result<(Vec<String>, BTreeMap<String, usize>), Box<Error>>
 {
     // Build the track names and their sync var indexes.
@@ -780,7 +790,12 @@ fn build_track_names(dmo_gfx: &mut DmoGfx,
 
     let text = if dmo_data.context.sync_tracks_path.len() > 0 {
         if let Some(p) = project_root {
-            file_to_string(&p.join(PathBuf::from(&dmo_data.context.sync_tracks_path)))?
+            let p = p.join(PathBuf::from(&dmo_data.context.sync_tracks_path));
+            if embedded {
+                get_template_asset_string(&p)?
+            } else {
+                file_to_string(&p)?
+            }
         } else {
             return Err(Box::new(ToolError::MissingProjectRoot));
         }
@@ -1050,7 +1065,8 @@ fn build_quad_scenes(dmo_gfx: &mut DmoGfx,
 fn build_polygon_context_and_scenes(dmo_gfx: &mut DmoGfx,
                                     dmo_data: &DmoData,
                                     track_name_to_idx: &BTreeMap<String, usize>,
-                                    project_root: &Option<PathBuf>)
+                                    project_root: &Option<PathBuf>,
+                                    embedded: bool)
     -> Result<(), Box<Error>>
 {
     use crate::dmo_data as d;
@@ -1065,7 +1081,7 @@ fn build_polygon_context_and_scenes(dmo_gfx: &mut DmoGfx,
     dmo_gfx.context.camera = Camera::new_defaults(aspect as f32);
     dmo_gfx.context.polygon_context = PolygonContext::new_defaults(aspect as f32);
 
-    dmo_data.add_models_to(dmo_gfx, project_root)?;
+    dmo_data.add_models_to(dmo_gfx, project_root, embedded)?;
 
     // Create correcponding OpenGL objects.
 

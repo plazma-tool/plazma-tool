@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 use std::error::Error;
+use std::collections::HashMap;
+use std::io::BufReader;
 
 use tobj;
 
@@ -13,6 +15,7 @@ pub mod timeline;
 
 use intro_runtime::dmo_gfx::DmoGfx;
 
+use crate::project_data::get_template_asset_string;
 use crate::error::ToolError;
 use crate::dmo_data::context_data::{ContextData, FrameBuffer, BufferKind, PixelFormat};
 use crate::dmo_data::quad_scene::{DRAW_RESULT_VERT_SRC_PATH, DRAW_RESULT_FRAG_SRC_PATH};
@@ -100,24 +103,26 @@ impl DmoData {
     pub fn new_from_yml_str(text: &str,
                             project_root: &Option<PathBuf>,
                             read_shader_paths: bool,
-                            read_image_paths: bool)
+                            read_image_paths: bool,
+                            embedded: bool)
         -> Result<DmoData, Box<Error>>
     {
         let mut dmo_data: DmoData = serde_yaml::from_str(text)?;
         dmo_data.ensure_implicit_builtins();
-        dmo_data.context.build_index(project_root, read_shader_paths, read_image_paths)?;
+        dmo_data.context.build_index(project_root, read_shader_paths, read_image_paths, embedded)?;
         Ok(dmo_data)
     }
 
     pub fn new_from_json_str(text: &str,
                              project_root: &Option<PathBuf>,
                              read_shader_paths: bool,
-                             read_image_paths: bool)
+                             read_image_paths: bool,
+                             embedded: bool)
         -> Result<DmoData, Box<Error>>
     {
         let mut dmo_data: DmoData = serde_json::from_str(text)?;
         dmo_data.ensure_implicit_builtins();
-        dmo_data.context.build_index(&project_root, read_shader_paths, read_image_paths)?;
+        dmo_data.context.build_index(&project_root, read_shader_paths, read_image_paths, embedded)?;
         Ok(dmo_data)
     }
 
@@ -126,7 +131,7 @@ impl DmoData {
         // don't read anything from disk for the minimal demo, include assets in the binary
         let mut dmo_data = DmoData::default();
         dmo_data.ensure_implicit_builtins();
-        dmo_data.context.build_index(&None, false, false)?;
+        dmo_data.context.build_index(&None, false, false, false)?;
 
         // construct ContextData with one QuadScene
         // ----------------------------------------
@@ -161,7 +166,8 @@ impl DmoData {
                                               dmo_data.context.quad_scenes.len(),
                                               &None,
                                               false,
-                                              &mut vec![])?;
+                                              &mut vec![],
+                                              false)?;
 
         dmo_data.context.quad_scenes.push(a);
 
@@ -187,7 +193,8 @@ impl DmoData {
                                               dmo_data.context.quad_scenes.len(),
                                               &None,
                                               false,
-                                              &mut vec![])?;
+                                              &mut vec![],
+                                              false)?;
 
         dmo_data.context.quad_scenes.push(a);
 
@@ -204,7 +211,8 @@ impl DmoData {
                                                 dmo_data.context.frame_buffers.len(),
                                                 &None,
                                                 false,
-                                                &mut vec![])?;
+                                                &mut vec![],
+                                                false)?;
 
         dmo_data.context.frame_buffers.push(a);
 
@@ -297,7 +305,8 @@ impl DmoData {
 
     pub fn add_models_to(&self,
                          dmo_gfx: &mut DmoGfx,
-                         project_root: &Option<PathBuf>)
+                         project_root: &Option<PathBuf>,
+                         embedded: bool)
         -> Result<(), Box<Error>>
     {
         use crate::dmo_data as d;
@@ -305,7 +314,7 @@ impl DmoData {
         for model_data in self.context.polygon_context.models.iter() {
             match model_data.model_type {
                 d::model::ModelType::Cube => self.add_model_cube_to(dmo_gfx, model_data)?,
-                d::model::ModelType::Obj => self.add_model_obj_to(dmo_gfx, model_data, project_root)?,
+                d::model::ModelType::Obj => self.add_model_obj_to(dmo_gfx, model_data, project_root, embedded)?,
                 d::model::ModelType::NOOP => {},
             }
         }
@@ -341,7 +350,8 @@ impl DmoData {
     pub fn add_model_obj_to(&self,
                         dmo_gfx: &mut DmoGfx,
                         model_data: &self::model::Model,
-                        project_root: &Option<PathBuf>)
+                        project_root: &Option<PathBuf>,
+                        embedded: bool)
         -> Result<(), Box<Error>>
     {
         use intro_runtime::model::Model;
@@ -365,7 +375,16 @@ impl DmoData {
 
         // Add meshes.
         {
-            let (meshes, _materials) = tobj::load_obj(&project_root.join(PathBuf::from(&model_data.obj_path)))?;
+            let p = project_root.join(PathBuf::from(&model_data.obj_path));
+            let (meshes, _materials) = if embedded {
+                let text = get_template_asset_string(&p)?;
+                let mut reader = BufReader::new(text.as_bytes());
+                tobj::load_obj_buf(&mut reader, |_p| {
+                    Ok((Vec::new(), HashMap::new()))
+                })?
+            } else {
+                tobj::load_obj(&p)?
+            };
 
             for i in meshes.iter() {
                 let mesh = &i.mesh;

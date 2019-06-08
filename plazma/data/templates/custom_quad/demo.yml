@@ -1,0 +1,72 @@
+metadata:
+  title: "Untitled"
+  description: ""
+  tags: ""
+  author: ""
+  url: ""
+  created: ""
+  updated: ""
+
+settings:
+  start_full_screen: false
+  audio_play_on_start: false
+  mouse_sensitivity: 0.5
+  movement_sensitivity: 0.5
+  total_length: 240.0
+
+context:
+  quad_scenes:
+
+    - name: "circle"
+      vert_src_path: "./data/screen_quad.vert"
+      frag_src_path: "./data/circle.frag"
+      layout_to_vars:
+        - Float: [ 0, "Time" ]
+        - Vec2: [ 1, "Window_Width", "Window_Height" ]
+        - Vec2: [ 2, "Screen_Width", "Screen_Height" ]
+      binding_to_buffers:
+        - Sampler2D: [ 0, "rock surface" ]
+
+    - name: "cross"
+      vert_src_path: "./data/screen_quad.vert"
+      frag_src_path: "./data/cross.frag"
+      layout_to_vars:
+        - Float: [ 0, "Time" ]
+        - Vec2: [ 1, "Window_Width", "Window_Height" ]
+        - Vec2: [ 2, "Screen_Width", "Screen_Height" ]
+      binding_to_buffers:
+        - Sampler2D: [ 0, "scene buf" ]
+
+  polygon_scenes: []
+  polygon_context:
+    models: []
+
+  frame_buffers:
+    - { name: "scene buf",
+        kind: Empty_Texture, format: RGBA_u8,
+        image_path: "" }
+
+    - { name: "rock surface",
+        kind: Image_Texture, format: RGB_u8,
+        image_path: "./data/images/rock-1024x1024-3ch-uint8.jpg" }
+
+  sync_tracks_path: ""
+  shader_sources: []
+
+timeline:
+
+  tracks:
+
+    - scene_blocks:
+
+        - start: 0.0
+          end: 240.0
+          draw_ops:
+            - Target_Buffer: "scene buf"
+            - Clear: [ 0, 0, 0, 0 ]
+            - Draw_Quad_Scene: "circle"
+            - Target_Buffer: "RESULT_IMAGE"
+            - Clear: [ 0, 0, 0, 0 ]
+            - Draw_Quad_Scene: "cross"
+
+

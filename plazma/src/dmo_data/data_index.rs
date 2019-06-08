@@ -2,6 +2,7 @@ use std::error::Error;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
+use crate::project_data::{get_template_asset_string, get_template_asset_bytes};
 use crate::dmo_data::context_data::{FrameBuffer, Image, PixelFormat};
 use crate::dmo_data::quad_scene::QuadScene;
 use crate::dmo_data::quad_scene::{DRAW_RESULT_VERT_SRC_PATH, DRAW_RESULT_FRAG_SRC_PATH};
@@ -52,7 +53,8 @@ impl DataIndex {
                           idx: usize,
                           project_root: &Option<PathBuf>,
                           read_shader_paths: bool,
-                          shader_sources: &mut Vec<String>)
+                          shader_sources: &mut Vec<String>,
+                          embedded: bool)
         -> Result<(), Box<Error>>
     {
         if self.quad_scene_name_to_idx.contains_key(&scene.name) {
@@ -60,8 +62,8 @@ impl DataIndex {
         }
 
         self.quad_scene_name_to_idx.insert(scene.name.to_string(), idx);
-        self.add_shader(&scene.vert_src_path, project_root, read_shader_paths, shader_sources)?;
-        self.add_shader(&scene.frag_src_path, project_root, read_shader_paths, shader_sources)?;
+        self.add_shader(&scene.vert_src_path, project_root, read_shader_paths, shader_sources, embedded)?;
+        self.add_shader(&scene.frag_src_path, project_root, read_shader_paths, shader_sources, embedded)?;
 
         Ok(())
     }
@@ -85,7 +87,8 @@ impl DataIndex {
                      idx: usize,
                      project_root: &Option<PathBuf>,
                      read_shader_paths: bool,
-                     shader_sources: &mut Vec<String>)
+                     shader_sources: &mut Vec<String>,
+                     embedded: bool)
         -> Result<(), Box<Error>>
     {
         if self.model_name_to_idx.contains_key(&model.name) {
@@ -94,8 +97,8 @@ impl DataIndex {
 
         self.model_name_to_idx.insert(model.name.to_string(), idx);
 
-        self.add_shader(&model.vert_src_path, project_root, read_shader_paths, shader_sources)?;
-        self.add_shader(&model.frag_src_path, project_root, read_shader_paths, shader_sources)?;
+        self.add_shader(&model.vert_src_path, project_root, read_shader_paths, shader_sources, embedded)?;
+        self.add_shader(&model.frag_src_path, project_root, read_shader_paths, shader_sources, embedded)?;
 
         Ok(())
     }
@@ -104,9 +107,11 @@ impl DataIndex {
                       path: &str,
                       project_root: &Option<PathBuf>,
                       read_shader_path: bool,
-                      shader_sources: &mut Vec<String>)
+                      shader_sources: &mut Vec<String>,
+                      embedded: bool)
         -> Result<(), Box<Error>>
     {
+        info!{"add_shader() path: {}, embedded {}", path, embedded};
         // TODO send error (which can be ignored) when path length is zero.
         if path.len() == 0 {
             return Ok(());
@@ -127,7 +132,11 @@ impl DataIndex {
             } else {
                 return Err(Box::new(ToolError::MissingProjectRoot));
             };
-            let src = file_to_string(&p)?;
+            let src = if embedded {
+                get_template_asset_string(&p)?
+            } else {
+                file_to_string(&p)?
+            };
             shader_sources.push(src.to_owned());
         }
 
@@ -139,7 +148,8 @@ impl DataIndex {
                             idx: usize,
                             project_root: &Option<PathBuf>,
                             read_image_path: bool,
-                            image_sources: &mut Vec<Image>)
+                            image_sources: &mut Vec<Image>,
+                            embedded: bool)
         -> Result<(), Box<Error>>
         {
 
@@ -159,7 +169,11 @@ impl DataIndex {
                 } else {
                     return Err(Box::new(ToolError::MissingProjectRoot));
                 };
-                let image_data = image::open(&p)?;
+                let image_data = if embedded {
+                    image::load_from_memory(&get_template_asset_bytes(&p)?)?
+                } else {
+                    image::open(&p)?
+                };
                 let (width, height) = image_data.dimensions();
 
                 let f = self.image_path_to_format.get(&buffer.image_path.clone()).ok_or("bad image path name")?;

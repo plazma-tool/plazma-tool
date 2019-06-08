@@ -66,6 +66,7 @@ class NewProjectModal extends React.Component<NPM_Props> {
                                         <Button>Raymarch</Button>
                                     </Control>
 
+                                    {/*
                                     <Control onClick={() => { this.props.onClick_New(NewProjectTemplate.ShadertoyTunnel); }}>
                                         <Button>Tunnel</Button>
                                     </Control>
@@ -85,10 +86,12 @@ class NewProjectModal extends React.Component<NPM_Props> {
                                     <Control onClick={() => { this.props.onClick_New(NewProjectTemplate.ShadertoyPbr); }}>
                                         <Button>PBR Material</Button>
                                     </Control>
+                                    */}
                                 </Field>
                             </Column>
                         </Columns>
 
+                        {/*
                         <Columns isVCentered>
                             <Column isSize={2}> Bonzomatic </Column>
 
@@ -100,6 +103,7 @@ class NewProjectModal extends React.Component<NPM_Props> {
                                 </Field>
                             </Column>
                         </Columns>
+                        */}
                     </Box>
 
                 </ModalContent>
@@ -182,9 +186,11 @@ class OpenPreview extends React.Component<{ isOpen: bool, onClick: () => void, }
 type T_Props = {
     isHidden: bool,
     currentLayout: number,
-    onClick_New: (template: number) => void,
+    onClick_NewProjectSet: (is_active: bool) => void,
+    onClick_NewProjectButton: (template: number) => void,
     onClick_SaveProject: () => void,
     onClick_OpenProject: () => void,
+    onClick_ImportProjectSet: (is_active: bool) => void,
     onClick_ReloadProject: () => void,
     onClick_Library: () => void,
     onClick_Preview: () => void,
@@ -193,12 +199,12 @@ type T_Props = {
     view: ViewState,
     onClick_Layout: (layout_index: number) => void,
     onClick_View: (view: ViewState) => void,
+    new_project_modal_is_active: bool,
+    import_from_shadertoy_modal_is_active: bool,
 };
 
 type T_State= {
     isActive: bool,
-    new_project_modal_is_active: bool,
-    import_from_shadertoy_modal_is_active: bool,
 };
 
 export class Toolbar extends React.Component<T_Props, T_State> {
@@ -208,8 +214,6 @@ export class Toolbar extends React.Component<T_Props, T_State> {
 
         this.state = {
             isActive: false,
-            new_project_modal_is_active: false,
-            import_from_shadertoy_modal_is_active: false,
         };
     }
 
@@ -281,19 +285,14 @@ export class Toolbar extends React.Component<T_Props, T_State> {
                             </NavbarLink>
                             <NavbarDropdown>
 
-                                <NavbarItem href="#" onClick={() => this.setState({ new_project_modal_is_active: true })}>
+                                <NavbarItem href="#" onClick={() => { this.props.onClick_NewProjectSet(true); }}>
                                     <Icon className="fa fa-plus-square" />
-                                    <span>New...</span>
-                                </NavbarItem>
-
-                                <NavbarItem href="#" onClick={() => this.setState({ import_from_shadertoy_modal_is_active: true })}>
-                                    <Icon className="fa fa-plus-square" />
-                                    <span>Import...</span>
+                                    <span>New... (Ctrl+N)</span>
                                 </NavbarItem>
 
                                 <NavbarItem href="#" onClick={this.props.onClick_OpenProject}>
                                     <Icon className="fa fa-file-alt" />
-                                    <span>Open</span>
+                                    <span>Open (Ctrl+O)</span>
                                 </NavbarItem>
 
                                 {/*
@@ -305,12 +304,17 @@ export class Toolbar extends React.Component<T_Props, T_State> {
 
                                 <NavbarItem href="#" onClick={this.props.onClick_SaveProject}>
                                     <Icon className="fa fa-save" />
-                                    <span>Save</span>
+                                    <span>Save (Ctrl+S)</span>
+                                </NavbarItem>
+
+                                <NavbarItem href="#" onClick={() => { this.props.onClick_ImportProjectSet(true); }}>
+                                    <Icon className="fa fa-plus-square" />
+                                    <span>Import...</span>
                                 </NavbarItem>
 
                                 <NavbarItem href="#" onClick={this.props.onClick_ReloadProject}>
                                     <Icon className="fa fa-redo" />
-                                    <span>Reload Project From Disk</span>
+                                    <span>Reload Project From Disk (Ctrl+R)</span>
                                 </NavbarItem>
 
                                 {/*
@@ -380,11 +384,11 @@ export class Toolbar extends React.Component<T_Props, T_State> {
                 </NavbarMenu>
 
                 <NewProjectModal
-                    isActive={this.state.new_project_modal_is_active}
-                    onClick_Close={() => this.setState({ new_project_modal_is_active: false })}
+                    isActive={this.props.new_project_modal_is_active}
+                    onClick_Close={() => { this.props.onClick_NewProjectSet(false); }}
                     onClick_New={(template: number) => {
-                        this.props.onClick_New(template);
-                        this.setState({ new_project_modal_is_active: false });
+                        this.props.onClick_NewProjectButton(template);
+                        this.props.onClick_NewProjectSet(false);
                     }}
                     onChange_Search={(e: InputEvent) => {
                         console.log('search', e.currentTarget.value);
@@ -398,8 +402,8 @@ export class Toolbar extends React.Component<T_Props, T_State> {
                 />
 
                 <ImportFromShadertoyModal
-                    isActive={this.state.import_from_shadertoy_modal_is_active}
-                    onClick_Close={() => this.setState({ import_from_shadertoy_modal_is_active: false })}
+                    isActive={this.props.import_from_shadertoy_modal_is_active}
+                    onClick_Close={() => { this.props.onClick_ImportProjectSet(false); }}
                     onChange_Search={(e: InputEvent) => {
                         console.log('search', e.currentTarget.value);
                     }}

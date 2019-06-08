@@ -32,6 +32,20 @@ export const NewProjectTemplate = {
     BonzomaticTunnel: 10,
 };
 
+export const NewProjectTemplateString = [
+    '',
+    'QuadShader',
+    'PolygonScene',
+    'ShadertoyDefault',
+    'ShadertoyRaymarch',
+    'ShadertoyTunnel',
+    'ShadertoyVolumetric',
+    'ShadertoyLattice',
+    'ShadertoyFractal',
+    'ShadertoyPbr',
+    'BonzomaticTunnel',
+];
+
 export type ViewState = {
     time_scrub: bool,
     sidebar: bool,

@@ -13,7 +13,7 @@ import { ShadersPage } from './DmoShaders';
 import { DmoDataPage } from './DmoData';
 import { LibraryPage } from './Library';
 
-import { CurrentPage, EditorsLayout } from './Helpers';
+import { CurrentPage, EditorsLayout, NewProjectTemplateString } from './Helpers';
 import type { ServerMsg, DmoData, Shader, ShaderEditors, ViewState } from './Helpers';
 
 const PLAZMA_SERVER_PORT = 8080;
@@ -29,6 +29,7 @@ type AppState = {
     project_root: ?string,
     demo_yml_path: ?string,
     dmo_data: ?DmoData,
+    embedded: ?bool,
     shaders: Shader[],
     shader_editors: ShaderEditors,
     view: ViewState,
@@ -38,6 +39,8 @@ type AppState = {
     sentUpdateSinceChange: bool,
     updatesToSend: AppUpdates,
     events: {},
+    new_project_modal_is_active: bool,
+    import_from_shadertoy_modal_is_active: bool,
     monacoDidInit: bool
 };
 
@@ -55,6 +58,7 @@ class App extends Component<{}, AppState> {
             project_root: null,
             demo_yml_path: null,
             dmo_data: null,
+            embedded: null,
             shaders: [],
             shader_editors: {
                 layout: EditorsLayout.OneMax,
@@ -85,6 +89,8 @@ class App extends Component<{}, AppState> {
             events: {
                 layout_changed: new Event('layout_changed'),
             },
+            new_project_modal_is_active: false,
+            import_from_shadertoy_modal_is_active: false,
             monacoDidInit: false,
         };
     }
@@ -190,6 +196,7 @@ class App extends Component<{}, AppState> {
                 let dmo_msg = JSON.parse(msg.data);
                 let project_root = dmo_msg.project_root;
                 let demo_yml_path = dmo_msg.demo_yml_path;
+                let embedded = dmo_msg.embedded;
                 let d: DmoData = JSON.parse(dmo_msg.dmo_data_json_str);
 
                 shaders = d.context.shader_sources.map((i, idx) => {
@@ -208,6 +215,7 @@ class App extends Component<{}, AppState> {
                     project_root: project_root,
                     demo_yml_path: demo_yml_path,
                     dmo_data: d,
+                    embedded: embedded,
                     shaders: shaders,
                     // resetUpdates
                     sentUpdateSinceChange: true,
@@ -371,6 +379,37 @@ class App extends Component<{}, AppState> {
         console.log("TODO: implement onChange_LibraryPage(msg)");
     }
 
+    onClick_NewProjectSet = (is_active: bool) => {
+        this.setState({ new_project_modal_is_active: is_active });
+    }
+
+    onClick_NewProjectButton = (template: number) => {
+        let msg: ServerMsg = {
+            data_type: 'NewProject',
+            data: JSON.stringify({ template: NewProjectTemplateString[template] }),
+        };
+        this.sendMsgOnSocket(msg);
+    }
+
+    onClick_OpenProject = () => {
+        let msg: ServerMsg = { data_type: 'OpenProjectFileDialog', data: '' };
+        this.sendMsgOnSocket(msg);
+    }
+
+    onClick_SaveProject = () => {
+        let msg: ServerMsg = { data_type: 'SaveProject', data: '' };
+        this.sendMsgOnSocket(msg);
+    }
+
+    onClick_ImportProjectSet = (is_active: bool) => {
+        this.setState({ import_from_shadertoy_modal_is_active: is_active });
+    }
+
+    onClick_ReloadProject = () => {
+        let msg: ServerMsg = { data_type: 'ReloadProject', data: '' };
+        this.sendMsgOnSocket(msg);
+    }
+
     onTimeScrubChange = (msg: ServerMsg) =>
     {
         if (msg.data_type === 'SetDmoTime') {
@@ -428,6 +467,7 @@ class App extends Component<{}, AppState> {
                     project_root: this.state.project_root,
                     demo_yml_path: this.state.demo_yml_path,
                     dmo_data_json_str: JSON.stringify(this.state.dmo_data),
+                    embedded: this.state.embedded,
                 }),
             };
 
@@ -493,6 +533,22 @@ class App extends Component<{}, AppState> {
     onKeyUp = (keyName, e, handle) => {
         let view = this.state.view;
         switch (handle.key) {
+
+            case 'ctrl+n':
+                this.onClick_NewProjectSet(true);
+                break;
+
+            case 'ctrl+o':
+                this.onClick_OpenProject();
+                break;
+
+            case 'ctrl+s':
+                this.onClick_SaveProject();
+                break;
+
+            case 'ctrl+r':
+                this.onClick_ReloadProject();
+                break;
 
             case 'f8':
                 view.time_scrub = !view.time_scrub;
@@ -589,7 +645,7 @@ class App extends Component<{}, AppState> {
 
         return (
             <Hotkeys
-                keyName="f8,f9,f10,f11"
+                keyName="ctrl+n,ctrl+o,ctrl+s,ctrl+r,f8,f9,f10,f11"
                 onKeyDown={this.onKeyDown}
                 onKeyUp={this.onKeyUp}
             >
@@ -600,24 +656,15 @@ class App extends Component<{}, AppState> {
 
                         view={this.state.view}
 
-                        onClick_New={(template: number) => {
-                            console.log('template', template);
-                        }}
+                        onClick_NewProjectSet={this.onClick_NewProjectSet}
+                        onClick_NewProjectButton={this.onClick_NewProjectButton}
+                        onClick_OpenProject={this.onClick_OpenProject}
+                        onClick_ImportProjectSet={this.onClick_ImportProjectSet}
+                        onClick_ReloadProject={this.onClick_ReloadProject}
+                        onClick_SaveProject={this.onClick_SaveProject}
 
-                        onClick_OpenProject={() => {
-                            let msg: ServerMsg = { data_type: 'OpenProjectFileDialog', data: '' };
-                            this.sendMsgOnSocket(msg);
-                        }}
-
-                        onClick_ReloadProject={() => {
-                            let msg: ServerMsg = { data_type: 'ReloadProject', data: '' };
-                            this.sendMsgOnSocket(msg);
-                        }}
-
-                        onClick_SaveProject={() => {
-                            let msg: ServerMsg = { data_type: 'SaveProject', data: '' };
-                            this.sendMsgOnSocket(msg);
-                        }}
+                        new_project_modal_is_active={this.state.new_project_modal_is_active}
+                        import_from_shadertoy_modal_is_active={this.state.import_from_shadertoy_modal_is_active}
 
                         onClick_Library={() => this.setState({ current_page: CurrentPage.Library })}
 

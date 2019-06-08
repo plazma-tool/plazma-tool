@@ -5,12 +5,15 @@ use std::thread::{self, sleep};
 use std::time::Duration;
 use std::path::PathBuf;
 use std::error::Error;
+use std::borrow::Cow;
 
 use web_view::Content;
 use nfd::Response as NfdResponse;
 
-use actix_web::{fs, middleware, server, ws, App, HttpRequest};
-use actix_web::Error as AxError;
+use mime_guess::guess_mime_type;
+
+use actix_web::http::Method;
+use actix_web::{middleware, server, ws, App, Body, HttpRequest, HttpResponse};
 use actix_web::actix::*;
 
 use futures::Future;
@@ -29,8 +32,35 @@ use crate::preview_client::client_actor::{ClientActor, ClientMessage};
 
 use crate::preview_client::preview_state::PreviewState;
 
-pub fn handle_static_index(_req: &HttpRequest<ServerStateWrap>) -> Result<fs::NamedFile, AxError> {
-    Ok(fs::NamedFile::open("../gui/build/index.html")?)
+#[derive(RustEmbed)]
+#[folder = "../gui/build/"]
+pub struct WebAsset;
+
+fn handle_embedded_file(path: &str) -> HttpResponse {
+  match WebAsset::get(path) {
+    Some(content) => {
+      let body: Body = match content {
+        Cow::Borrowed(bytes) => bytes.into(),
+        Cow::Owned(bytes) => bytes.into(),
+      };
+      HttpResponse::Ok().content_type(guess_mime_type(path).as_ref()).body(body)
+    }
+    None => HttpResponse::NotFound().body("404 Not Found"),
+  }
+}
+
+fn static_index(_req: HttpRequest<ServerStateWrap>) -> HttpResponse {
+  handle_embedded_file("index.html")
+}
+
+fn static_assets(req: HttpRequest<ServerStateWrap>) -> HttpResponse {
+  let path = &req.path().trim_start_matches("/static/");
+  handle_embedded_file(path)
+}
+
+fn fonts_assets(req: HttpRequest<ServerStateWrap>) -> HttpResponse {
+  let path = &req.path().trim_start_matches("/");
+  handle_embedded_file(path)
 }
 
 #[derive(Debug)]
@@ -203,8 +233,9 @@ pub fn start_server(port: Arc<usize>,
             // WebSocket routes (there is no CORS)
                 .resource("/ws/", |r| r.f(|req| ws::start(req, ServerActor::new())))
             // static files
-                .handler("/static/", fs::StaticFiles::new("../gui/build/").unwrap()
-                         .default_handler(handle_static_index))
+                .route("/static/", Method::GET, static_index)
+                .route("/static/{_:.*}", Method::GET, static_assets)
+                .route("/fonts/{_:.*}", Method::GET, fonts_assets)
         })
             .bind(format!{"127.0.0.1:{}", port_clone_a})
             .unwrap()

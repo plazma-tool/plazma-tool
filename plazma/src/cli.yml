@@ -36,3 +36,6 @@ subcommands:
 
   - yml-to-dmo:
       about: "Read in a project from its YAML file and write an all-in-one DMO format file."
+
+  - dialogs:
+      about: "Starts a process for opening dialogs."

@@ -1,8 +1,8 @@
 // @flow
 import React from 'react';
 import { Panel, PanelBlock, PanelIcon, PanelHeading, Columns, Column, Level, LevelItem, LevelLeft } from 'bloomer';
-import { CurrentPage, EditorsLayout, parseShaderErrorText, pathBasename } from './Helpers';
-import type { DmoData, Shader, ShaderEditors, ShaderErrorMessage } from './Helpers';
+import { CurrentPage, EditorsLayout, parseShaderErrorText } from './Helpers';
+import type { Shader, ShaderEditors, ShaderErrorMessage } from './Helpers';
 
 import MonacoEditor from 'react-monaco-editor';
 import { ColorPickerColumns } from './PlazmaColorPicker';
@@ -62,7 +62,13 @@ export class DmoShadersPanel extends React.Component<DSP_Props> {
                 });
             })
         // filter out the builtin shaders
-            .filter((i) => !i.file_path.startsWith('data_builtin_'))
+            .filter((i) => {
+                if (i.file_path !== null && typeof i.file_path !== 'undefined') {
+                    return !i.file_path.startsWith('data_builtin_');
+                } else {
+                    return false;
+                };
+            })
             .map((i) => i.item);
 
         let color = "";
@@ -85,6 +91,7 @@ type SP_Props = {
     onChange_PlazmaMonaco: (newShader: Shader) => void,
     onFocus_PlazmaMonaco: (editorIdx: number) => void,
     onBlur_PlazmaMonaco: (editorIdx: number, viewState: {}) => void,
+    onKey_PlazmaMonaco: (key: string) => void,
     onChange_ColorPickerColumns: (newShader: Shader) => void,
     onChange_PositionSlidersColumns: (newShader: Shader) => void,
     onChange_SliderColumns: (newShader: Shader) => void,
@@ -110,6 +117,7 @@ export class ShadersPage extends React.Component<SP_Props> {
                     onChangeLift={this.props.onChange_PlazmaMonaco}
                     onFocusLift={this.props.onFocus_PlazmaMonaco}
                     onBlurLift={this.props.onBlur_PlazmaMonaco}
+                    onKeyLift={this.props.onKey_PlazmaMonaco}
                     monacoDidInit={this.props.monacoDidInit}
                     onMonacoDidInit={this.props.onMonacoDidInit}
                 />
@@ -248,6 +256,7 @@ type PM_Props = {
     onChangeLift: (newShader: Shader) => void,
     onBlurLift: (editorIdx: number, viewState: {}) => void,
     onFocusLift: (editorIdx: number) => void,
+    onKeyLift: (key: string) => void,
     monacoDidInit: bool,
     onMonacoDidInit: () => void,
 };
@@ -293,6 +302,7 @@ class PlazmaMonaco extends React.Component<PM_Props, PM_State> {
         // https://github.com/Microsoft/monaco-editor/issues/28
 
         window.addEventListener('resize', this.onResize);
+        window.addEventListener('layout_changed', this.onResize);
 
         editor.onDidFocusEditorText(() => {
             this.props.onFocusLift(this.props.editorIdx);
@@ -313,6 +323,11 @@ class PlazmaMonaco extends React.Component<PM_Props, PM_State> {
         if (this.props.shaderEditors.current_editor_idx === this.props.editorIdx) {
             editor.focus();
         }
+
+        editor.addCommand( monaco.KeyCode.F8, () => { this.props.onKeyLift('f8'); });
+        editor.addCommand( monaco.KeyCode.F9, () => { this.props.onKeyLift('f9'); });
+        editor.addCommand( monaco.KeyCode.F10, () => { this.props.onKeyLift('f10'); });
+        editor.addCommand( monaco.KeyCode.F11, () => { this.props.onKeyLift('f11'); });
 
         this.setState({
             editor: editor,

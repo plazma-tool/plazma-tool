@@ -2,15 +2,10 @@
 
 // No index 0, to avoid == problems.
 export const CurrentPage = {
-    Settings: 1,
+    Library: 1,
     Shaders: 2,
-    Framebuffers: 3,
-    QuadScenes: 4,
-    PolygonScenes: 5,
-    Models: 6,
-    Timeline: 7,
-    SyncTracks: 8,
-    Library: 9,
+    Properties: 3,
+    DmoData: 4,
 };
 
 export const EditorsLayout = {
@@ -23,6 +18,40 @@ export const EditorsLayout = {
     ThreeMainBottom: 7,
     FourEven: 8,
 };
+
+export const NewProjectTemplate = {
+    QuadShader: 1,
+    PolygonScene: 2,
+    ShadertoyDefault: 3,
+    ShadertoyRaymarch: 4,
+    ShadertoyTunnel: 5,
+    ShadertoyVolumetric: 6,
+    ShadertoyLattice: 7,
+    ShadertoyFractal: 8,
+    ShadertoyPbr: 9,
+    BonzomaticTunnel: 10,
+};
+
+export const NewProjectTemplateString = [
+    '',
+    'QuadShader',
+    'PolygonScene',
+    'ShadertoyDefault',
+    'ShadertoyRaymarch',
+    'ShadertoyTunnel',
+    'ShadertoyVolumetric',
+    'ShadertoyLattice',
+    'ShadertoyFractal',
+    'ShadertoyPbr',
+    'BonzomaticTunnel',
+];
+
+export type ViewState = {
+    time_scrub: bool,
+    sidebar: bool,
+    toolbar: bool,
+    editors_only: bool,
+}
 
 export type Editor = {
     source_idx: number,
@@ -199,6 +228,15 @@ export type Timeline = {
 };
 
 export type DmoData = {
+    metadata: {
+        title: string,
+        description: string,
+        tags: string,
+        author: string,
+        url: string,
+        created: string,
+        updated: string,
+    },
     settings: {
         start_full_screen: bool,
         audio_play_on_start: bool,

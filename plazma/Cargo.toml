@@ -20,6 +20,9 @@ env_logger = "0.6"
 kankyo = "0.2"
 smallvec = "0.6"
 clap = { version = "2.32", features = ["yaml"] }
+nfd = "0.0.4"
+rust-embed = "4.4"
+mime_guess = "2.0.0-alpha.6"
 
 gl = "0.11"
 glutin = "0.19"

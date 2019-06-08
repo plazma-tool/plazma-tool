@@ -13,6 +13,7 @@ pub enum ToolError {
     UiError(String),
     MissingProjectRoot,
     MissingObjectPath,
+    MissingTemplateAssetPath(String),
 }
 
 pub enum ToolOk {
@@ -75,6 +76,7 @@ impl fmt::Debug for ToolError {
             ToolError::NameAlreadyExists => "Name already exists",
             ToolError::MissingProjectRoot => "Missing project root",
             ToolError::MissingObjectPath => "Missing object path",
+            ToolError::MissingTemplateAssetPath(_) => "Missing template asset path",
         };
 
         write!(fmt, "{}:\n{}", kind, self.description())
@@ -104,6 +106,7 @@ impl error::Error for ToolError {
             ToolError::NameAlreadyExists => "Name already exists",
             ToolError::MissingProjectRoot => "Missing project root",
             ToolError::MissingObjectPath => "Missing object path",
+            ToolError::MissingTemplateAssetPath(_) => "Missing template asset path",
         }
     }
 

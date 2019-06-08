@@ -1,30 +1,19 @@
 // @flow
 import React from 'react';
-//import { Menu, Button, Icon } from 'bloomer';
 import type { DmoData, Shader } from './Helpers';
 
 import { DmoShadersPanel } from './DmoShaders';
-import { DmoFramebuffersPanel } from './DmoFramebuffers';
-import { DmoQuadScenesPanel } from './DmoQuadScenes';
-import { DmoPolygonScenesPanel } from './DmoPolygonScenes';
-import { DmoModelsPanel } from './DmoModels';
-import { DmoTimelinePanel } from './DmoTimeline';
-import { DmoSyncTracksPanel } from './DmoSyncTracks';
-import { DmoSettingsPanel } from './DmoSettings';
+import { DmoPropertiesPanel } from './DmoProperties';
+import { DmoDataPanel } from './DmoData';
 
 type S_Props = {
     dmoData: ?DmoData,
     shaders: Shader[],
     currentPage: number,
     currentShaderIndex: number,
-    onClick_DmoSettingsMenu: () => void,
-    onClick_DmoFramebuffersMenu: () => void,
-    onClick_DmoQuadScenesMenu: () => void,
-    onClick_DmoPolygonScenesMenu: () => void,
     onClick_DmoShadersMenu: () => void,
-    onClick_DmoModelsMenu: () => void,
-    onClick_DmoTimelineMenu: () => void,
-    onClick_DmoSyncTracksMenu: () => void,
+    onClick_DmoDataMenu: () => void,
+    onClick_DmoPropertiesMenu: () => void,
     onChange_DmoShadersMenu: (idx: number) => void,
 };
 
@@ -41,6 +30,11 @@ export class Sidebar extends React.Component<S_Props> {
 
         return (
             <div id="sidebar">
+                <DmoPropertiesPanel
+                    currentPage={this.props.currentPage}
+                    onClickLift={this.props.onClick_DmoPropertiesMenu}
+                />
+
                 <DmoShadersPanel
                     dmoData={this.props.dmoData}
                     shaders={this.props.shaders}
@@ -50,43 +44,11 @@ export class Sidebar extends React.Component<S_Props> {
                     onChangeLift={this.props.onChange_DmoShadersMenu}
                 />
 
-                <DmoFramebuffersPanel
-                    //dmoData={this.props.dmoData}
+                <DmoDataPanel
                     currentPage={this.props.currentPage}
-                    //currentIndex={this.props.currentFramebufferIndex}// TODO
-                    onClickLift={this.props.onClick_DmoFramebuffersMenu}
-                    //onChangeLift={this.props.onChange_DmoFramebuffersMenu}// TODO
+                    onClickLift={this.props.onClick_DmoDataMenu}
                 />
 
-                <DmoQuadScenesPanel
-                    currentPage={this.props.currentPage}
-                    onClickLift={this.props.onClick_DmoQuadScenesMenu}
-                />
-
-                <DmoPolygonScenesPanel
-                    currentPage={this.props.currentPage}
-                    onClickLift={this.props.onClick_DmoPolygonScenesMenu}
-                />
-
-                <DmoModelsPanel
-                    currentPage={this.props.currentPage}
-                    onClickLift={this.props.onClick_DmoModelsMenu}
-                />
-
-                <DmoTimelinePanel
-                    currentPage={this.props.currentPage}
-                    onClickLift={this.props.onClick_DmoTimelineMenu}
-                />
-
-                <DmoSyncTracksPanel
-                    currentPage={this.props.currentPage}
-                    onClickLift={this.props.onClick_DmoSyncTracksMenu}
-                />
-
-                <DmoSettingsPanel
-                    currentPage={this.props.currentPage}
-                    onClickLift={this.props.onClick_DmoSettingsMenu}
-                />
             </div>
         );
         }

@@ -2,23 +2,19 @@
 import React, { Component } from 'react';
 //import * as ReactDOM from 'react-dom';
 import { Columns, Column } from 'bloomer';
+import Hotkeys from 'react-hot-keys';
 
 import { Toolbar } from './Toolbar';
 import { Sidebar } from './Sidebar';
 import { TimeScrub } from './TimeScrub';
 
-import { SettingsPage } from './DmoSettings';
+import { PropertiesPage } from './DmoProperties';
 import { ShadersPage } from './DmoShaders';
-import { FramebuffersPage } from './DmoFramebuffers';
-import { QuadScenesPage } from './DmoQuadScenes';
-import { PolygonScenesPage } from './DmoPolygonScenes';
-import { ModelsPage } from './DmoModels';
-import { TimelinePage } from './DmoTimeline';
-import { SyncTracksPage } from './DmoSyncTracks';
-
+import { DmoDataPage } from './DmoData';
 import { LibraryPage } from './Library';
-import { CurrentPage, EditorsLayout } from './Helpers';
-import type { ServerMsg, DmoData, Shader, ShaderEditors } from './Helpers';
+
+import { CurrentPage, EditorsLayout, NewProjectTemplateString } from './Helpers';
+import type { ServerMsg, DmoData, Shader, ShaderEditors, ViewState } from './Helpers';
 
 const PLAZMA_SERVER_PORT = 8080;
 
@@ -31,14 +27,20 @@ type AppUpdates = {
 type AppState = {
     socket: ?WebSocket,
     project_root: ?string,
+    demo_yml_path: ?string,
     dmo_data: ?DmoData,
+    embedded: ?bool,
     shaders: Shader[],
     shader_editors: ShaderEditors,
+    view: ViewState,
     current_page: number,
     current_time: number,
     preview_is_open: bool,
     sentUpdateSinceChange: bool,
     updatesToSend: AppUpdates,
+    events: {},
+    new_project_modal_is_active: bool,
+    import_from_shadertoy_modal_is_active: bool,
     monacoDidInit: bool
 };
 
@@ -54,19 +56,26 @@ class App extends Component<{}, AppState> {
         this.state = {
             socket: null,
             project_root: null,
+            demo_yml_path: null,
             dmo_data: null,
+            embedded: null,
             shaders: [],
             shader_editors: {
-                layout: EditorsLayout.ThreeMainTop,
-                prev_layout: EditorsLayout.ThreeMainTop,
+                layout: EditorsLayout.OneMax,
                 full_height: 800,
                 current_editor_idx: 0,
                 editors: [
-                    { source_idx: 0 },
-                    { source_idx: 1 },
                     { source_idx: 2 },
-                    { source_idx: 3 },
+                    { source_idx: 2 },
+                    { source_idx: 2 },
+                    { source_idx: 2 },
                 ],
+            },
+            view: {
+                time_scrub: true,
+                sidebar: true,
+                toolbar: true,
+                editors_only: false,
             },
             current_page: CurrentPage.Shaders,
             current_time: 0.0,
@@ -77,6 +86,11 @@ class App extends Component<{}, AppState> {
                 SetShader: false,
                 shaderIndexes: [],
             },
+            events: {
+                layout_changed: new Event('layout_changed'),
+            },
+            new_project_modal_is_active: false,
+            import_from_shadertoy_modal_is_active: false,
             monacoDidInit: false,
         };
     }
@@ -174,9 +188,15 @@ class App extends Component<{}, AppState> {
         let shaders = [];
 
         switch (msg.data_type) {
+            case 'NoOp':
+                break;
+
             case 'SetDmo':
+                console.log('Received SetDmo.');
                 let dmo_msg = JSON.parse(msg.data);
                 let project_root = dmo_msg.project_root;
+                let demo_yml_path = dmo_msg.demo_yml_path;
+                let embedded = dmo_msg.embedded;
                 let d: DmoData = JSON.parse(dmo_msg.dmo_data_json_str);
 
                 shaders = d.context.shader_sources.map((i, idx) => {
@@ -193,7 +213,9 @@ class App extends Component<{}, AppState> {
 
                 this.setState({
                     project_root: project_root,
+                    demo_yml_path: demo_yml_path,
                     dmo_data: d,
+                    embedded: embedded,
                     shaders: shaders,
                     // resetUpdates
                     sentUpdateSinceChange: true,
@@ -316,7 +338,7 @@ class App extends Component<{}, AppState> {
         }
     }
 
-    onChange_SettingsPage = (msg: ServerMsg) =>
+    onChange_Settings = (msg: ServerMsg) =>
     {
         if (msg.data_type === 'SetSettings') {
             if (this.state.dmo_data !== null && typeof this.state.dmo_data !== 'undefined') {
@@ -329,44 +351,63 @@ class App extends Component<{}, AppState> {
         this.sendMsgOnSocket(msg);
     }
 
+    onChange_Metadata = (msg: ServerMsg) =>
+    {
+        if (msg.data_type === 'SetMetadata') {
+            if (this.state.dmo_data !== null && typeof this.state.dmo_data !== 'undefined') {
+                let d = this.state.dmo_data;
+                d.metadata = JSON.parse(msg.data);
+                this.setState({ dmo_data: d });
+            }
+        }
+        // As it is now, Metadata doesn't have to be sent to the server since it doesn't use it. It
+        // will be saved to the YAML when the project DmoData is saved.
+    }
+
     onChange_ShadersPage = (msg: ServerMsg) =>
     {
         console.log("TODO: implement onChange_ShadersPage(msg)");
     }
 
-    onChange_FramebuffersPage = (msg: ServerMsg) =>
-    {
-        console.log("TODO: implement onChange_FramebuffersPage(msg)");
-    }
-
-    onChange_QuadScenesPage = (msg: ServerMsg) =>
-    {
-        console.log("TODO: implement onChange_QuadScenesPage(msg)");
-    }
-
-    onChange_PolygonScenesPage = (msg: ServerMsg) =>
-    {
-        console.log("TODO: implement onChange_PolygonScenesPage(msg)");
-    }
-
-    onChange_ModelsPage = (msg: ServerMsg) =>
-    {
-        console.log("TODO: implement onChange_ModelsPage(msg)");
-    }
-
-    onChange_TimelinePage = (msg: ServerMsg) =>
-    {
-        console.log("TODO: implement onChange_TimelinePage(msg)");
-    }
-
-    onChange_SyncTracksPage = (msg: ServerMsg) =>
-    {
-        console.log("TODO: implement onChange_SyncTracksPage(msg)");
-    }
-
     onChange_LibraryPage = (msg: ServerMsg) =>
     {
         console.log("TODO: implement onChange_LibraryPage(msg)");
+    }
+
+    onChange_DmoDataPage = (msg: ServerMsg) =>
+    {
+        console.log("TODO: implement onChange_LibraryPage(msg)");
+    }
+
+    onClick_NewProjectSet = (is_active: bool) => {
+        this.setState({ new_project_modal_is_active: is_active });
+    }
+
+    onClick_NewProjectButton = (template: number) => {
+        let msg: ServerMsg = {
+            data_type: 'NewProject',
+            data: JSON.stringify({ template: NewProjectTemplateString[template] }),
+        };
+        this.sendMsgOnSocket(msg);
+    }
+
+    onClick_OpenProject = () => {
+        let msg: ServerMsg = { data_type: 'OpenProjectFileDialog', data: '' };
+        this.sendMsgOnSocket(msg);
+    }
+
+    onClick_SaveProject = () => {
+        let msg: ServerMsg = { data_type: 'SaveProject', data: '' };
+        this.sendMsgOnSocket(msg);
+    }
+
+    onClick_ImportProjectSet = (is_active: bool) => {
+        this.setState({ import_from_shadertoy_modal_is_active: is_active });
+    }
+
+    onClick_ReloadProject = () => {
+        let msg: ServerMsg = { data_type: 'ReloadProject', data: '' };
+        this.sendMsgOnSocket(msg);
     }
 
     onTimeScrubChange = (msg: ServerMsg) =>
@@ -396,6 +437,10 @@ class App extends Component<{}, AppState> {
         this.setState({ shaders: s });
     }
 
+    onEditorKey = (key: string) => {
+        this.onKeyUp(key, {}, { key: key });
+    }
+
     onColorPickerChange = (newShader: Shader) => {
         this.sendUpdatedContent(newShader);
     }
@@ -420,7 +465,9 @@ class App extends Component<{}, AppState> {
                 data_type: 'SetDmo',
                 data: JSON.stringify({
                     project_root: this.state.project_root,
+                    demo_yml_path: this.state.demo_yml_path,
                     dmo_data_json_str: JSON.stringify(this.state.dmo_data),
+                    embedded: this.state.embedded,
                 }),
             };
 
@@ -478,10 +525,60 @@ class App extends Component<{}, AppState> {
         }
     }
 
-    getDmoTime = () =>
-    {
+    getDmoTime = () => {
         let msg: ServerMsg = { data_type: 'GetDmoTime', data: '' };
         this.sendMsgOnSocket(msg);
+    }
+
+    onKeyUp = (keyName, e, handle) => {
+        let view = this.state.view;
+        switch (handle.key) {
+
+            case 'ctrl+n':
+                this.onClick_NewProjectSet(true);
+                break;
+
+            case 'ctrl+o':
+                this.onClick_OpenProject();
+                break;
+
+            case 'ctrl+s':
+                this.onClick_SaveProject();
+                break;
+
+            case 'ctrl+r':
+                this.onClick_ReloadProject();
+                break;
+
+            case 'f8':
+                view.time_scrub = !view.time_scrub;
+                window.setTimeout(() => { window.dispatchEvent(this.state.events.layout_changed); }, 100);
+                break;
+
+            case 'f9':
+                view.sidebar = !view.sidebar;
+                window.setTimeout(() => { window.dispatchEvent(this.state.events.layout_changed); }, 100);
+                break;
+
+            case 'f10':
+                view.toolbar = !view.toolbar;
+                window.setTimeout(() => { window.dispatchEvent(this.state.events.layout_changed); }, 100);
+                break;
+
+            case 'f11':
+                view.editors_only = !view.editors_only;
+                window.setTimeout(() => { window.dispatchEvent(this.state.events.layout_changed); }, 100);
+                break;
+
+            default:
+                break;
+        }
+
+        this.setState({ view: view });
+    }
+
+    onKeyDown = (keyName, e, handle) => {
+        //console.log("onKeyDown", keyName, e, handle)
     }
 
     render()
@@ -495,11 +592,11 @@ class App extends Component<{}, AppState> {
 
             switch (this.state.current_page) {
 
-                case CurrentPage.Settings:
+                case CurrentPage.Library:
                     page =
-                        <SettingsPage
+                        <LibraryPage
                             dmoData={this.state.dmo_data}
-                            onChangeLift={this.onChange_SettingsPage}
+                            onChangeLift={this.onChange_LibraryPage}
                         />;
                     break;
 
@@ -511,6 +608,7 @@ class App extends Component<{}, AppState> {
                             onChange_PlazmaMonaco={this.onEditorChange}
                             onFocus_PlazmaMonaco={this.onEditorFocus}
                             onBlur_PlazmaMonaco={this.onEditorBlur}
+                            onKey_PlazmaMonaco={this.onEditorKey}
                             onChange_ColorPickerColumns={this.onColorPickerChange}
                             onChange_PositionSlidersColumns={this.onPositionSlidersChange}
                             onChange_SliderColumns={this.onColorPickerChange}
@@ -519,59 +617,20 @@ class App extends Component<{}, AppState> {
                         />
                         break;
 
-                case CurrentPage.Framebuffers:
+                case CurrentPage.Properties:
                     page =
-                        <FramebuffersPage
+                        <PropertiesPage
                             dmoData={this.state.dmo_data}
-                            onChangeLift={this.onChange_FramebuffersPage}
+                            onChange_Metadata={this.onChange_Metadata}
+                            onChange_Settings={this.onChange_Settings}
                         />;
                     break;
 
-                case CurrentPage.QuadScenes:
+                case CurrentPage.DmoData:
                     page =
-                        <QuadScenesPage
+                        <DmoDataPage
                             dmoData={this.state.dmo_data}
-                            onChangeLift={this.onChange_QuadScenesPage}
-                        />;
-                    break;
-
-                case CurrentPage.PolygonScenes:
-                    page =
-                        <PolygonScenesPage
-                            dmoData={this.state.dmo_data}
-                            onChangeLift={this.onChange_PolygonScenesPage}
-                        />;
-                    break;
-
-                case CurrentPage.Models:
-                    page =
-                        <ModelsPage
-                            dmoData={this.state.dmo_data}
-                            onChangeLift={this.onChange_ModelsPage}
-                        />;
-                    break;
-
-                case CurrentPage.Timeline:
-                    page =
-                        <TimelinePage
-                            dmoData={this.state.dmo_data}
-                            onChangeLift={this.onChange_TimelinePage}
-                        />;
-                    break;
-
-                case CurrentPage.SyncTracks:
-                    page =
-                        <SyncTracksPage
-                            dmoData={this.state.dmo_data}
-                            onChangeLift={this.onChange_SyncTracksPage}
-                        />;
-                    break;
-
-                case CurrentPage.Library:
-                    page =
-                        <LibraryPage
-                            dmoData={this.state.dmo_data}
-                            onChangeLift={this.onChange_LibraryPage}
+                            onChangeLift={this.onChange_DmoDataPage}
                         />;
                     break;
 
@@ -585,85 +644,105 @@ class App extends Component<{}, AppState> {
         }
 
         return (
-            <div className="App">
+            <Hotkeys
+                keyName="ctrl+n,ctrl+o,ctrl+s,ctrl+r,f8,f9,f10,f11"
+                onKeyDown={this.onKeyDown}
+                onKeyUp={this.onKeyUp}
+            >
+                <div className="App">
 
-                <Toolbar
-                    onClick_Library={() => this.setState({ current_page: CurrentPage.Library })}
+                    <Toolbar
+                        isHidden={!this.state.view.toolbar || this.state.view.editors_only}
 
-                    onClick_Preview={() => {
-                        if (this.state.preview_is_open) {
+                        view={this.state.view}
 
-                            console.log("Send to server: StopPreview");
+                        onClick_NewProjectSet={this.onClick_NewProjectSet}
+                        onClick_NewProjectButton={this.onClick_NewProjectButton}
+                        onClick_OpenProject={this.onClick_OpenProject}
+                        onClick_ImportProjectSet={this.onClick_ImportProjectSet}
+                        onClick_ReloadProject={this.onClick_ReloadProject}
+                        onClick_SaveProject={this.onClick_SaveProject}
+
+                        new_project_modal_is_active={this.state.new_project_modal_is_active}
+                        import_from_shadertoy_modal_is_active={this.state.import_from_shadertoy_modal_is_active}
+
+                        onClick_Library={() => this.setState({ current_page: CurrentPage.Library })}
+
+                        onClick_Preview={() => {
+                            if (this.state.preview_is_open) {
+
+                                console.log("Send to server: StopPreview");
+                                let m: ServerMsg = {
+                                    data_type: 'StopPreview',
+                                    data: '',
+                                };
+                                this.sendMsgOnSocket(m);
+
+                            } else {
+
+                                console.log("Send to server: StartPreview");
+                                let m: ServerMsg = {
+                                    data_type: 'StartPreview',
+                                    data: '',
+                                };
+                                this.sendMsgOnSocket(m);
+
+                            }
+                        } }
+
+                        onClick_Exit={() => {
+                            console.log("Send to server: ExitApp");
                             let m: ServerMsg = {
-                                data_type: 'StopPreview',
+                                data_type: 'ExitApp',
                                 data: '',
                             };
                             this.sendMsgOnSocket(m);
+                        }}
 
-                        } else {
+                        previewIsOpen={this.state.preview_is_open}
 
-                            console.log("Send to server: StartPreview");
-                            let m: ServerMsg = {
-                                data_type: 'StartPreview',
-                                data: '',
-                            };
-                            this.sendMsgOnSocket(m);
+                        currentLayout={this.state.shader_editors.layout}
 
-                        }
-                    } }
+                        onClick_Layout={(layout_index: number) => {
+                            let e = this.state.shader_editors;
+                            e.layout = layout_index;
+                            this.setState({ shader_editors: e });
+                        }}
 
-                    onClick_Exit={() => {
-                        console.log("Send to server: ExitApp");
-                        let m: ServerMsg = {
-                            data_type: 'ExitApp',
-                            data: '',
-                        };
-                        this.sendMsgOnSocket(m);
-                    }}
+                        onClick_View={(view: ViewState) => this.setState({ view: view })}
+                    />
 
-                    previewIsOpen={this.state.preview_is_open}
-
-                    currentLayout={this.state.shader_editors.layout}
-
-                    onClick_Layout={(layout_index: number) => {
-                        let e = this.state.shader_editors;
-                        e.layout = layout_index;
-                        this.setState({ shader_editors: e });
-                    }}
-                />
-
-                <Columns>
-                    <Column isSize={{default: 2}}>
+                <Columns isGapless={true}>
+                    <Column
+                        isSize={{default: 2}}
+                        isHidden={!this.state.view.sidebar || this.state.view.editors_only}
+                    >
                         <Sidebar
                             dmoData={this.state.dmo_data}
                             shaders={this.state.shaders}
                             currentPage={this.state.current_page}
                             currentShaderIndex={this.currentShaderIdx()}
 
-                            onClick_DmoSettingsMenu={() => this.setState({ current_page: CurrentPage.Settings })}
-                            onClick_DmoFramebuffersMenu={() => this.setState({ current_page: CurrentPage.Framebuffers })}
-                            onClick_DmoQuadScenesMenu={() => this.setState({ current_page: CurrentPage.QuadScenes })}
-                            onClick_DmoPolygonScenesMenu={() => this.setState({ current_page: CurrentPage.PolygonScenes })}
                             onClick_DmoShadersMenu={() => this.setState({ current_page: CurrentPage.Shaders })}
-                            onClick_DmoModelsMenu={() => this.setState({ current_page: CurrentPage.Models })}
-                            onClick_DmoTimelineMenu={() => this.setState({ current_page: CurrentPage.Timeline })}
-                            onClick_DmoSyncTracksMenu={() => this.setState({ current_page: CurrentPage.SyncTracks })}
+                            onClick_DmoDataMenu={() => this.setState({ current_page: CurrentPage.DmoData })}
+                            onClick_DmoPropertiesMenu={() => this.setState({ current_page: CurrentPage.Properties })}
 
                             onChange_DmoShadersMenu={this.onDmoShadersMenuChange}
                         />
                     </Column>
-                    <Column>
+                    <Column className="editors-column">
                         {page}
                     </Column>
                 </Columns>
 
                 <TimeScrub
+                    isHidden={!this.state.view.time_scrub || this.state.view.editors_only}
                     dmoData={this.state.dmo_data}
                     currentTime={this.state.current_time}
                     onChangeLift={this.onTimeScrubChange}
                 />
-
             </div>
+        </Hotkeys>
         );
     }
 }

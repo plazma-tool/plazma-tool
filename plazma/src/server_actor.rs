@@ -10,7 +10,7 @@ use rand::Rng;
 use actix_web::ws;
 use actix_web::actix::*;
 
-use crate::project_data::ProjectData;
+use crate::project_data::{ProjectData, NewProjectTemplate};
 use crate::app::AppInfo;
 
 /// How often heartbeat pings are sent
@@ -42,6 +42,7 @@ pub struct ServerState {
     pub project_data: ProjectData,
     pub clients: HashMap<usize, Addr<ServerActor>>,
     pub preview_child: Option<Child>,
+    pub dialogs_child: Option<Child>,
 }
 
 pub type ServerStateWrap = Arc<Mutex<ServerState>>;
@@ -55,9 +56,10 @@ impl ServerState {
         let state = ServerState {
             app_info: app_info,
             webview_sender_arc: webview_sender_arc,
-            project_data: ProjectData::new(demo_yml_path)?,
+            project_data: ProjectData::new(demo_yml_path, false)?,
             clients: HashMap::new(),
             preview_child: None,
+            dialogs_child: None,
         };
 
         Ok(state)
@@ -125,6 +127,50 @@ impl ServerActor {
             ctx.ping("");
         });
     }
+
+    fn repeat_message_to_others(&self, ctx: &<Self as Actor>::Context, message: &Receiving) {
+        let state = ctx.state().lock().expect("👿 Can't lock ServerState.");
+        for (id, addr) in &state.clients {
+            if *id == self.client_id {
+                continue;
+            }
+
+            let resp = Sending {
+                data_type: message.data_type,
+                data: message.data.clone(),
+            };
+            //info!{"💬 Sending {:?} to client {:?}", &message.data_type, id};
+            addr.do_send(resp);
+        }
+    }
+
+    fn send_message_to_everyone(&self, ctx: &<Self as Actor>::Context, message: &Sending) {
+        let state = ctx.state().lock().expect("👿 Can't lock ServerState.");
+        for (_id, addr) in &state.clients {
+            let resp = Sending {
+                data_type: message.data_type,
+                data: message.data.clone(),
+            };
+            //info!{"💬 Sending {:?} to client {:?}", &message.data_type, id};
+            addr.do_send(resp);
+        }
+    }
+
+    fn send_message_to_others(&self, ctx: &<Self as Actor>::Context, message: &Sending) {
+        let state = ctx.state().lock().expect("👿 Can't lock ServerState.");
+        for (id, addr) in &state.clients {
+            if *id == self.client_id {
+                continue;
+            }
+
+            let resp = Sending {
+                data_type: message.data_type,
+                data: message.data.clone(),
+            };
+            //info!{"💬 Sending {:?} to client {:?}", &message.data_type, id};
+            addr.do_send(resp);
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug)]
@@ -139,10 +185,17 @@ pub enum MsgDataType {
     ShaderCompilationFailed,
     ShowErrorMessage,
     SetSettings,
+    SetMetadata,
     StartPreview,
     StopPreview,
     PreviewOpened,
     PreviewClosed,
+    StartDialogs,
+    OpenProjectFileDialog,
+    OpenProjectFilePath,
+    ReloadProject,
+    SaveProject,
+    NewProject,
     ExitApp,
 }
 
@@ -152,7 +205,9 @@ pub enum MsgDataType {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SetDmoMsg {
     pub project_root: Option<PathBuf>,
+    pub demo_yml_path: Option<PathBuf>,
     pub dmo_data_json_str: String,
+    pub embedded: bool,
 }
 
 /// Message to update the content of a specific shader.
@@ -171,6 +226,11 @@ pub struct ShaderCompilationFailedMsg {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ShaderCompilationSuccessMsg {
     pub idx: usize,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct NewProjectMsg {
+    pub template: NewProjectTemplate,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -232,14 +292,17 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                     FetchDmo => {
                         // Client is asking for Dmo data. Serialize ServerState.dmo
                         // and send it back.
+                        info!("server_actor: Received FetchDmo");
                         let resp;
                         {
-                            let state = ctx.state().lock().expect("Can't lock ServerState.");
+                            let state = ctx.state().lock().expect("👿 Can't lock ServerState.");
                             resp = Sending {
                                 data_type: SetDmo,
                                 data: serde_json::to_string(&SetDmoMsg {
                                     project_root: state.project_data.project_root.clone(),
+                                    demo_yml_path: state.project_data.demo_yml_path.clone(),
                                     dmo_data_json_str: serde_json::to_string(&state.project_data.dmo_data).unwrap(),
+                                    embedded: state.project_data.embedded,
                                 }).unwrap(),
                             };
                         }
@@ -257,31 +320,14 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                                 info!{"Deserialized SetDmoMsg"};
                                 let mut state = ctx.state().lock().expect("👿 Can't lock ServerState.");
                                 state.project_data.project_root = dmo_msg.project_root.clone();
+                                state.project_data.demo_yml_path = dmo_msg.demo_yml_path.clone();
                                 state.project_data.dmo_data = serde_json::from_str(&dmo_msg.dmo_data_json_str).unwrap();
 
-                                for (id, addr) in &state.clients {
-                                    if *id == self.client_id {
-                                        continue;
-                                    }
-
-                                    //let resp = Sending {
-                                    //    data_type: SetDmo,
-                                    //    data: serde_json::to_string(&SetDmoMsg {
-                                    //        project_root: state.project_data.project_root.clone(),
-                                    //        dmo_data_json_str: serde_json::to_string(&state.project_data.dmo_data).unwrap(),
-                                    //    }).unwrap(),
-                                    //};
-                                    let resp = Sending {
-                                        data_type: message.data_type,
-                                        data: message.data.clone(),
-                                    };
-                                    info!{"Sending: {:?}", &message.data_type};
-                                    addr.do_send(resp);
-                                }
+                                self.repeat_message_to_others(&ctx, &message);
                             },
 
                             Err(e) => {
-                                error!{"Error deserializing Dmo: {:?}", e};
+                                error!{"🔥 Error deserializing Dmo: {:?}", e};
                                 // Could not deserialize data, tell client to show an error.
                                 let resp = Sending {
                                     data_type: ShowErrorMessage,
@@ -293,110 +339,30 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                         }
                     }
 
-                    SetDmoTime => {
-                        // Client is setting time. Deserialize, update
-                        // ServerState and send to other clients.
-                        match serde_json::from_str::<f64>(&message.data) {
-                            Ok(time) => {
-                                //info!{"Deserialized time"};
-                                let state = ctx.state().lock().expect("👿 Can't lock ServerState.");
+                    // Client is setting time. Send it to other clients to record it if they are
+                    // tracking time.
+                    SetDmoTime => self.repeat_message_to_others(&ctx, &message),
 
-                                for (id, addr) in &state.clients {
-                                    if *id == self.client_id {
-                                        continue;
-                                    }
+                    // Client is requesting time. Send the message to other clients to respond.
+                    GetDmoTime => self.repeat_message_to_others(&ctx, &message),
 
-                                    let resp = Sending {
-                                        data_type: SetDmoTime,
-                                        data: serde_json::to_string(&time).unwrap(),
-                                    };
-                                    //info!{"Sending SetDmoTime"};
-                                    addr.do_send(resp);
-                                }
-                            },
-
-                            Err(e) => {
-                                error!{"Error deserializing time: {:?}", e};
-                                // Could not deserialize data, tell client to show an error.
-                                let resp = Sending {
-                                    data_type: ShowErrorMessage,
-                                    data: format!{"{:?}", e},
-                                };
-                                let body = serde_json::to_string(&resp).unwrap();
-                                ctx.text(body);
-                            }
-                        }
-                    },
-
-                    GetDmoTime => {
-                        // Client is requesting time. Send the message to other clients to respond.
-                        let state = ctx.state().lock().expect("Can't lock ServerState.");
-
-                        for (id, addr) in &state.clients {
-                            if *id == self.client_id {
-                                continue;
-                            }
-
-                            let resp = Sending {
-                                data_type: GetDmoTime,
-                                data: "".to_owned(),
-                            };
-                            addr.do_send(resp);
-                        }
-                    },
-
+                    // Client is sending a shader to be updated. Repeat the message to the other
+                    // clients such as the OpenGL preview, and update DmoData in the server state.
                     SetShader => {
-                        // Client is sending a shader to be updated. We are not storing the shader
-                        // sources in the DmoData, so we don't have to update it in the server
-                        // state, only pass on the message to the other clients such as the OpenGL
-                        // preview.
+                        self.repeat_message_to_others(&ctx, &message);
 
-                        let state = ctx.state().lock().expect("Can't lock ServerState.");
-                        for (id, addr) in &state.clients {
-                            if *id == self.client_id {
-                                continue;
-                            }
-
-                            let resp = Sending {
-                                data_type: message.data_type,
-                                data: message.data.clone(),
-                            };
-                            info!{"Sending: {:?}", &message.data_type};
-                            addr.do_send(resp);
+                        match serde_json::from_str::<SetShaderMsg>(&message.data) {
+                            Ok(shader_msg) => {
+                                let mut state = ctx.state().lock().expect("👿 Can't lock ServerState.");
+                                state.project_data.dmo_data.context.shader_sources[shader_msg.idx] = shader_msg.content;
+                            },
+                            Err(e) => error!("🔥 Error deserializing SetShaderMsg: {:?}", e),
                         }
                     },
 
-                    ShaderCompilationSuccess => {
-                        let state = ctx.state().lock().expect("Can't lock ServerState.");
-                        for (id, addr) in &state.clients {
-                            if *id == self.client_id {
-                                continue;
-                            }
+                    ShaderCompilationSuccess => self.repeat_message_to_others(&ctx, &message),
 
-                            let resp = Sending {
-                                data_type: message.data_type,
-                                data: message.data.clone(),
-                            };
-                            info!{"Sending: {:?}", &message.data_type};
-                            addr.do_send(resp);
-                        }
-                    },
-
-                    ShaderCompilationFailed => {
-                        let state = ctx.state().lock().expect("Can't lock ServerState.");
-                        for (id, addr) in &state.clients {
-                            if *id == self.client_id {
-                                continue;
-                            }
-
-                            let resp = Sending {
-                                data_type: message.data_type,
-                                data: message.data.clone(),
-                            };
-                            info!{"Sending: {:?}", &message.data_type};
-                            addr.do_send(resp);
-                        }
-                    },
+                    ShaderCompilationFailed => self.repeat_message_to_others(&ctx, &message),
 
                     SetSettings => {
                         match serde_json::from_str(&message.data) {
@@ -405,18 +371,11 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                                 let mut state = ctx.state().lock().expect("Can't lock ServerState.");
                                 state.project_data.dmo_data.settings = settings;
 
-                                for (id, addr) in &state.clients {
-                                    if *id == self.client_id {
-                                        continue;
-                                    }
-
-                                    let resp = Sending {
-                                        data_type: SetSettings,
-                                        data: serde_json::to_string(&state.project_data.dmo_data.settings).unwrap(),
-                                    };
-                                    info!{"Sending SetSettings"};
-                                    addr.do_send(resp);
-                                }
+                                let resp = Sending {
+                                    data_type: SetSettings,
+                                    data: serde_json::to_string(&state.project_data.dmo_data.settings).unwrap(),
+                                };
+                                self.send_message_to_others(&ctx, &resp);
                             },
 
                             Err(e) => {
@@ -432,6 +391,8 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                         }
                     },
 
+                    SetMetadata => {}
+
                     ShowErrorMessage => {
                         // Client is sending error message to server.
                         // TODO
@@ -444,7 +405,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
 
                             match child.try_wait() {
                                 Ok(Some(_)) => {
-                                    info!("🔎 Spawn a new process.");
+                                    info!("🔎 Spawn a new process for preview.");
                                     let new_child: Option<Child> =
                                         run_preview_command(&state.app_info.path_to_binary);
 
@@ -453,16 +414,16 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                                     }
                                 },
 
-                                Ok(None) => warn!("⚡ Still running."),
+                                Ok(None) => warn!("⚡ Preview process is still running."),
 
-                                Err(e) => error!("🔥 Can't wait for child process: {:?}", e),
+                                Err(e) => error!("🔥 Can't wait for preview child process: {:?}", e),
                             }
 
                             return;
 
                         } else {
 
-                            info!("🔎 Spawn a new process.");
+                            info!("🔎 Spawn a new process for preview.");
                             let new_child: Option<Child> =
                                 run_preview_command(&state.app_info.path_to_binary);
 
@@ -474,82 +435,209 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
 
                     },
 
-                    StopPreview => {
-                        let state = ctx.state().lock().expect("👿 Can't lock ServerState.");
+                    StopPreview => self.repeat_message_to_others(&ctx, &message),
 
-                        for (id, addr) in &state.clients {
-                            if *id == self.client_id {
-                                continue;
+                    PreviewOpened => self.repeat_message_to_others(&ctx, &message),
+
+                    PreviewClosed => self.repeat_message_to_others(&ctx, &message),
+
+                    StartDialogs => {
+                        let mut state = ctx.state().lock().expect("Can't lock ServerState.");
+
+                        if let Some(ref mut child) = state.dialogs_child {
+
+                            match child.try_wait() {
+                                Ok(Some(_)) => {
+                                    info!("🔎 Spawn a new process for dialogs.");
+                                    let new_child: Option<Child> =
+                                        run_dialogs_command(&state.app_info.path_to_binary);
+
+                                    if new_child.is_some() {
+                                        state.dialogs_child = new_child;
+                                    }
+                                },
+
+                                Ok(None) => warn!("⚡ Dialogs process is still running."),
+
+                                Err(e) => error!("🔥 Can't wait for dialogs child process: {:?}", e),
                             }
 
-                            let resp = Sending {
-                                data_type: StopPreview,
-                                data: "".to_owned(),
-                            };
-                            info!{"💬 Sending StopPreview to client {:?}", self.client_id};
-                            addr.do_send(resp);
+                            return;
+
+                        } else {
+
+                            info!("🔎 Spawn a new process for dialogs.");
+                            let new_child: Option<Child> =
+                                run_dialogs_command(&state.app_info.path_to_binary);
+
+                            if new_child.is_some() {
+                                state.dialogs_child = new_child;
+                            }
+
+                        }
+
+                    },
+
+                    OpenProjectFileDialog => self.repeat_message_to_others(&ctx, &message),
+
+                    OpenProjectFilePath => {
+                        // Deserialize and sanity check the path. It must point to a YAML file.
+                        let yml_path = match serde_json::from_str::<String>(&message.data) {
+                            Ok(p) => {
+                                let p = PathBuf::from(p);
+                                if p.exists() {
+                                    if let Some(ext) = p.extension() {
+                                        if ext.to_str() != Some("yml") || ext.to_str() != Some("yaml") {
+                                            p
+                                        } else {
+                                            error!{"🔥 Path must be to .yml or .yaml: {:?}", p};
+                                            return;
+                                        }
+                                    } else {
+                                        error!{"🔥 Path must be to .yml or .yaml: {:?}", p};
+                                        return;
+                                    }
+                                } else {
+                                    error!{"🔥 Path does not exist: {:?}", p};
+                                    return;
+                                }
+                            },
+
+                            Err(e) => {
+                                error!("🔥 Deserializing failed: {:?}", e);
+                                return;
+                            },
+                        };
+
+                        // Build a new ProjectData and send it to all clients.
+
+                        let project_data = match ProjectData::new(Some(yml_path), false) {
+                            Ok(x) => x,
+                            Err(e) => {
+                                error!("🔥 Failed to build ProjectData: {:?}", e);
+                                return;
+                            }
+                        };
+
+                        // Send SetDmo
+                        let resp = Sending {
+                            data_type: SetDmo,
+                            data: serde_json::to_string(&SetDmoMsg {
+                                project_root: project_data.project_root.clone(),
+                                demo_yml_path: project_data.demo_yml_path.clone(),
+                                dmo_data_json_str: serde_json::to_string(&project_data.dmo_data).unwrap(),
+                                embedded: project_data.embedded,
+                            }).unwrap(),
+                        };
+
+                        self.send_message_to_everyone(&ctx, &resp);
+
+                        let mut state = ctx.state().lock().expect("👿 Can't lock ServerState.");
+                        state.project_data = project_data;
+                    },
+
+                    ReloadProject => {
+                        let demo_yml_path: Option<PathBuf>;
+                        {
+                            let state = ctx.state().lock().expect("👿 Can't lock ServerState.");
+                            demo_yml_path = state.project_data.demo_yml_path.clone();
+                        }
+
+                        let project_data = match ProjectData::new(demo_yml_path, false) {
+                            Ok(x) => x,
+                            Err(e) => {
+                                error!("🔥 Failed to build ProjectData: {:?}", e);
+                                return;
+                            }
+                        };
+
+                        // Send SetDmo
+                        let resp = Sending {
+                            data_type: SetDmo,
+                            data: serde_json::to_string(&SetDmoMsg {
+                                project_root: project_data.project_root.clone(),
+                                demo_yml_path: project_data.demo_yml_path.clone(),
+                                dmo_data_json_str: serde_json::to_string(&project_data.dmo_data).unwrap(),
+                                embedded: project_data.embedded,
+                            }).unwrap(),
+                        };
+
+                        self.send_message_to_everyone(&ctx, &resp);
+
+                        let mut state = ctx.state().lock().expect("👿 Can't lock ServerState.");
+                        state.project_data = project_data;
+                    },
+
+                    SaveProject => {
+                        // If demo_yml_path is None, open a dialog to choose the project_root folder, and then:
+                        // - write the demo.yml
+                        // - write the shaders
+                        //
+                        // If there is already a path:
+                        // - write the shaders
+
+                        let state = ctx.state().lock().expect("👿 Can't lock ServerState.");
+                        match state.project_data.write_shaders() {
+                            Ok(_) => {},
+                            // TODO show the error in the UI
+                            Err(e) => error!{"🔥 Couldn't write shaders: {:?}", e},
                         }
                     },
 
-                    PreviewOpened => {
-                        let state = ctx.state().lock().expect("👿 Can't lock ServerState.");
+                    NewProject => {
+                        // Starting a new project selects a template and reads its files from the
+                        // embedded assets.
 
-                        for (id, addr) in &state.clients {
-                            if *id == self.client_id {
-                                continue;
+                        let template: NewProjectTemplate = match serde_json::from_str::<NewProjectMsg>(&message.data) {
+                            Ok(x) => x.template,
+                            Err(e) => {
+                                error!("🔥 Deserializing failed: {:?}", e);
+                                return;
+                            },
+                        };
+
+                        // Build a new ProjectData and send it to all clients.
+
+                        let project_data = match ProjectData::new_from_embedded_template(template) {
+                            Ok(x) => x,
+                            Err(e) => {
+                                error!("🔥 Failed to build ProjectData: {:?}", e);
+                                return;
                             }
+                        };
 
-                            let resp = Sending {
-                                data_type: PreviewOpened,
-                                data: "".to_owned(),
-                            };
-                            info!{"💬 Sending PreviewOpened to client {:?}", self.client_id};
-                            addr.do_send(resp);
-                        }
-                    },
+                        // Send SetDmo
+                        let resp = Sending {
+                            data_type: SetDmo,
+                            data: serde_json::to_string(&SetDmoMsg {
+                                project_root: project_data.project_root.clone(),
+                                demo_yml_path: project_data.demo_yml_path.clone(),
+                                dmo_data_json_str: serde_json::to_string(&project_data.dmo_data).unwrap(),
+                                embedded: project_data.embedded,
+                            }).unwrap(),
+                        };
 
-                    PreviewClosed => {
-                        let state = ctx.state().lock().expect("👿 Can't lock ServerState.");
+                        self.send_message_to_everyone(&ctx, &resp);
 
-                        for (id, addr) in &state.clients {
-                            if *id == self.client_id {
-                                continue;
-                            }
-
-                            let resp = Sending {
-                                data_type: PreviewClosed,
-                                data: "".to_owned(),
-                            };
-                            info!{"💬 Sending PreviewClosed to client {:?}", self.client_id};
-                            addr.do_send(resp);
-                        }
+                        let mut state = ctx.state().lock().expect("👿 Can't lock ServerState.");
+                        state.project_data = project_data;
                     },
 
                     ExitApp => {
                         {
+                            // Repeat the message for other websocket clients (such as dialogs process and
+                            // preview window) to respond to it.
+                            self.repeat_message_to_others(&ctx, &message);
+
+                            // The webview is controlled with a channel, not via websocket.
                             let state = ctx.state().lock().expect("👿 Can't lock ServerState.");
 
-                            // First, send StopPreview.
-
-                            for (id, addr) in &state.clients {
-                                if *id == self.client_id {
-                                    continue;
-                                }
-
-                                let resp = Sending {
-                                    data_type: StopPreview,
-                                    data: "".to_owned(),
-                                };
-                                info!{"💬 Sending StopPreview to client {:?}", self.client_id};
-                                addr.do_send(resp);
-                            }
-
-                            // Send ExitWebview to the webview window.
+                            // Send WebviewExit to the webview window.
                             let webview_sender = state.webview_sender_arc.lock()
                                 .expect("Can't lock webview sender.");
-                            match webview_sender.send("ExitWebview".to_owned()) {
+                            match webview_sender.send("WebviewExit".to_owned()) {
                                 Ok(x) => x,
-                                Err(e) => error!("🔥 Can't send ExitWebview on state.webview_sender: {:?}", e),
+                                Err(e) => error!("🔥 Can't send WebviewExit on state.webview_sender: {:?}", e),
                             };
                         }
 
@@ -599,7 +687,43 @@ fn run_preview_command(path_to_binary: &PathBuf) -> Option<Child>
                 return Some(child);
             },
             Err(e) => {
-                error!("🔥 failed to spawn: {:?}", e);
+                error!("🔥 failed to spawn preview: {:?}", e);
+                return None;
+            },
+        }
+    }
+}
+
+fn run_dialogs_command(path_to_binary: &PathBuf) -> Option<Child>
+{
+    // std::process::Command inherits the current process's working directory.
+
+    let bin_cmd = format!("{:?} dialogs", path_to_binary);
+
+    if cfg!(target_os = "windows") {
+
+        match Command::new("cmd").arg("/C").arg(bin_cmd).spawn() {
+            Ok(child) => {
+                info!("🔎 spawned dialogs");
+                return Some(child);
+            },
+            Err(e) => {
+                error!("🔥 failed to spawn dialogs: {:?}", e);
+                return None;
+            },
+        }
+
+    } else {
+        // Not testing for `cfg!(target_os = "linux") || cfg!(target_os =
+        // "macos")`, try to run some command in any case.
+
+        match Command::new("sh").arg("-c").arg(bin_cmd).spawn() {
+            Ok(child) => {
+                info!("🔎 spawned dialogs");
+                return Some(child);
+            },
+            Err(e) => {
+                error!("🔥 failed to spawn dialogs: {:?}", e);
                 return None;
             },
         }

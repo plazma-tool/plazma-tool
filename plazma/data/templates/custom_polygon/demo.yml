@@ -1,35 +1,21 @@
-# Demo description, this will be deserialiazed into DmoData.
+metadata:
+  title: "Untitled"
+  description: ""
+  tags: ""
+  author: ""
+  url: ""
+  created: ""
+  updated: ""
 
 settings:
   start_full_screen: false
-  audio_play_on_start: true
+  audio_play_on_start: false
   mouse_sensitivity: 0.5
   movement_sensitivity: 0.5
   total_length: 240.0
 
 context:
-  quad_scenes:
-
-    - name: "circle"
-      vert_src_path: "./data/screen_quad.vert"
-      frag_src_path: "./data/circle.frag"
-      layout_to_vars:
-        - Float: [ 0, "Time" ]
-        - Vec2: [ 1, "Window_Width", "Window_Height" ]
-        - Vec2: [ 2, "Screen_Width", "Screen_Height" ]
-      binding_to_buffers:
-        - Sampler2D: [ 0, "rock surface" ]
-
-    - name: "cross"
-      vert_src_path: "./data/screen_quad.vert"
-      frag_src_path: "./data/cross.frag"
-      layout_to_vars:
-        - Float: [ 0, "Time" ]
-        - Vec2: [ 1, "Window_Width", "Window_Height" ]
-        - Vec2: [ 2, "Screen_Width", "Screen_Height" ]
-      binding_to_buffers:
-        - Sampler2D: [ 0, "scene buf" ]
-
+  quad_scenes: []
   polygon_scenes:
 
     - name: "cubes and dragon"
@@ -55,7 +41,8 @@ context:
             - Vec2: [ 5, "Window_Width", "Window_Height" ]
             - Vec2: [ 6, "Screen_Width", "Screen_Height" ]
             - Vec3: [ 7, "Light_Pos_X", "Light_Pos_Y", "Light_Pos_Z" ]
-          binding_to_buffers: []
+          binding_to_buffers:
+            - Sampler2D: [ 0, "rock surface" ]
 
         - name: "dragon"
           position:
@@ -70,7 +57,7 @@ context:
             - Vec2: [ 6, "Screen_Width", "Screen_Height" ]
             - Vec3: [ 7, "Light_Pos_X", "Light_Pos_Y", "Light_Pos_Z" ]
           binding_to_buffers:
-            - Sampler2D: [ 0, "scene buf" ]
+            - Sampler2D: [ 0, "rock surface" ]
 
         - name: "cube two"
           position:
@@ -84,8 +71,8 @@ context:
             - Vec2: [ 5, "Window_Width", "Window_Height" ]
             - Vec2: [ 6, "Screen_Width", "Screen_Height" ]
             - Vec3: [ 7, "Light_Pos_X", "Light_Pos_Y", "Light_Pos_Z" ]
-          binding_to_buffers: []
-          #- Sampler2D: [ 0, "organic texture buf" ]
+          binding_to_buffers:
+            - Sampler2D: [ 0, "organic texture buf" ]
 
         - name: "room box"
           position:
@@ -100,7 +87,7 @@ context:
             - Vec2: [ 6, "Screen_Width", "Screen_Height" ]
             - Vec3: [ 7, "Light_Pos_X", "Light_Pos_Y", "Light_Pos_Z" ]
           binding_to_buffers:
-            - Sampler2D: [ 0, "scene buf" ]
+            - Sampler2D: [ 0, "rock surface" ]
 
         #- name: "light"
         #  position:
@@ -157,37 +144,16 @@ context:
       #  obj_path: ""
 
   frame_buffers:
-    - { name: "scene buf",
-        kind: Empty_Texture, format: RGBA_u8,
-        image_path: "" }
-
     - { name: "organic texture buf",
         kind: Image_Texture, format: RGB_u8,
         image_path: "./data/images/organic4 1024x1024 3ch uint8.jpg" }
-
-    - { name: "gray noise medium buf",
-        kind: Image_Texture, format: RED_u8,
-        image_path: "./data/images/gray-noise-medium-256x256-1ch-uint8.png" }
-
-    - { name: "rgba noise medium buf",
-        kind: Image_Texture, format: RGBA_u8,
-        image_path: "./data/images/rgba-noise-medium-256x256-4ch-uint8.png" }
-
-    - { name: "rock tiles",
-        kind: Image_Texture, format: RGB_u8,
-        image_path: "./data/images/rock tiles 512x512 3ch uint8.jpg" }
 
     - { name: "rock surface",
         kind: Image_Texture, format: RGB_u8,
         image_path: "./data/images/rock-1024x1024-3ch-uint8.jpg" }
 
-    - { name: "font1",
-        kind: Image_Texture, format: RGBA_u8,
-        image_path: "./data/images/font1 1024x1024 4ch uint8.png" }
-
   sync_tracks_path: "./data/demo.rocket"
 
-  # Leave empty. Will be populated with shader sources read from paths.
   shader_sources: []
 
 timeline:
@@ -197,30 +163,10 @@ timeline:
     - scene_blocks:
 
         - start: 0.0
-          end: 100.0
+          end: 240.0
           draw_ops:
-            - Target_Buffer: "scene buf"
-            - Clear: [ 0, 0, 0, 0 ]
-            - Draw_Quad_Scene: "circle"
             - Target_Buffer: "RESULT_IMAGE"
             - Clear: [ 0, 0, 0, 0 ]
             - Draw_Poly_Scene: "cubes and dragon"
-
-        - start: 100.0
-          end: 200.0
-          draw_ops:
-            - Target_Buffer: "scene buf"
-            - Clear: [ 0, 0, 0, 0 ]
-            - Draw_Quad_Scene: "circle"
-            - Target_Buffer: "RESULT_IMAGE"
-            - Clear: [ 0, 0, 0, 0 ]
-            - Draw_Quad_Scene: "cross"
-
-        - start: 200.0
-          end: 300.0
-          draw_ops:
-            - Target_Buffer: "RESULT_IMAGE"
-            - Clear: [ 0, 0, 0, 0 ]
-            - Draw_Quad_Scene: "circle"
 
 

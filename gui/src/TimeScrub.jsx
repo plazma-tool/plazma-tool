@@ -45,6 +45,7 @@ class TimeSlider extends React.Component<TS_Props> {
 }
 
 type TSc_Props = {
+    isHidden: bool,
     dmoData: ?DmoData,
     currentTime: number,
     onChangeLift: (ServerMsg) => void,
@@ -57,6 +58,10 @@ export class TimeScrub extends React.Component<TSc_Props> {
     }
 
     render() {
+        if (this.props.isHidden) {
+            return (<div style={{display: 'none'}}></div>);
+        }
+
         let time_max = 100.0;
         if (this.props.dmoData !== null && typeof this.props.dmoData !== 'undefined') {
             time_max = this.props.dmoData.settings.total_length;

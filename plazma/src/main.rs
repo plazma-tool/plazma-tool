@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate clap;
 extern crate web_view;
+extern crate nfd;
 extern crate actix;
 extern crate actix_web;
 
@@ -52,6 +53,7 @@ fn main() {
         start_server: param_start_server,
         start_webview: param_start_webview,
         start_preview: param_start_preview,
+        is_dialogs: param_is_dialogs,
     } = app::process_cli_args(matches).unwrap();
 
     // --- OpenGL preview window ---
@@ -90,6 +92,15 @@ fn main() {
         (Some(a), Some(b), Some(c))
     } else {
         (None, None, None)
+    };
+
+    // --- Dialogs ---
+
+    // Start a separate process where dialogs can block the main thread.
+
+    let port_b = plazma_server_port.clone();
+    if param_is_dialogs {
+        app::start_dialogs(port_b).unwrap();
     };
 
     // --- WebView ---

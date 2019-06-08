@@ -5,11 +5,15 @@ use std::thread::{self, sleep};
 use std::time::Duration;
 use std::path::PathBuf;
 use std::error::Error;
+use std::borrow::Cow;
 
 use web_view::Content;
+use nfd::Response as NfdResponse;
 
-use actix_web::{fs, middleware, server, ws, App, HttpRequest};
-use actix_web::Error as AxError;
+use mime_guess::guess_mime_type;
+
+use actix_web::http::Method;
+use actix_web::{middleware, server, ws, App, Body, HttpRequest, HttpResponse};
 use actix_web::actix::*;
 
 use futures::Future;
@@ -28,8 +32,35 @@ use crate::preview_client::client_actor::{ClientActor, ClientMessage};
 
 use crate::preview_client::preview_state::PreviewState;
 
-pub fn handle_static_index(_req: &HttpRequest<ServerStateWrap>) -> Result<fs::NamedFile, AxError> {
-    Ok(fs::NamedFile::open("../gui/build/index.html")?)
+#[derive(RustEmbed)]
+#[folder = "../gui/build/"]
+pub struct WebAsset;
+
+fn handle_embedded_file(path: &str) -> HttpResponse {
+  match WebAsset::get(path) {
+    Some(content) => {
+      let body: Body = match content {
+        Cow::Borrowed(bytes) => bytes.into(),
+        Cow::Owned(bytes) => bytes.into(),
+      };
+      HttpResponse::Ok().content_type(guess_mime_type(path).as_ref()).body(body)
+    }
+    None => HttpResponse::NotFound().body("404 Not Found"),
+  }
+}
+
+fn static_index(_req: HttpRequest<ServerStateWrap>) -> HttpResponse {
+  handle_embedded_file("index.html")
+}
+
+fn static_assets(req: HttpRequest<ServerStateWrap>) -> HttpResponse {
+  let path = &req.path().trim_start_matches("/static/");
+  handle_embedded_file(path)
+}
+
+fn fonts_assets(req: HttpRequest<ServerStateWrap>) -> HttpResponse {
+  let path = &req.path().trim_start_matches("/");
+  handle_embedded_file(path)
 }
 
 #[derive(Debug)]
@@ -40,6 +71,7 @@ pub struct AppStartParams {
     pub start_server: bool,
     pub start_webview: bool,
     pub start_preview: bool,
+    pub is_dialogs: bool,
 }
 
 pub struct AppInfo {
@@ -56,6 +88,7 @@ impl Default for AppStartParams {
             start_server: true,
             start_webview: true,
             start_preview: false,
+            is_dialogs: false,
         }
     }
 }
@@ -155,6 +188,13 @@ pub fn process_cli_args(matches: clap::ArgMatches)
         params.start_webview = false;
         params.start_preview = true;
 
+    } else if let Some(_) = matches.subcommand_matches("dialogs") {
+
+        params.start_server = false;
+        params.start_webview = false;
+        params.start_preview = false;
+        params.is_dialogs = true;
+
     };
 
     Ok(params)
@@ -193,8 +233,9 @@ pub fn start_server(port: Arc<usize>,
             // WebSocket routes (there is no CORS)
                 .resource("/ws/", |r| r.f(|req| ws::start(req, ServerActor::new())))
             // static files
-                .handler("/static/", fs::StaticFiles::new("../gui/build/").unwrap()
-                         .default_handler(handle_static_index))
+                .route("/static/", Method::GET, static_index)
+                .route("/static/{_:.*}", Method::GET, static_assets)
+                .route("/fonts/{_:.*}", Method::GET, fonts_assets)
         })
             .bind(format!{"127.0.0.1:{}", port_clone_a})
             .unwrap()
@@ -243,7 +284,7 @@ pub fn start_server(port: Arc<usize>,
                         loop {
                             match server_receiver.try_recv() {
                                 Ok(text) => {
-                                    info!("Passing on webview message: {:?}", text);
+                                    info!("Webview thread: passing on message: {:?}", text);
                                     addr.do_send(ClientMessage{ data: text });
                                 },
                                 Err(_) => {},
@@ -269,7 +310,7 @@ pub fn start_server(port: Arc<usize>,
                         info!("client_receiver: {:?}", text);
 
                         let webview_sender = a.lock().expect("Can't lock webview sender.");
-                        match webview_sender.send("ExitWebview".to_owned()) {
+                        match webview_sender.send("WebviewExit".to_owned()) {
                             Ok(_) => {},
                             Err(e) => error!("Can't send on webview_sender: {:?}", e),
                         };
@@ -291,6 +332,23 @@ pub fn start_webview(plazma_server_port: Arc<usize>,
                      server_sender_arc: Arc<Mutex<mpsc::Sender<String>>>)
     -> Result<(), Box<Error>>
 {
+    // Starting the webview also means we will want to open dialogs, so tell the server to
+    // start a child process for dialogs.
+    let a = server_sender_arc.clone();
+    let server_sender = a.lock().expect("Can't lock server sender.");
+
+    let msg = serde_json::to_string(&Sending{
+        data_type: MsgDataType::StartDialogs,
+        data: "".to_owned(),
+    }).unwrap();
+    match server_sender.send(msg) {
+        Ok(_) => {},
+        Err(e) => {
+            error!("🔥 Can't send StartDialogs on server_sender channel: {:?}", e);
+            return Err(Box::new(e));
+        },
+    };
+
     // In development mode, use the React dev server port.
     let react_server_port: Option<usize> = match env::var("MODE") {
         Ok(x) => {
@@ -334,17 +392,21 @@ pub fn start_webview(plazma_server_port: Arc<usize>,
         // or when the React dev server recompiles and reloads after a code change), the
         // window.external object is lost and the invoke_handler() above is not accessible.
         //
-        // Instead, we will receive messages such as ExitWebview or FileOpen via a channel. A
-        // message is first sent to the server over the WebSocket connection, then the server
-        // handles that and puts a message on this channel, which we receive here.
+        // Instead, we will receive messages such as WebviewExit via a channel. A message is first
+        // sent to the server over the WebSocket connection, then the server handles that and puts
+        // a message on this channel, which we receive here.
+        //
+        // In fact we are only interested in the WebviewExit message here.
+        //
+        // Dialog windows can't be opened here such as `webview.dialog().open_file()`, because (a)
+        // it blocks the webview rendering thread and both the UI and the dialog freezes, and (b)
+        // dialogs have to be opened from the main thread, otherwise it errors and panics. So
+        // dialog windows we open in a separate process instead where the dialog is allowed to
+        // block on the main thread.
 
         thread::spawn(move || loop {
             {
-
-                let a = server_sender_arc.clone();
                 let res = webview_handle.dispatch(move |webview| {
-
-                    let server_sender = a.lock().expect("Can't lock server sender.");
 
                     let UserData {
                         webview_receiver,
@@ -353,30 +415,13 @@ pub fn start_webview(plazma_server_port: Arc<usize>,
                     match webview_receiver.try_recv() {
                         Ok(text) => {
                             match text.as_ref() {
-                                "FileOpen" => {
-                                    match webview.dialog().open_file("Please choose a file...", "")?  {
-                                        Some(path) => webview.dialog().info("File chosen", path.to_string_lossy()),
-                                        None => webview
-                                            .dialog()
-                                            .warning("Warning", "You didn't choose a file."),
-                                    }?;
-
-                                    // FIXME send server the path to use
-                                    match &server_sender.send("data_type, data...".to_owned()) {
-                                        Ok(_) => {},
-                                        Err(e) => error!("🔥 Can't send on server_sender: {:?}", e),
-                                    };
-                                },
-
-                                "ExitWebview" =>
-                                {
-                                    info!("💬 webview dispatch: ExitWebview received from server.");
+                                "WebviewExit" => {
+                                    info!("💬 webview dispatch: WebviewExit received from server.");
                                     info!("Terminating the webview.");
                                     webview.terminate();
                                 }
-                                _ => {
-                                    // unimplemented!();
-                                },
+
+                                _ => {},
                             };
                         },
                         Err(_) => {},
@@ -478,6 +523,8 @@ pub fn start_preview(plazma_server_port: Arc<usize>,
                         loop {
                             match server_receiver.try_recv() {
                                 Ok(text) => {
+                                    // A bit noisy because of the frequent SetDmoTime messages.
+                                    //info!("Preview thread: passing on message: {:?}", text);
                                     addr.do_send(ClientMessage{ data: text });
                                 },
                                 Err(_) => {},
@@ -567,8 +614,8 @@ pub fn start_preview(plazma_server_port: Arc<usize>,
         data: "".to_owned(),
     }).unwrap();
     match server_sender.send(msg) {
-        Ok(_) => {},
-        Err(e) => error!("🔥 Can't send FetchDmo on server_sender channel: {:?}", e),
+        Ok(_) => info!("start_preview() Sent FetchDmo to server"),
+        Err(e) => error!("🔥 start_preview() Can't send FetchDmo on server_sender channel: {:?}", e),
     };
 
     render_loop(&window, &mut events_loop, &mut state, &mut rocket, client_receiver, &server_sender);
@@ -633,6 +680,7 @@ fn render_loop(window: &GlWindow,
                     FetchDmo => {},
 
                     SetDmo => {
+                        info!("render_loop() Received SetDmo");
                         let (sx, sy) = state.dmo_gfx.context.get_screen_resolution();
                         let (wx, wy) = state.dmo_gfx.context.get_window_resolution();
                         info!{"sx: {}, sy: {}", sx, sy};
@@ -759,6 +807,8 @@ fn render_loop(window: &GlWindow,
                         state.dmo_gfx.settings = settings;
                     },
 
+                    SetMetadata => {},
+
                     ShowErrorMessage =>
                         error!{"🔥 Server is sending error: {:?}", message.data},
 
@@ -767,15 +817,21 @@ fn render_loop(window: &GlWindow,
                     StartPreview => {},
 
                     StopPreview => {
-                        info!("Received StopPreview.");
+                        info!("render_loop() Received StopPreview.");
                         state.set_is_running(false);
                     },
 
                     PreviewOpened => {},
                     PreviewClosed => {},
+                    StartDialogs => {},
+                    OpenProjectFileDialog => {},
+                    OpenProjectFilePath => {},
+                    ReloadProject => {},
+                    SaveProject => {},
+                    NewProject => {},
 
                     ExitApp => {
-                        info!("Received ExitApp.");
+                        info!("render_loop() Received ExitApp.");
                         state.set_is_running(false);
                     },
                 }
@@ -1042,4 +1098,213 @@ fn render_loop(window: &GlWindow,
     };
 
     info!("🏁 render_loop() return");
+}
+
+pub fn start_dialogs(plazma_server_port: Arc<usize>)
+    -> Result<(), Box<Error>>
+{
+    info!("⚽ start_dialogs() start");
+
+    // Channel to pass messages from the Websocket client to the OpenGL window.
+    let (client_sender, client_receiver) = mpsc::channel();
+
+    // Channel to pass messages from the OpenGL window to the Websocket client which will pass it
+    // on to the server.
+    let (server_sender, server_receiver) = mpsc::channel();
+
+    // Channel to pass messages from the main app thread to the OpenGL window.
+    let (app_sender, app_receiver) = mpsc::channel();
+
+    // Start the Websocket client on a separate thread so that it is not blocked
+    // (and is not blocking) the OpenGL window.
+
+    let plazma_server_port_clone = Arc::clone(&plazma_server_port);
+
+    let client_handle = thread::spawn(move || {
+        info!("🧵 new thread: dialogs client");
+
+        let sys = actix::System::new("dialogs client");
+
+        // Start a WebSocket client and connect to the server.
+
+        // FIXME check if server is up
+
+        Arbiter::spawn(
+            ws::Client::new(format!{"http://127.0.0.1:{}/ws/", plazma_server_port_clone})
+                .connect()
+
+                .map_err(|e| {
+                    error!("🔥 ⚔️  Can not connect to server: {}", e);
+                    // FIXME wait and keep trying to connect in a loop
+                    //return; // this return is probably not necessary
+
+                    thread::spawn(move || {
+                        info!("🧵 new thread: app receiver");
+                        loop {
+                            match app_receiver.try_recv() {
+                                Ok(text) => {
+                                    if text == "StopSystem" {
+                                        info!("🔎 app_receiver StopSystem: exiting");
+                                        // FIXME stop the arbiter instead
+                                        exit(0);
+                                    }
+                                },
+                                Err(_) => {},
+                            }
+
+                            sleep(Duration::from_millis(100));
+                        }
+                    });
+
+                    ()
+                })
+
+                .map(|(reader, writer)| {
+                    let addr = ClientActor::create(|ctx| {
+                        ClientActor::add_stream(reader, ctx);
+                        ClientActor{
+                            writer: writer,
+                            channel_sender: client_sender,
+                        }
+                    });
+
+                    thread::spawn(move || {
+                        info!("🧵 new thread: server receiver from dialogs_loop()");
+                        loop {
+                            match server_receiver.try_recv() {
+                                Ok(text) => {
+                                    info!("Dialogs thread: passing on message: {:?}", text);
+                                    addr.do_send(ClientMessage{ data: text });
+                                },
+                                Err(_) => {},
+                            }
+                            sleep(Duration::from_millis(100));
+                        }
+                    });
+
+                    ()
+                }),
+        );
+
+        sys.run();
+    });
+
+    // Open dialogs on the main thread.
+
+    dialogs_loop(client_receiver, &server_sender);
+
+    // TODO app_sender will error when server is connected. Detect that condition and don't send
+    // messages.
+
+    match app_sender.send("StopSystem") {
+        Ok(x) => x,
+        Err(e) => {
+            error!("🔥 Can't send on app_sender channel: {:?}", e);
+        }
+    }
+
+    match client_handle.join() {
+        Ok(_) => {},
+        Err(e) => {
+            error!{"{:?}", e};
+        }
+    };
+
+    info!("🏁 start_dialogs() finish");
+
+    Ok(())
+}
+
+fn dialogs_loop(client_receiver: mpsc::Receiver<String>,
+                server_sender: &mpsc::Sender<String>)
+    -> ()
+{
+    info!("⚽ dialogs_loop() start");
+    let mut is_running = true;
+
+    while is_running {
+
+        match client_receiver.try_recv() {
+            Ok(text) => {
+                // FIXME return a NOOP otherwise it returns from the function.
+                let message: Receiving = match serde_json::from_str(&text) {
+                    Ok(x) => x,
+                    Err(e) => {
+                        error!{"🔥 Can't deserialize message: {:?}", e};
+                        return;
+                    },
+                };
+
+                use crate::server_actor::MsgDataType::*;
+                match message.data_type {
+
+                    NoOp => {},
+                    FetchDmo => {},
+                    SetDmo => {},
+                    SetDmoTime => {},
+                    GetDmoTime => {},
+                    SetShader => {},
+                    SetSettings => {},
+                    SetMetadata => {},
+                    ShowErrorMessage => {},
+                    ShaderCompilationSuccess => {},
+                    ShaderCompilationFailed => {},
+                    StartPreview => {},
+                    StopPreview => {},
+                    PreviewOpened => {},
+                    PreviewClosed => {},
+                    StartDialogs => {},
+
+                    OpenProjectFileDialog => {
+
+                        let res = nfd::open_file_dialog(None, None).expect("Failed to open a native file dialog.");
+
+                        let mut path = String::new();
+                        match res {
+                            NfdResponse::Okay(p) => path = p,
+
+                            NfdResponse::OkayMultiple(files) => path = files[0].to_string(),
+
+                            NfdResponse::Cancel => {},
+                        }
+
+                        if path.len() > 0 {
+                            let msg = serde_json::to_string(&Sending{
+                                data_type: MsgDataType::OpenProjectFilePath,
+                                data: serde_json::to_string(&path).unwrap(),
+                            }).unwrap();
+                            match server_sender.send(msg) {
+                                Ok(_) => {},
+                                Err(e) => error!("🔥 Can't send OpenProjectFilePath on server_sender: {:?}", e),
+                            };
+                        }
+                    },
+
+                    OpenProjectFilePath => {},
+                    ReloadProject => {},
+                    SaveProject => {},
+                    NewProject => {},
+
+                    ExitApp => {
+                        info!("dialogs_loop() Received ExitApp.");
+                        is_running = false;
+                    },
+                }
+            },
+
+            // Silently drop the error when there is no message to receive.
+            Err(_) => {},
+        }
+
+        sleep(Duration::from_millis(100));
+    }
+
+    match server_sender.send("StopSystem".to_owned()) {
+        Ok(_) => {},
+        Err(e) => {
+            error!("🔥 Can't send StopSystem on server_sender: {:?}", e);
+        },
+    };
+
+    info!("🏁 dialogs_loop() return");
 }

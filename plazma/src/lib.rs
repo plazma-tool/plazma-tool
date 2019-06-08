@@ -5,6 +5,10 @@ extern crate rand;
 extern crate actix_web;
 
 #[macro_use]
+extern crate rust_embed;
+extern crate mime_guess;
+
+#[macro_use]
 extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;

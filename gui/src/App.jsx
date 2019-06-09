@@ -570,6 +570,13 @@ class App extends Component<{}, AppState> {
                 window.setTimeout(() => { window.dispatchEvent(this.state.events.layout_changed); }, 100);
                 break;
 
+            case 'esc':
+                this.setState({
+                    new_project_modal_is_active: false,
+                    import_from_shadertoy_modal_is_active: false,
+                });
+                break;
+
             default:
                 break;
         }
@@ -645,7 +652,7 @@ class App extends Component<{}, AppState> {
 
         return (
             <Hotkeys
-                keyName="ctrl+n,ctrl+o,ctrl+s,ctrl+r,f8,f9,f10,f11"
+                keyName="ctrl+n,ctrl+o,ctrl+s,ctrl+r,f8,f9,f10,f11,esc"
                 onKeyDown={this.onKeyDown}
                 onKeyUp={this.onKeyUp}
             >

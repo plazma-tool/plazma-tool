@@ -328,6 +328,11 @@ class PlazmaMonaco extends React.Component<PM_Props, PM_State> {
         editor.addCommand( monaco.KeyCode.F9, () => { this.props.onKeyLift('f9'); });
         editor.addCommand( monaco.KeyCode.F10, () => { this.props.onKeyLift('f10'); });
         editor.addCommand( monaco.KeyCode.F11, () => { this.props.onKeyLift('f11'); });
+        editor.addCommand( monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_N, () => { this.props.onKeyLift('ctrl+n'); });
+        editor.addCommand( monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_O, () => { this.props.onKeyLift('ctrl+o'); });
+        editor.addCommand( monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_S, () => { this.props.onKeyLift('ctrl+s'); });
+        editor.addCommand( monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_R, () => { this.props.onKeyLift('ctrl+r'); });
+        editor.addCommand( monaco.KeyCode.Escape, () => { this.props.onKeyLift('esc'); });
 
         this.setState({
             editor: editor,

@@ -272,10 +272,10 @@ export class Toolbar extends React.Component<T_Props, T_State> {
                     <NavbarStart>
 
                         <NavbarItem>
-                            <Button onClick={this.props.onClick_Library}>
+                            <NavbarItem href="#" onClick={this.props.onClick_Library}>
                                 <Icon className="fa fa-th-list" />
                                 <span>Library</span>
-                            </Button>
+                            </NavbarItem>
                         </NavbarItem>
 
                         <NavbarItem hasDropdown isHoverable>

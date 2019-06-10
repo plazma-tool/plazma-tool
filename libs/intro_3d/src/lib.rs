@@ -321,12 +321,10 @@ impl Matrix4 {
     pub fn new_homogeneous(translation: &Vector3,
                            euler_rotation: &Vector3,
                            scale: f32) -> Matrix4 {
-        let mut m = Matrix4::new_rotation_euler(euler_rotation.x,
-                                                euler_rotation.y,
-                                                euler_rotation.z);
-
-        m.apply_translation(translation);
+        let mut m = Matrix4::identity();
         m.apply_scale(&Vector3::new(scale, scale, scale));
+        m.rotate_euler(euler_rotation.x, euler_rotation.y, euler_rotation.z);
+        m.apply_translation(translation);
 
         m
     }

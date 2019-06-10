@@ -2,5 +2,6 @@
 
 Create real-time graphics with shaders and polygon models.
 
-https://github.com/plazma-tool/plazma-tool
+Status: Alpha, i.e. “works on my machine, sometimes...”. I hope soon it will work on yours too!
 
+Github: https://github.com/plazma-tool/plazma-tool

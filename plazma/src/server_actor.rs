@@ -662,7 +662,7 @@ fn run_preview_command(path_to_binary: &PathBuf) -> Option<Child>
 {
     // std::process::Command inherits the current process's working directory.
 
-    let bin_cmd = format!("{:?} preview", path_to_binary);
+    let bin_cmd = format!("{} preview", path_to_binary.to_str().unwrap());
 
     if cfg!(target_os = "windows") {
 
@@ -698,7 +698,7 @@ fn run_dialogs_command(path_to_binary: &PathBuf) -> Option<Child>
 {
     // std::process::Command inherits the current process's working directory.
 
-    let bin_cmd = format!("{:?} dialogs", path_to_binary);
+    let bin_cmd = format!("{} dialogs", path_to_binary.to_str().unwrap());
 
     if cfg!(target_os = "windows") {
 

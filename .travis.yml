@@ -1,0 +1,54 @@
+os:
+  - linux
+  - osx
+
+branches:
+  only:
+    - master
+
+git:
+  depth: 1
+
+language: rust
+
+rust: nightly
+
+cache:
+  cargo: true
+  yarn: true
+  directories:
+    - gui/node_modules
+    - "$HOME/.npm"
+    - "$HOME/.cache/yarn/v1"
+    - "$HOME/.yarn-cache"
+
+before_install:
+  - travis_wait 30 bash ./ci/before_install.sh
+
+before_script:
+  - bash ./ci/before_script.sh
+
+script:
+  - echo "=== script ==="
+  - cd plazma
+  - cargo build --release
+  - cd ..
+
+after_script:
+  - echo "=== after script ==="
+after_success:
+  - echo "=== after success ==="
+
+before_deploy:
+  - bash ./ci/before_deploy.sh
+
+deploy:
+  provider: bintray
+  file: $TRAVIS_BUILD_DIR/ci/bintray.descriptor.json
+  skip_cleanup: true
+  user: gambhiro
+  on:
+    branch: master
+  key:
+    secure: 2dCfo/PjccqQTpHUZDiLP5dxnex3XYYlFKkU4vFYm7l7N204+dg49r8QAzSeziqp4FyAFKZ8RhDM+/R0ynPodOV6adEbActDOL7xBi2NM/0SzE2aObFTD4qGF8K+vUMHMf53aGt7OyVxtBp4UxMvTJGbxlKJJy9YQuemkK2Z94s1arWC2aBvIZek7rmObdnuIndwqS5HZvZRW2YI9cbkubrwdJI1Idd+AbGBVEfMrj8XDrseVTWIv7aEn1ktP76C3gg6JJ8Rm+qa/VOcqPOCvaKiHClTiy5f1pW6YjDfPPAaK8dCkLYEBaHX8rRWZdqzIaLfHWdvV+vHtu0vjqvQWHtcLhNMkIB8MxX+XiXzE/xCdoYEPP+9mNzqk6CdGdEFUXJ2fgGRsZrCxyYRjKJrpFfF+ZwCSBddKnXHatpukmk3fc8N/Bd2m/7l2p+fyMioKuETqDvu4+YJZx0scpbeFTCOVcCSKNEpzokDZxTJOLLHsXCYZo6uVoLkpNSMKKH2f1fyYknZFc4n0aPlCpvKymoWouEwRYsgT7Ulxrn3y0YVZ0IwFOpx2yGPnl467Zv2lplWORfr7MaTMYM/b6f7jc0gqEmi4NTIuIGXxmg+gp6hMw4QIkSfClFiEArhG21azQJdUdS28bjd9+bdvQNeflj5VCm02ABM6uftUFwtJ/k=
+

@@ -1,0 +1,16 @@
+{
+    "package": {
+        "name": "plazma-tool",
+        "repo": "plazma-tool",
+        "subject": "gambhiro"
+    },
+    "version": {
+        "name": "latest"
+    },
+    "files": [
+        {"includePattern": "plazma_linux",
+         "uploadPattern": "plazma_linux", "matrixParams": {"override": 1}},
+        {"includePattern": "plazma_osx",
+         "uploadPattern": "plazma_osx", "matrixParams": {"override": 1}}
+    ]
+}

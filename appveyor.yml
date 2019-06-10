@@ -1,0 +1,57 @@
+version: "0.1.0.{branch}.{build}"
+
+image: Visual Studio 2019
+
+shallow_clone: true
+
+platform:
+  - x64
+
+branches:
+  only:
+    - master
+
+environment:
+  nodejs_version: "10"
+  TARGET: x86_64-pc-windows-msvc
+  CRATE_NAME: plazma
+  RUST_VERSION: nightly
+
+install:
+  - ps: Install-Product node $env:nodejs_version
+  - curl -sSf -o rustup-init.exe https://win.rustup.rs/
+  - rustup-init.exe -y --default-host %TARGET% --default-toolchain %RUST_VERSION%
+  - set PATH=%PATH%;C:\Users\appveyor\.cargo\bin
+  - rustc -Vv
+  - cargo -V
+  - yarn --version
+
+cache:
+  - gui\node_modules
+  - '%LOCALAPPDATA%\Yarn\cache'
+  - C:\Users\appveyor\.cargo\registry
+  - plazma\target
+
+before_build:
+  - echo "=== before script ==="
+  - node --version
+  - npm --version
+  - yarn cache dir
+  - cd gui
+  - yarn install
+  - npm run build
+  - cd ..\plazma
+
+build_script:
+  - cargo build --release
+
+test_script:
+  - echo "Skipping test step."
+
+after_test:
+  - echo "Skipping after test step."
+
+artifacts:
+  - path: 'plazma\target\release\plazma.exe'
+    name: exe
+

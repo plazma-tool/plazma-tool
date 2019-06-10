@@ -29,7 +29,10 @@ use plazma::server_actor::{Sending, MsgDataType};
 use plazma::app::{self, AppStartParams};
 
 fn main() {
-    kankyo::load().unwrap();
+    match kankyo::load() {
+        Ok(_) => {},
+        Err(e) => info!("Couldn't find a .env file: {:?}", e),
+    };
     //std::env::set_var("RUST_LOG", "actix_web=info,plazma=info");
     env_logger::init();
     info!("🚀 Launched");

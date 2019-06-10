@@ -19,9 +19,16 @@ pub struct ProjectData {
 #[folder = "./data/templates/"]
 pub struct TemplateAsset;
 
+fn clean_asset_path(path: &PathBuf) -> String {
+    let a = path.to_str().unwrap().replace("/./", "/");
+    let a = a.replace("\\.\\", "\\");
+    let a = a.trim_start_matches("/");
+    a.trim_start_matches("\\").to_string()
+}
+
 pub fn get_template_asset_string(path: &PathBuf) -> Result<String, Box<Error>> {
-    let path = path.to_str().unwrap().trim_start_matches("/");
-    match TemplateAsset::get(path) {
+    let p = clean_asset_path(&path);
+    match TemplateAsset::get(&p) {
         Some(content) => {
             let text: String = match content {
                 Cow::Borrowed(bytes) => String::from_utf8(bytes.to_vec()).unwrap(),
@@ -29,13 +36,16 @@ pub fn get_template_asset_string(path: &PathBuf) -> Result<String, Box<Error>> {
             };
             Ok(text)
         }
-        None => return Err(Box::new(ToolError::MissingTemplateAssetPath(path.to_string()))),
+        None => {
+            error!{"get_template_asset_string() missing path: {:?}", &path};
+            return Err(Box::new(ToolError::MissingTemplateAssetPath(p)));
+        },
     }
 }
 
 pub fn get_template_asset_bytes(path: &PathBuf) -> Result<Vec<u8>, Box<Error>> {
-    let path = path.to_str().unwrap().trim_start_matches("/");
-    match TemplateAsset::get(path) {
+    let p = clean_asset_path(&path);
+    match TemplateAsset::get(&p) {
         Some(content) => {
             let bytes: Vec<u8> = match content {
                 Cow::Borrowed(bytes) => bytes.to_vec(),
@@ -43,7 +53,10 @@ pub fn get_template_asset_bytes(path: &PathBuf) -> Result<Vec<u8>, Box<Error>> {
             };
             Ok(bytes)
         }
-        None => return Err(Box::new(ToolError::MissingTemplateAssetPath(path.to_string()))),
+        None => {
+            error!{"get_template_asset_bytes() missing path: {:?}", &path};
+            return Err(Box::new(ToolError::MissingTemplateAssetPath(p)));
+        },
     }
 }
 

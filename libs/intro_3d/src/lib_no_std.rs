@@ -1,11 +1,16 @@
+#![no_std]
+#![feature(core_intrinsics)]
+
 // Lots of stuff learned from http://nalgebra.org/
 
 // The homogeneous transformation matrix for 3D bodies
 // http://planning.cs.uiuc.edu/node104.html
 
+
 // http://mathworld.wolfram.com/RotationMatrix.html
 
-use std::ops::{Mul, MulAssign, Div, DivAssign, Add, AddAssign, Sub, SubAssign, Neg};
+use core::ops::{Mul, MulAssign, Div, DivAssign, Add, AddAssign, Sub, SubAssign, Neg};
+use core::intrinsics::{sinf32, cosf32, sinf64, cosf64, sqrtf32};
 
 pub const PI: f64 = 3.14159265358979323846;
 pub const DEG_TO_RAD: f64 = 0.01745329251994329577;
@@ -41,9 +46,11 @@ impl Vector3 {
 
     /// Length.
     pub fn norm(&self) -> f32 {
-        f32::sqrt(self.x*self.x +
-                  self.y*self.y +
-                  self.z*self.z)
+        unsafe {
+            sqrtf32(self.x*self.x +
+                    self.y*self.y +
+                    self.z*self.z)
+        }
     }
 
     pub fn normalize(&self) -> Vector3 {
@@ -154,9 +161,9 @@ impl Matrix4 {
     ///
     /// The primitive rotations are applied in order: 1 roll − 2 pitch − 3 yaw.
     pub fn new_rotation_euler(roll: f32, pitch: f32, yaw: f32) -> Matrix4 {
-        let (sr, cr) = (f32::sin(roll),  f32::cos(roll));
-        let (sp, cp) = (f32::sin(pitch), f32::cos(pitch));
-        let (sy, cy) = (f32::sin(yaw),   f32::cos(yaw));
+        let (sr, cr) = unsafe { (sinf32(roll), cosf32(roll)) };
+        let (sp, cp) = unsafe { (sinf32(pitch), cosf32(pitch)) };
+        let (sy, cy) = unsafe { (sinf32(yaw), cosf32(yaw)) };
 
         let data: [[f32; 4]; 4] =
             [[cy * cp, cy * sp * sr - sy * cr, cy * sp * cr + sy * sr, 0.0],
@@ -560,8 +567,10 @@ impl Mul<f32> for Matrix4 {
 
 /// Calculates tangent from sin cos, no direct function in core::intrinsics.
 pub fn tanf32(a: f32) -> f32 {
-    let x: f64 = f64::sin(a as f64 / 2.0) / f64::cos(a as f64 / 2.0);
-    x as f32
+    unsafe {
+        let x: f64 = sinf64(a as f64 / 2.0) / cosf64(a as f64 / 2.0);
+        x as f32
+    }
 }
 
 pub fn to_radians(degree: f32) -> f32 {

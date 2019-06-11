@@ -80,7 +80,7 @@ impl Default for ProjectData {
 }
 
 impl ProjectData {
-    pub fn new(demo_yml_path: Option<PathBuf>) -> Result<ProjectData, Box<Error>> {
+    pub fn new(demo_yml_path: Option<PathBuf>) -> Result<ProjectData, Box<dyn Error>> {
         if let Some(yml_path) = demo_yml_path {
             let p = yml_path.parent().ok_or("missing demo yml parent folder")?;
             let project_root = p.to_path_buf();
@@ -105,7 +105,7 @@ impl DmoData {
                             read_shader_paths: bool,
                             read_image_paths: bool,
                             embedded: bool)
-        -> Result<DmoData, Box<Error>>
+        -> Result<DmoData, Box<dyn Error>>
     {
         let mut dmo_data: DmoData = serde_yaml::from_str(text)?;
         dmo_data.ensure_implicit_builtins();
@@ -118,7 +118,7 @@ impl DmoData {
                              read_shader_paths: bool,
                              read_image_paths: bool,
                              embedded: bool)
-        -> Result<DmoData, Box<Error>>
+        -> Result<DmoData, Box<dyn Error>>
     {
         let mut dmo_data: DmoData = serde_json::from_str(text)?;
         dmo_data.ensure_implicit_builtins();
@@ -126,7 +126,7 @@ impl DmoData {
         Ok(dmo_data)
     }
 
-    pub fn new_minimal() -> Result<DmoData, Box<Error>>
+    pub fn new_minimal() -> Result<DmoData, Box<dyn Error>>
     {
         // don't read anything from disk for the minimal demo, include assets in the binary
         let mut dmo_data = DmoData::default();
@@ -307,7 +307,7 @@ impl DmoData {
                          dmo_gfx: &mut DmoGfx,
                          project_root: &Option<PathBuf>,
                          embedded: bool)
-        -> Result<(), Box<Error>>
+        -> Result<(), Box<dyn Error>>
     {
         use crate::dmo_data as d;
 
@@ -325,7 +325,7 @@ impl DmoData {
     pub fn add_model_cube_to(&self,
                             dmo_gfx: &mut DmoGfx,
                             model_data: &self::model::Model)
-                            -> Result<(), Box<Error>>
+                            -> Result<(), Box<dyn Error>>
     {
         use intro_runtime::model::Model;
         use intro_runtime::mesh::Mesh;
@@ -352,7 +352,7 @@ impl DmoData {
                         model_data: &self::model::Model,
                         project_root: &Option<PathBuf>,
                         embedded: bool)
-        -> Result<(), Box<Error>>
+        -> Result<(), Box<dyn Error>>
     {
         use intro_runtime::model::Model;
         use intro_runtime::mesh::Mesh;

@@ -11,7 +11,8 @@ git:
 
 language: rust
 
-rust: nightly
+rust:
+  - stable
 
 cache:
   cargo: true

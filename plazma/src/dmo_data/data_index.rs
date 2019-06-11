@@ -55,7 +55,7 @@ impl DataIndex {
                           read_shader_paths: bool,
                           shader_sources: &mut Vec<String>,
                           embedded: bool)
-        -> Result<(), Box<Error>>
+        -> Result<(), Box<dyn Error>>
     {
         if self.quad_scene_name_to_idx.contains_key(&scene.name) {
             return Err(Box::new(ToolError::NameAlreadyExists));
@@ -71,7 +71,7 @@ impl DataIndex {
     pub fn add_polygon_scene(&mut self,
                              scene: &PolygonScene,
                              idx: usize)
-                             -> Result<(), Box<Error>>
+                             -> Result<(), Box<dyn Error>>
     {
         if self.polygon_scene_name_to_idx.contains_key(&scene.name) {
             return Err(Box::new(ToolError::NameAlreadyExists));
@@ -89,7 +89,7 @@ impl DataIndex {
                      read_shader_paths: bool,
                      shader_sources: &mut Vec<String>,
                      embedded: bool)
-        -> Result<(), Box<Error>>
+        -> Result<(), Box<dyn Error>>
     {
         if self.model_name_to_idx.contains_key(&model.name) {
             return Err(Box::new(ToolError::NameAlreadyExists));
@@ -109,7 +109,7 @@ impl DataIndex {
                       read_shader_path: bool,
                       shader_sources: &mut Vec<String>,
                       embedded: bool)
-        -> Result<(), Box<Error>>
+        -> Result<(), Box<dyn Error>>
     {
         info!{"add_shader() path: {}, embedded {}", path, embedded};
         // TODO send error (which can be ignored) when path length is zero.
@@ -150,7 +150,7 @@ impl DataIndex {
                             read_image_path: bool,
                             image_sources: &mut Vec<Image>,
                             embedded: bool)
-        -> Result<(), Box<Error>>
+        -> Result<(), Box<dyn Error>>
         {
 
         if self.buffer_name_to_idx.contains_key(&buffer.name) {
@@ -221,7 +221,7 @@ impl DataIndex {
         self.shader_path_to_idx.insert(path.to_owned(), idx);
     }
 
-    pub fn get_shader_index(&self, path: &str) -> Result<usize, Box<Error>> {
+    pub fn get_shader_index(&self, path: &str) -> Result<usize, Box<dyn Error>> {
         let idx = self.shader_path_to_idx.get(path).ok_or(format!{"no such shader path: {}", path})?;
         Ok(*idx)
     }
@@ -230,32 +230,32 @@ impl DataIndex {
         self.shader_path_to_idx.clone()
     }
 
-    pub fn get_image_index(&self, path: &str) -> Result<usize, Box<Error>> {
+    pub fn get_image_index(&self, path: &str) -> Result<usize, Box<dyn Error>> {
         let idx = self.image_path_to_idx.get(path).ok_or(format!{"no such image path: {}", path})?;
         Ok(*idx)
     }
 
-    pub fn get_buffer_index(&self, name: &str) -> Result<usize, Box<Error>> {
+    pub fn get_buffer_index(&self, name: &str) -> Result<usize, Box<dyn Error>> {
         let idx = self.buffer_name_to_idx.get(name).ok_or(format!{"no such buffer name: {}", name})?;
         Ok(*idx)
     }
 
-    pub fn get_quad_scene_index(&self, name: &str) -> Result<usize, Box<Error>> {
+    pub fn get_quad_scene_index(&self, name: &str) -> Result<usize, Box<dyn Error>> {
         let idx = self.quad_scene_name_to_idx.get(name).ok_or(format!{"no such quad scene name: {}", name})?;
         Ok(*idx)
     }
 
-    pub fn get_polygon_scene_index(&self, name: &str) -> Result<usize, Box<Error>> {
+    pub fn get_polygon_scene_index(&self, name: &str) -> Result<usize, Box<dyn Error>> {
         let idx = self.polygon_scene_name_to_idx.get(name).ok_or(format!{"no such polygon scene name: {}", name})?;
         Ok(*idx)
     }
 
-    pub fn get_model_index(&self, name: &str) -> Result<usize, Box<Error>> {
+    pub fn get_model_index(&self, name: &str) -> Result<usize, Box<dyn Error>> {
         let idx = self.model_name_to_idx.get(name).ok_or(format!{"no such model name: {}", name})?;
         Ok(*idx)
     }
 
-    pub fn get_profile_index(&self, _name: &str) -> Result<usize, Box<Error>> {
+    pub fn get_profile_index(&self, _name: &str) -> Result<usize, Box<dyn Error>> {
         // TODO implement
         Ok(0)
     }

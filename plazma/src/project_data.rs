@@ -19,9 +19,16 @@ pub struct ProjectData {
 #[folder = "./data/templates/"]
 pub struct TemplateAsset;
 
-pub fn get_template_asset_string(path: &PathBuf) -> Result<String, Box<Error>> {
-    let path = path.to_str().unwrap().trim_start_matches("/");
-    match TemplateAsset::get(path) {
+fn clean_asset_path(path: &PathBuf) -> String {
+    let a = path.to_str().unwrap().replace("/./", "/");
+    let a = a.replace("\\.\\", "\\");
+    let a = a.trim_start_matches("/");
+    a.trim_start_matches("\\").to_string()
+}
+
+pub fn get_template_asset_string(path: &PathBuf) -> Result<String, Box<dyn Error>> {
+    let p = clean_asset_path(&path);
+    match TemplateAsset::get(&p) {
         Some(content) => {
             let text: String = match content {
                 Cow::Borrowed(bytes) => String::from_utf8(bytes.to_vec()).unwrap(),
@@ -29,13 +36,16 @@ pub fn get_template_asset_string(path: &PathBuf) -> Result<String, Box<Error>> {
             };
             Ok(text)
         }
-        None => return Err(Box::new(ToolError::MissingTemplateAssetPath(path.to_string()))),
+        None => {
+            error!{"get_template_asset_string() missing path: {:?}", &path};
+            return Err(Box::new(ToolError::MissingTemplateAssetPath(p)));
+        },
     }
 }
 
-pub fn get_template_asset_bytes(path: &PathBuf) -> Result<Vec<u8>, Box<Error>> {
-    let path = path.to_str().unwrap().trim_start_matches("/");
-    match TemplateAsset::get(path) {
+pub fn get_template_asset_bytes(path: &PathBuf) -> Result<Vec<u8>, Box<dyn Error>> {
+    let p = clean_asset_path(&path);
+    match TemplateAsset::get(&p) {
         Some(content) => {
             let bytes: Vec<u8> = match content {
                 Cow::Borrowed(bytes) => bytes.to_vec(),
@@ -43,12 +53,15 @@ pub fn get_template_asset_bytes(path: &PathBuf) -> Result<Vec<u8>, Box<Error>> {
             };
             Ok(bytes)
         }
-        None => return Err(Box::new(ToolError::MissingTemplateAssetPath(path.to_string()))),
+        None => {
+            error!{"get_template_asset_bytes() missing path: {:?}", &path};
+            return Err(Box::new(ToolError::MissingTemplateAssetPath(p)));
+        },
     }
 }
 
 impl ProjectData {
-    pub fn new(demo_yml_path: Option<PathBuf>, embedded: bool) -> Result<ProjectData, Box<Error>> {
+    pub fn new(demo_yml_path: Option<PathBuf>, embedded: bool) -> Result<ProjectData, Box<dyn Error>> {
         if let Some(yml_path) = demo_yml_path {
             info!("plazma::ProjectData::new() using yml_path: {:?} and embedded '{:?}'", &yml_path, &embedded);
 
@@ -65,6 +78,7 @@ impl ProjectData {
 
             // TODO optimize for the same shader being used at different scenes
 
+            info!("ProjectData::new() return Ok()");
             Ok(ProjectData {
                 project_root: Some(project_root),
                 demo_yml_path: Some(yml_path.clone()),
@@ -72,7 +86,7 @@ impl ProjectData {
                 embedded: embedded,
             })
         } else {
-            info!("plazma::ProjectData::new() with DmoData::new_minimal()");
+            info!("plazma::ProjectData::new() return with DmoData::new_minimal()");
             Ok(ProjectData {
                 project_root: None,
                 demo_yml_path: None,
@@ -82,7 +96,7 @@ impl ProjectData {
         }
     }
 
-    pub fn new_from_embedded_template(template: NewProjectTemplate) -> Result<ProjectData, Box<Error>> {
+    pub fn new_from_embedded_template(template: NewProjectTemplate) -> Result<ProjectData, Box<dyn Error>> {
         info!("ProjectData::new_from_template() {:?}", template);
 
         use NewProjectTemplate::*;
@@ -104,7 +118,7 @@ impl ProjectData {
         ProjectData::new(Some(PathBuf::from(p)), true)
     }
 
-    pub fn write_shaders(&self) -> Result<(), Box<Error>> {
+    pub fn write_shaders(&self) -> Result<(), Box<dyn Error>> {
         if let Some(ref project_root) = self.project_root {
 
             for (path, idx) in self.dmo_data.context.index.get_shader_path_to_idx().iter() {

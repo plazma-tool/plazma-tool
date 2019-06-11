@@ -47,7 +47,7 @@ fn main() {
         match rocket.update(&mut sync_device) {
             Ok(_) => {},
             Err(err) => {
-                // It's a Box<Error>, so we can't restore the original type.
+                // It's a Box<dyn Error>, so we can't restore the original type.
                 // Let's parse the debug string for now.
                 let msg: &str = &format!("{:?}", err);
                 if msg.contains("kind: UnexpectedEof") {

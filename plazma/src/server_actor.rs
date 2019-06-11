@@ -51,7 +51,7 @@ impl ServerState {
     pub fn new(app_info: AppInfo,
                webview_sender_arc: Arc<Mutex<mpsc::Sender<String>>>,
                demo_yml_path: Option<PathBuf>)
-        -> Result<ServerState, Box<Error>>
+        -> Result<ServerState, Box<dyn Error>>
     {
         let state = ServerState {
             app_info: app_info,

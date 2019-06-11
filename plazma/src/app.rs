@@ -101,7 +101,7 @@ impl AppStartParams {
     }
 }
 
-pub fn app_info() -> Result<AppInfo, Box<Error>>
+pub fn app_info() -> Result<AppInfo, Box<dyn Error>>
 {
     let cwd = PathBuf::from(std::env::current_dir()?).canonicalize()?;
     let mut path_to_binary = PathBuf::from(cwd.clone());
@@ -128,7 +128,7 @@ pub fn app_info() -> Result<AppInfo, Box<Error>>
 }
 
 pub fn process_cli_args(matches: clap::ArgMatches)
-    -> Result<AppStartParams, Box<Error>>
+    -> Result<AppStartParams, Box<dyn Error>>
 {
     let server_port = match matches.value_of("port").unwrap().parse::<usize>() {
         Ok(x) => x,
@@ -205,7 +205,7 @@ pub fn start_server(port: Arc<usize>,
                     yml_path: Option<PathBuf>,
                     webview_sender_arc: Arc<Mutex<mpsc::Sender<String>>>,
                     server_receiver: mpsc::Receiver<String>)
-    -> Result<(thread::JoinHandle<()>, thread::JoinHandle<()>, thread::JoinHandle<()>), Box<Error>>
+    -> Result<(thread::JoinHandle<()>, thread::JoinHandle<()>, thread::JoinHandle<()>), Box<dyn Error>>
 {
     let port_clone_a = Arc::clone(&port);
     let port_clone_b = Arc::clone(&port);
@@ -330,7 +330,7 @@ pub fn start_server(port: Arc<usize>,
 pub fn start_webview(plazma_server_port: Arc<usize>,
                      webview_receiver: mpsc::Receiver<String>,
                      server_sender_arc: Arc<Mutex<mpsc::Sender<String>>>)
-    -> Result<(), Box<Error>>
+    -> Result<(), Box<dyn Error>>
 {
     // Starting the webview also means we will want to open dialogs, so tell the server to
     // start a child process for dialogs.
@@ -451,7 +451,7 @@ pub fn start_webview(plazma_server_port: Arc<usize>,
 
 pub fn start_preview(plazma_server_port: Arc<usize>,
                      yml_path: Option<PathBuf>)
-    -> Result<(), Box<Error>>
+    -> Result<(), Box<dyn Error>>
 {
     info!("⚽ start_preview() start");
 
@@ -1104,7 +1104,7 @@ fn render_loop(window: &GlWindow,
 }
 
 pub fn start_dialogs(plazma_server_port: Arc<usize>)
-    -> Result<(), Box<Error>>
+    -> Result<(), Box<dyn Error>>
 {
     info!("⚽ start_dialogs() start");
 

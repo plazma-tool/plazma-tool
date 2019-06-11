@@ -26,7 +26,7 @@ fn clean_asset_path(path: &PathBuf) -> String {
     a.trim_start_matches("\\").to_string()
 }
 
-pub fn get_template_asset_string(path: &PathBuf) -> Result<String, Box<Error>> {
+pub fn get_template_asset_string(path: &PathBuf) -> Result<String, Box<dyn Error>> {
     let p = clean_asset_path(&path);
     match TemplateAsset::get(&p) {
         Some(content) => {
@@ -43,7 +43,7 @@ pub fn get_template_asset_string(path: &PathBuf) -> Result<String, Box<Error>> {
     }
 }
 
-pub fn get_template_asset_bytes(path: &PathBuf) -> Result<Vec<u8>, Box<Error>> {
+pub fn get_template_asset_bytes(path: &PathBuf) -> Result<Vec<u8>, Box<dyn Error>> {
     let p = clean_asset_path(&path);
     match TemplateAsset::get(&p) {
         Some(content) => {
@@ -61,7 +61,7 @@ pub fn get_template_asset_bytes(path: &PathBuf) -> Result<Vec<u8>, Box<Error>> {
 }
 
 impl ProjectData {
-    pub fn new(demo_yml_path: Option<PathBuf>, embedded: bool) -> Result<ProjectData, Box<Error>> {
+    pub fn new(demo_yml_path: Option<PathBuf>, embedded: bool) -> Result<ProjectData, Box<dyn Error>> {
         if let Some(yml_path) = demo_yml_path {
             info!("plazma::ProjectData::new() using yml_path: {:?} and embedded '{:?}'", &yml_path, &embedded);
 
@@ -95,7 +95,7 @@ impl ProjectData {
         }
     }
 
-    pub fn new_from_embedded_template(template: NewProjectTemplate) -> Result<ProjectData, Box<Error>> {
+    pub fn new_from_embedded_template(template: NewProjectTemplate) -> Result<ProjectData, Box<dyn Error>> {
         info!("ProjectData::new_from_template() {:?}", template);
 
         use NewProjectTemplate::*;
@@ -117,7 +117,7 @@ impl ProjectData {
         ProjectData::new(Some(PathBuf::from(p)), true)
     }
 
-    pub fn write_shaders(&self) -> Result<(), Box<Error>> {
+    pub fn write_shaders(&self) -> Result<(), Box<dyn Error>> {
         if let Some(ref project_root) = self.project_root {
 
             for (path, idx) in self.dmo_data.context.index.get_shader_path_to_idx().iter() {

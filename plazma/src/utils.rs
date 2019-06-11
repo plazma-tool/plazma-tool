@@ -4,7 +4,7 @@ use std::error::Error;
 use std::io::Read;
 
 /// Takes a path to a file and try to read the file into a String
-pub fn file_to_string(path: &PathBuf) -> Result<String, Box<Error>> {
+pub fn file_to_string(path: &PathBuf) -> Result<String, Box<dyn Error>> {
     let mut file = match File::open(path) {
         Ok(f) => f,
         Err(e) => {

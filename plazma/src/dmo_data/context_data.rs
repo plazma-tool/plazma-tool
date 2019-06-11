@@ -57,7 +57,7 @@ impl ContextData {
                        read_shader_paths: bool,
                        read_image_paths: bool,
                        embedded: bool)
-        -> Result<(), Box<Error>>
+        -> Result<(), Box<dyn Error>>
     {
         // First, empty any existing index data.
         self.index = DataIndex::new();

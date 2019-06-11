@@ -36,7 +36,7 @@ pub enum SyncCmd {
 impl SyncClient {
 
     /// Connects to the Rocket Editor server and shakes hand with it
-    pub fn new(address: &str) -> Result<SyncClient, Box<Error>> {
+    pub fn new(address: &str) -> Result<SyncClient, Box<dyn Error>> {
         info!("Attempt to connect to Rocket");
         let mut stream = match TcpStream::connect(address) {
             Ok(x) => {
@@ -86,7 +86,7 @@ impl SyncClient {
     /// things to send.
     ///
     /// Returns an Ok(true) if there should be a redraw.
-    pub fn update(&mut self, mut device: &mut SyncDevice) -> Result<bool, Box<Error>> {
+    pub fn update(&mut self, mut device: &mut SyncDevice) -> Result<bool, Box<dyn Error>> {
 
         let mut draw_anyway = false;
 
@@ -157,7 +157,7 @@ impl SyncClient {
         Ok(draw_anyway)
     }
 
-    pub fn send_row(&mut self, device: &SyncDevice) -> Result<(), Box<Error>> {
+    pub fn send_row(&mut self, device: &SyncDevice) -> Result<(), Box<dyn Error>> {
         let buf = [cmd_to_code(&SyncCmd::SetRow)];
         self.stream.write(&buf)?;
 
@@ -170,7 +170,7 @@ impl SyncClient {
     }
 
     /// Send track names to Rocket, including group prefix
-    pub fn send_track_names(&mut self, track_names: &Vec<String>) -> Result<(), Box<Error>> {
+    pub fn send_track_names(&mut self, track_names: &Vec<String>) -> Result<(), Box<dyn Error>> {
         info!("Sending track names: {:#?}", track_names);
 
         for name in track_names.iter() {
@@ -193,7 +193,7 @@ impl SyncClient {
     }
 
     /// Adds a key frame to a track
-    pub fn handle_set_key_cmd(&mut self, device: &mut SyncDevice) -> Result<(), Box<Error>> {
+    pub fn handle_set_key_cmd(&mut self, device: &mut SyncDevice) -> Result<(), Box<dyn Error>> {
         info!("Received: CMD SetKey");
 
         self.stream.set_nonblocking(false)?;
@@ -238,7 +238,7 @@ impl SyncClient {
     }
 
     /// Deletes a key from a track
-    pub fn handle_del_key_cmd(&mut self, device: &mut SyncDevice) -> Result<(), Box<Error>> {
+    pub fn handle_del_key_cmd(&mut self, device: &mut SyncDevice) -> Result<(), Box<dyn Error>> {
         info!("Received: CMD DeleteKey");
 
         self.stream.set_nonblocking(false)?;
@@ -270,7 +270,7 @@ impl SyncClient {
 
     /// Sets the current row from server. Sets the current time based on the row
     /// and rps.
-    pub fn handle_set_row_cmd(&mut self, device: &mut SyncDevice) -> Result<(), Box<Error>> {
+    pub fn handle_set_row_cmd(&mut self, device: &mut SyncDevice) -> Result<(), Box<dyn Error>> {
         info!("Received: CMD SetRow");
 
         self.stream.set_nonblocking(false)?;
@@ -290,7 +290,7 @@ impl SyncClient {
         Ok(())
     }
 
-    pub fn handle_pause_cmd(&mut self, device: &mut SyncDevice) -> Result<(), Box<Error>> {
+    pub fn handle_pause_cmd(&mut self, device: &mut SyncDevice) -> Result<(), Box<dyn Error>> {
         info!("Received: CMD Pause");
 
         self.stream.set_nonblocking(false)?;

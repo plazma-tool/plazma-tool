@@ -61,7 +61,7 @@ impl PreviewState {
     pub fn new(demo_yml_path: Option<PathBuf>,
                window_width: f64,
                window_height: f64)
-        -> Result<PreviewState, Box<Error>>
+        -> Result<PreviewState, Box<dyn Error>>
     {
         // NOTE screen width and height value has to be the same as window width and height when
         // starting, otherwise the quads that cover the screen will sample framebuffers according
@@ -109,7 +109,7 @@ impl PreviewState {
 
     pub fn build_rocket_connection(&mut self,
                                    rocket: &mut Option<SyncClient>)
-        -> Result<(), Box<Error>>
+        -> Result<(), Box<dyn Error>>
     {
 
         *rocket = match SyncClient::new("localhost:1338") {
@@ -135,7 +135,7 @@ impl PreviewState {
                                        window_height: f64,
                                        camera: Option<Camera>,
                                        embedded: bool)
-        -> Result<(), Box<Error>>
+        -> Result<(), Box<dyn Error>>
     {
         // NOTE Must use window size for screen size as well
         //
@@ -185,7 +185,7 @@ impl PreviewState {
                                       window_height: f64,
                                       camera: Option<Camera>,
                                       embedded: bool)
-        -> Result<(), Box<Error>>
+        -> Result<(), Box<dyn Error>>
     {
         let dmo_data: DmoData = DmoData::new_from_yml_str(&yml_str,
                                                           &self.project_data.project_root,
@@ -207,7 +207,7 @@ impl PreviewState {
                                       window_width: f64,
                                       window_height: f64,
                                       camera: Option<Camera>)
-        -> Result<(), Box<Error>>
+        -> Result<(), Box<dyn Error>>
     {
         self.project_data.project_root = msg.project_root.clone();
         let dmo_data: DmoData = DmoData::new_from_json_str(&msg.dmo_data_json_str,
@@ -226,7 +226,7 @@ impl PreviewState {
     pub fn build_dmo_gfx_minimal(&mut self,
                                       window_width: f64,
                                       window_height: f64)
-        -> Result<(), Box<Error>>
+        -> Result<(), Box<dyn Error>>
     {
         let dmo_data: DmoData = DmoData::new_minimal()?;
         self.build_dmo_gfx_from_dmo_data(&dmo_data, window_width, window_height, None, false)?;
@@ -239,7 +239,7 @@ impl PreviewState {
     //     return self.dmo_gfx.context.shader_sources.len() - 1;
     // }
 
-    pub fn recompile_dmo(&mut self) -> Result<(), Box<Error>> {
+    pub fn recompile_dmo(&mut self) -> Result<(), Box<dyn Error>> {
         if !self.should_recompile {
             return Ok(());
         }
@@ -412,14 +412,14 @@ impl PreviewState {
         d.set_row_from_time();
     }
 
-    pub fn update_rocket(&mut self, rocket: &mut Option<SyncClient>) -> Result<(), Box<Error>> {
+    pub fn update_rocket(&mut self, rocket: &mut Option<SyncClient>) -> Result<(), Box<dyn Error>> {
         let mut do_rocket_none = false;
         if let &mut Some(ref mut r) = rocket {
             match r.update(self.get_sync_device_mut()) {
                 Ok(a) => self.draw_anyway = a,
                 Err(err) => {
                     do_rocket_none = true;
-                    // It's a Box<Error>, so we can't restore the original type.
+                    // It's a Box<dyn Error>, so we can't restore the original type.
                     // Let's parse the debug string for now.
                     let msg: &str = &format!("{:?}", err);
                     if msg.contains("kind: UnexpectedEof") {
@@ -467,7 +467,7 @@ impl PreviewState {
         Ok(())
     }
 
-    pub fn update_vars(&mut self) -> Result<(), Box<Error>> {
+    pub fn update_vars(&mut self) -> Result<(), Box<dyn Error>> {
         match self.dmo_gfx.update_vars() {
             Ok(_) => {},
             Err(e) => return Err(Box::new(ToolError::Runtime(e, "".to_owned()))),
@@ -475,7 +475,7 @@ impl PreviewState {
         Ok(())
     }
 
-    pub fn callback_window_resized(&mut self, wx: f64, wy: f64) -> Result<(), Box<Error>> {
+    pub fn callback_window_resized(&mut self, wx: f64, wy: f64) -> Result<(), Box<dyn Error>> {
         info!{"wx: {}, wy: {}", wx, wy};
 
         self.dmo_gfx.context.set_window_resolution(wx, wy);
@@ -675,7 +675,7 @@ impl PreviewState {
 
 fn builtin_to_idx(track_name_to_idx: &BTreeMap<String, usize>,
                   name: &crate::dmo_data::BuiltIn)
-    -> Result<usize, Box<Error>>
+    -> Result<usize, Box<dyn Error>>
 {
     use crate::dmo_data::BuiltIn::*;
     match name {
@@ -734,7 +734,7 @@ fn build_track_names(dmo_gfx: &mut DmoGfx,
                      dmo_data: &DmoData,
                      project_root: &Option<PathBuf>,
                      embedded: bool)
-    -> Result<(Vec<String>, BTreeMap<String, usize>), Box<Error>>
+    -> Result<(Vec<String>, BTreeMap<String, usize>), Box<dyn Error>>
 {
     // Build the track names and their sync var indexes.
 
@@ -940,7 +940,7 @@ fn build_settings(dmo_gfx: &mut DmoGfx,
 
 fn build_frame_buffers(dmo_gfx: &mut DmoGfx,
                        dmo_data: &DmoData)
-    -> Result<(), Box<Error>>
+    -> Result<(), Box<dyn Error>>
 {
     use crate::dmo_data::context_data as d;
 
@@ -986,7 +986,7 @@ fn build_frame_buffers(dmo_gfx: &mut DmoGfx,
 fn build_quad_scenes(dmo_gfx: &mut DmoGfx,
                      dmo_data: &DmoData,
                      track_name_to_idx: &BTreeMap<String, usize>)
-    -> Result<(), Box<Error>>
+    -> Result<(), Box<dyn Error>>
 {
     use crate::dmo_data as d;
 
@@ -1067,7 +1067,7 @@ fn build_polygon_context_and_scenes(dmo_gfx: &mut DmoGfx,
                                     track_name_to_idx: &BTreeMap<String, usize>,
                                     project_root: &Option<PathBuf>,
                                     embedded: bool)
-    -> Result<(), Box<Error>>
+    -> Result<(), Box<dyn Error>>
 {
     use crate::dmo_data as d;
 
@@ -1198,7 +1198,7 @@ fn build_polygon_context_and_scenes(dmo_gfx: &mut DmoGfx,
 
 fn build_timeline(dmo_gfx: &mut DmoGfx,
                   dmo_data: &DmoData)
-    -> Result<(), Box<Error>>
+    -> Result<(), Box<dyn Error>>
 {
     use crate::dmo_data::timeline::DrawOp as D;
     use intro_runtime::timeline::DrawOp as G;

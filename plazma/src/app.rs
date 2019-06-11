@@ -662,180 +662,185 @@ fn render_loop(window: &GlWindow,
 
         match client_receiver.try_recv() {
             Ok(text) => {
-                // FIXME return a NOOP otherwise it returns from the function.
-                let message: Receiving = match serde_json::from_str(&text) {
-                    Ok(x) => x,
-                    Err(e) => {
-                        error!{"🔥 Can't deserialize message: {:?}", e};
-                        return;
-                    },
-                };
-                //info!{"Received: message.data_type: {:?}", message.data_type};
+                if text == "StopSystem" {
+                    info!("render_loop() Received StopSystem.");
+                    state.set_is_running(false);
+                } else {
 
-                use crate::server_actor::MsgDataType::*;
-                match message.data_type {
+                    let message: Receiving = match serde_json::from_str(&text) {
+                        Ok(x) => x,
+                        Err(e) => {
+                            error!{"🔥 render_loop() Can't deserialize message: {:?}", e};
+                            // Assign a NOOP instead of returning from the function.
+                            Receiving { data_type: NoOp, data: "".to_string() }
+                        },
+                    };
+                    //info!{"Received: message.data_type: {:?}", message.data_type};
 
-                    NoOp => {},
+                    use crate::server_actor::MsgDataType::*;
+                    match message.data_type {
 
-                    FetchDmo => {},
+                        NoOp => {},
 
-                    SetDmo => {
-                        info!("render_loop() Received SetDmo");
-                        let (sx, sy) = state.dmo_gfx.context.get_screen_resolution();
-                        let (wx, wy) = state.dmo_gfx.context.get_window_resolution();
-                        info!{"sx: {}, sy: {}", sx, sy};
-                        let camera = state.dmo_gfx.context.camera.get_copy();
+                        FetchDmo => {},
 
-                        match serde_json::from_str::<SetDmoMsg>(&message.data) {
-                            Ok(msg) => {
-                                // - don't read in shader files again,
-                                //   the updated shaders are sent directly from the UI
-                                // - do read in images,
-                                //   these are passed only by path from the UI
-                                match state.build_dmo_gfx_from_dmo_msg(&msg, false, true,
-                                                                       sx, sy,
-                                                                       Some(camera))
-                                {
-                                    Ok(_) => {
-                                        match state.callback_window_resized(wx as f64, wy as f64) {
-                                            Ok(_) => {},
-                                            Err(e) => error!("🔥 callback_window_resized() {:?}", e),
-                                        }
-                                    },
-                                    Err(e) => error!{"🔥 Can't perform SetDmo: {:?}", e},
-                                }
-                            },
-                            Err(e) => error!("🔥 Can't deserialize SetDmoMsg: {:?}", e),
-                        };
-                    },
+                        SetDmo => {
+                            info!("render_loop() Received SetDmo");
+                            let (sx, sy) = state.dmo_gfx.context.get_screen_resolution();
+                            let (wx, wy) = state.dmo_gfx.context.get_window_resolution();
+                            info!{"sx: {}, sy: {}", sx, sy};
+                            let camera = state.dmo_gfx.context.camera.get_copy();
 
-                    SetDmoTime => {
-                        let time: f64 = match serde_json::from_str(&message.data) {
-                            Ok(x) => x,
-                            Err(e) => {
-                                error!{"🔥 Can't deserialize to time f64: {:?}", e};
-                                return;
-                            },
-                        };
-                        state.set_time(time);
-                    },
-
-                    GetDmoTime => {
-                        // When Rocket is not connected, send the server the time.
-                        let msg = serde_json::to_string(&Sending{
-                            data_type: MsgDataType::SetDmoTime,
-                            data: format!{"{}", state.get_time()},
-                        }).unwrap();
-                        match server_sender.send(msg) {
-                            Ok(_) => {},
-                            Err(_) => {},
-                        };
-                    },
-
-                    SetShader => {
-                        let msg: SetShaderMsg = match serde_json::from_str(&message.data) {
-                            Ok(x) => x,
-                            Err(e) => {
-                                error!{"🔥 Can't deserialize to SetShaderMsg: {:?}", e};
-                                return;
-                            },
-                        };
-
-                        match state.set_shader(msg.idx, &msg.content) {
-                            Ok(_) => {
-                                info!("ShaderCompilationSuccess");
-                                state.draw_anyway = true;
-
-                                let data = ShaderCompilationSuccessMsg {
-                                    idx: msg.idx,
-                                };
-
-                                let msg = serde_json::to_string(&Sending{
-                                    data_type: MsgDataType::ShaderCompilationSuccess,
-                                    data: serde_json::to_string(&data).unwrap(),
-                                }).unwrap();
-                                match server_sender.send(msg) {
-                                    Ok(_) => {},
-                                    Err(e) => error!("🔥 Can't send ShaderCompilationSuccess on server_sender: {:?}", e),
-                                };
-                            },
-                            Err(e) => match e {
-                                ToolError::Runtime(ref e, ref error_msg) => {
-                                    info!("{:?}, error message:\n{:#?}", e, error_msg);
-                                    match e {
-                                        RuntimeError::ShaderCompilationFailed => {
-
-                                            let data = ShaderCompilationFailedMsg {
-                                                idx: msg.idx,
-                                                error_message: error_msg.clone(),
-                                            };
-
-                                            let msg = serde_json::to_string(&Sending{
-                                                data_type: MsgDataType::ShaderCompilationFailed,
-                                                data: serde_json::to_string(&data).unwrap(),
-                                            }).unwrap();
-                                            match server_sender.send(msg) {
+                            match serde_json::from_str::<SetDmoMsg>(&message.data) {
+                                Ok(msg) => {
+                                    // - don't read in shader files again,
+                                    //   the updated shaders are sent directly from the UI
+                                    // - do read in images,
+                                    //   these are passed only by path from the UI
+                                    match state.build_dmo_gfx_from_dmo_msg(&msg, false, true,
+                                                                           sx, sy,
+                                                                           Some(camera))
+                                    {
+                                        Ok(_) => {
+                                            match state.callback_window_resized(wx as f64, wy as f64) {
                                                 Ok(_) => {},
-                                                Err(e) => error!("🔥 Can't send ShaderCompilationFailed on server_sender: {:?}", e),
-                                            };
-
+                                                Err(e) => error!("🔥 callback_window_resized() {:?}", e),
+                                            }
                                         },
-                                        _ => error!{"🔥 Can't perform SetShader: {:?}", e},
+                                        Err(e) => error!{"🔥 Can't perform SetDmo: {:?}", e},
                                     }
-                                }
-                                _ => error!{"🔥 Can't perform SetShader: {:?}", e},
-                            },
-                        };
-                    },
+                                },
+                                Err(e) => error!("🔥 Can't deserialize SetDmoMsg: {:?}", e),
+                            };
+                        },
 
-                    SetSettings => {
-                        let settings_data: crate::dmo_data::Settings = match serde_json::from_str(&message.data) {
-                            Ok(x) => x,
-                            Err(e) => {
-                                error!{"🔥 Can't deserialize to Settings: {:?}", e};
-                                return;
-                            },
-                        };
+                        SetDmoTime => {
+                            let time: f64 = match serde_json::from_str(&message.data) {
+                                Ok(x) => x,
+                                Err(e) => {
+                                    error!{"🔥 Can't deserialize to time f64: {:?}", e};
+                                    return;
+                                },
+                            };
+                            state.set_time(time);
+                        },
 
-                        let settings = intro_runtime::dmo_gfx::Settings {
-                            start_full_screen: settings_data.start_full_screen,
-                            audio_play_on_start: settings_data.audio_play_on_start,
-                            mouse_sensitivity: settings_data.mouse_sensitivity,
-                            movement_sensitivity: settings_data.movement_sensitivity,
-                            total_length: settings_data.total_length,
-                        };
-                        state.dmo_gfx.settings = settings;
-                    },
+                        GetDmoTime => {
+                            // When Rocket is not connected, send the server the time.
+                            let msg = serde_json::to_string(&Sending{
+                                data_type: MsgDataType::SetDmoTime,
+                                data: format!{"{}", state.get_time()},
+                            }).unwrap();
+                            match server_sender.send(msg) {
+                                Ok(_) => {},
+                                Err(_) => {},
+                            };
+                        },
 
-                    SetMetadata => {},
+                        SetShader => {
+                            let msg: SetShaderMsg = match serde_json::from_str(&message.data) {
+                                Ok(x) => x,
+                                Err(e) => {
+                                    error!{"🔥 Can't deserialize to SetShaderMsg: {:?}", e};
+                                    return;
+                                },
+                            };
 
-                    ShowErrorMessage =>
-                        error!{"🔥 Server is sending error: {:?}", message.data},
+                            match state.set_shader(msg.idx, &msg.content) {
+                                Ok(_) => {
+                                    info!("ShaderCompilationSuccess");
+                                    state.draw_anyway = true;
 
-                    ShaderCompilationSuccess => {},
-                    ShaderCompilationFailed => {},
-                    StartPreview => {},
+                                    let data = ShaderCompilationSuccessMsg {
+                                        idx: msg.idx,
+                                    };
 
-                    StopPreview => {
-                        info!("render_loop() Received StopPreview.");
-                        state.set_is_running(false);
-                    },
+                                    let msg = serde_json::to_string(&Sending{
+                                        data_type: MsgDataType::ShaderCompilationSuccess,
+                                        data: serde_json::to_string(&data).unwrap(),
+                                    }).unwrap();
+                                    match server_sender.send(msg) {
+                                        Ok(_) => {},
+                                        Err(e) => error!("🔥 Can't send ShaderCompilationSuccess on server_sender: {:?}", e),
+                                    };
+                                },
+                                Err(e) => match e {
+                                    ToolError::Runtime(ref e, ref error_msg) => {
+                                        info!("{:?}, error message:\n{:#?}", e, error_msg);
+                                        match e {
+                                            RuntimeError::ShaderCompilationFailed => {
 
-                    PreviewOpened => {},
-                    PreviewClosed => {},
-                    StartDialogs => {},
-                    OpenProjectFileDialog => {},
-                    OpenProjectFilePath => {},
-                    ReloadProject => {},
-                    SaveProject => {},
-                    NewProject => {},
+                                                let data = ShaderCompilationFailedMsg {
+                                                    idx: msg.idx,
+                                                    error_message: error_msg.clone(),
+                                                };
 
-                    ExitApp => {
-                        info!("render_loop() Received ExitApp.");
-                        state.set_is_running(false);
-                    },
+                                                let msg = serde_json::to_string(&Sending{
+                                                    data_type: MsgDataType::ShaderCompilationFailed,
+                                                    data: serde_json::to_string(&data).unwrap(),
+                                                }).unwrap();
+                                                match server_sender.send(msg) {
+                                                    Ok(_) => {},
+                                                    Err(e) => error!("🔥 Can't send ShaderCompilationFailed on server_sender: {:?}", e),
+                                                };
+
+                                            },
+                                            _ => error!{"🔥 Can't perform SetShader: {:?}", e},
+                                        }
+                                    }
+                                    _ => error!{"🔥 Can't perform SetShader: {:?}", e},
+                                },
+                            };
+                        },
+
+                        SetSettings => {
+                            let settings_data: crate::dmo_data::Settings = match serde_json::from_str(&message.data) {
+                                Ok(x) => x,
+                                Err(e) => {
+                                    error!{"🔥 Can't deserialize to Settings: {:?}", e};
+                                    return;
+                                },
+                            };
+
+                            let settings = intro_runtime::dmo_gfx::Settings {
+                                start_full_screen: settings_data.start_full_screen,
+                                audio_play_on_start: settings_data.audio_play_on_start,
+                                mouse_sensitivity: settings_data.mouse_sensitivity,
+                                movement_sensitivity: settings_data.movement_sensitivity,
+                                total_length: settings_data.total_length,
+                            };
+                            state.dmo_gfx.settings = settings;
+                        },
+
+                        SetMetadata => {},
+
+                        ShowErrorMessage =>
+                            error!{"🔥 Server is sending error: {:?}", message.data},
+
+                        ShaderCompilationSuccess => {},
+                        ShaderCompilationFailed => {},
+                        StartPreview => {},
+
+                        StopPreview => {
+                            info!("render_loop() Received StopPreview.");
+                            state.set_is_running(false);
+                        },
+
+                        PreviewOpened => {},
+                        PreviewClosed => {},
+                        StartDialogs => {},
+                        OpenProjectFileDialog => {},
+                        OpenProjectFilePath => {},
+                        ReloadProject => {},
+                        SaveProject => {},
+                        NewProject => {},
+
+                        ExitApp => {
+                            info!("render_loop() Received ExitApp.");
+                            state.set_is_running(false);
+                        },
+                    }
                 }
-
             },
 
             // Silently drop the error when there is no message to receive.
@@ -1091,10 +1096,8 @@ fn render_loop(window: &GlWindow,
     };
 
     match server_sender.send("StopSystem".to_owned()) {
-        Ok(_) => {},
-        Err(e) => {
-            error!("🔥 Can't send StopSystem on server_sender: {:?}", e);
-        },
+        Ok(_) => info!("render_loop() sent StopSystem"),
+        Err(e) => error!("🔥 render_loop() Can't send StopSystem on server_sender: {:?}", e),
     };
 
     info!("🏁 render_loop() return");
@@ -1226,69 +1229,75 @@ fn dialogs_loop(client_receiver: mpsc::Receiver<String>,
 
         match client_receiver.try_recv() {
             Ok(text) => {
-                // FIXME return a NOOP otherwise it returns from the function.
-                let message: Receiving = match serde_json::from_str(&text) {
-                    Ok(x) => x,
-                    Err(e) => {
-                        error!{"🔥 Can't deserialize message: {:?}", e};
-                        return;
-                    },
-                };
+                if text == "StopSystem" {
+                    info!("render_loop() Received StopSystem.");
+                    is_running = false;
+                } else {
 
-                use crate::server_actor::MsgDataType::*;
-                match message.data_type {
+                    let message: Receiving = match serde_json::from_str(&text) {
+                        Ok(x) => x,
+                        Err(e) => {
+                            error!{"🔥 dialogs_loop() Can't deserialize message: {:?}", e};
+                            // Assign a NOOP instead of returning from the function.
+                            Receiving { data_type: NoOp, data: "".to_string() }
+                        },
+                    };
 
-                    NoOp => {},
-                    FetchDmo => {},
-                    SetDmo => {},
-                    SetDmoTime => {},
-                    GetDmoTime => {},
-                    SetShader => {},
-                    SetSettings => {},
-                    SetMetadata => {},
-                    ShowErrorMessage => {},
-                    ShaderCompilationSuccess => {},
-                    ShaderCompilationFailed => {},
-                    StartPreview => {},
-                    StopPreview => {},
-                    PreviewOpened => {},
-                    PreviewClosed => {},
-                    StartDialogs => {},
+                    use crate::server_actor::MsgDataType::*;
+                    match message.data_type {
 
-                    OpenProjectFileDialog => {
+                        NoOp => {},
+                        FetchDmo => {},
+                        SetDmo => {},
+                        SetDmoTime => {},
+                        GetDmoTime => {},
+                        SetShader => {},
+                        SetSettings => {},
+                        SetMetadata => {},
+                        ShowErrorMessage => {},
+                        ShaderCompilationSuccess => {},
+                        ShaderCompilationFailed => {},
+                        StartPreview => {},
+                        StopPreview => {},
+                        PreviewOpened => {},
+                        PreviewClosed => {},
+                        StartDialogs => {},
 
-                        let res = nfd::open_file_dialog(None, None).expect("Failed to open a native file dialog.");
+                        OpenProjectFileDialog => {
 
-                        let mut path = String::new();
-                        match res {
-                            NfdResponse::Okay(p) => path = p,
+                            let res = nfd::open_file_dialog(None, None).expect("Failed to open a native file dialog.");
 
-                            NfdResponse::OkayMultiple(files) => path = files[0].to_string(),
+                            let mut path = String::new();
+                            match res {
+                                NfdResponse::Okay(p) => path = p,
 
-                            NfdResponse::Cancel => {},
-                        }
+                                NfdResponse::OkayMultiple(files) => path = files[0].to_string(),
 
-                        if path.len() > 0 {
-                            let msg = serde_json::to_string(&Sending{
-                                data_type: MsgDataType::OpenProjectFilePath,
-                                data: serde_json::to_string(&path).unwrap(),
-                            }).unwrap();
-                            match server_sender.send(msg) {
-                                Ok(_) => {},
-                                Err(e) => error!("🔥 Can't send OpenProjectFilePath on server_sender: {:?}", e),
-                            };
-                        }
-                    },
+                                NfdResponse::Cancel => {},
+                            }
 
-                    OpenProjectFilePath => {},
-                    ReloadProject => {},
-                    SaveProject => {},
-                    NewProject => {},
+                            if path.len() > 0 {
+                                let msg = serde_json::to_string(&Sending{
+                                    data_type: MsgDataType::OpenProjectFilePath,
+                                    data: serde_json::to_string(&path).unwrap(),
+                                }).unwrap();
+                                match server_sender.send(msg) {
+                                    Ok(_) => {},
+                                    Err(e) => error!("🔥 Can't send OpenProjectFilePath on server_sender: {:?}", e),
+                                };
+                            }
+                        },
 
-                    ExitApp => {
-                        info!("dialogs_loop() Received ExitApp.");
-                        is_running = false;
-                    },
+                        OpenProjectFilePath => {},
+                        ReloadProject => {},
+                        SaveProject => {},
+                        NewProject => {},
+
+                        ExitApp => {
+                            info!("dialogs_loop() Received ExitApp.");
+                            is_running = false;
+                        },
+                    }
                 }
             },
 
@@ -1300,10 +1309,8 @@ fn dialogs_loop(client_receiver: mpsc::Receiver<String>,
     }
 
     match server_sender.send("StopSystem".to_owned()) {
-        Ok(_) => {},
-        Err(e) => {
-            error!("🔥 Can't send StopSystem on server_sender: {:?}", e);
-        },
+        Ok(_) => info!("dialogs_loop() sent StopSystem"),
+        Err(e) => error!("🔥 dialogs_loop() Can't send StopSystem on server_sender: {:?}", e),
     };
 
     info!("🏁 dialogs_loop() return");

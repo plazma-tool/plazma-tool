@@ -1,6 +1,7 @@
 use std::env;
 use std::process::exit;
 use std::sync::{Arc, Mutex, mpsc};
+use std::sync::mpsc::TryRecvError;
 use std::thread::{self, sleep};
 use std::time::Duration;
 use std::path::PathBuf;
@@ -662,6 +663,15 @@ fn render_loop(window: &GlWindow,
 
         match client_receiver.try_recv() {
             Ok(text) => {
+                /*
+                let n = if text.len() < 100 {
+                    text.len()
+                } else {
+                    100
+                };
+                info!("render_loop() text message length {}, {}", text.len(), &text[0..n]);
+                */
+
                 if text == "StopSystem" {
                     info!("render_loop() Received StopSystem.");
                     state.set_is_running(false);
@@ -843,8 +853,10 @@ fn render_loop(window: &GlWindow,
                 }
             },
 
-            // Silently drop the error when there is no message to receive.
-            Err(_) => {},
+            Err(e) => match e {
+                TryRecvError::Empty => {},
+                _ => error!("render_loop() can't receive: {:?}", e),
+            }
         }
 
         // 00. recompile if flag was set
@@ -1301,8 +1313,10 @@ fn dialogs_loop(client_receiver: mpsc::Receiver<String>,
                 }
             },
 
-            // Silently drop the error when there is no message to receive.
-            Err(_) => {},
+            Err(e) => match e {
+                TryRecvError::Empty => {},
+                _ => error!("dialogs_loop() can't receive: {:?}", e),
+            }
         }
 
         sleep(Duration::from_millis(100));

@@ -275,6 +275,14 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
             }
 
             ws::Message::Text(text) => {
+                /*
+                let n = if text.len() < 100 {
+                    text.len()
+                } else {
+                    100
+                };
+                info!("handle() text message length {}, {}", text.len(), &text[0..n]);
+                */
 
                 let message: Receiving = match serde_json::from_str(&text) {
                     Ok(x) => x,
@@ -292,7 +300,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                     FetchDmo => {
                         // Client is asking for Dmo data. Serialize ServerState.dmo
                         // and send it back.
-                        info!("server_actor: Received FetchDmo");
+                        info!("handle() Received FetchDmo");
                         let resp;
                         {
                             let state = ctx.state().lock().expect("👿 Can't lock ServerState.");
@@ -307,10 +315,13 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                             };
                         }
                         let body = serde_json::to_string(&resp).unwrap();
+                        info!("handle() respond with message length {}", body.len());
                         ctx.text(body);
                     },
 
                     SetDmo => {
+                        info!("SetDmo: received, data length {}", message.data.len());
+
                         // Client is sending Dmo data. Deserialize and replace the
                         // ServerState.dmo. Serialize and send all other clients the
                         // new Dmo data.
@@ -481,6 +492,8 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                     OpenProjectFileDialog => self.repeat_message_to_others(&ctx, &message),
 
                     OpenProjectFilePath => {
+                        info!("OpenProjectFilePath: received");
+
                         // Deserialize and sanity check the path. It must point to a YAML file.
                         let yml_path = match serde_json::from_str::<String>(&message.data) {
                             Ok(p) => {
@@ -530,10 +543,13 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                             }).unwrap(),
                         };
 
+                        info!("Send SetDmo to everyone");
                         self.send_message_to_everyone(&ctx, &resp);
 
                         let mut state = ctx.state().lock().expect("👿 Can't lock ServerState.");
                         state.project_data = project_data;
+
+                        info!("OpenProjectFilePath: done.");
                     },
 
                     ReloadProject => {

@@ -15,7 +15,7 @@ environment:
   nodejs_version: "10"
   TARGET: x86_64-pc-windows-msvc
   CRATE_NAME: plazma
-  RUST_VERSION: nightly-2019-06-10
+  RUST_VERSION: stable
 
 install:
   - ps: Install-Product node $env:nodejs_version

@@ -12,7 +12,7 @@ git:
 language: rust
 
 rust:
-  - nightly-2019-06-10
+  - stable
 
 cache:
   cargo: true

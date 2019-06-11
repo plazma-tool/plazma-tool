@@ -78,6 +78,7 @@ impl ProjectData {
 
             // TODO optimize for the same shader being used at different scenes
 
+            info!("ProjectData::new() return Ok()");
             Ok(ProjectData {
                 project_root: Some(project_root),
                 demo_yml_path: Some(yml_path.clone()),
@@ -85,7 +86,7 @@ impl ProjectData {
                 embedded: embedded,
             })
         } else {
-            info!("plazma::ProjectData::new() with DmoData::new_minimal()");
+            info!("plazma::ProjectData::new() return with DmoData::new_minimal()");
             Ok(ProjectData {
                 project_root: None,
                 demo_yml_path: None,

@@ -1,4 +1,4 @@
-use intro_3d::{Vector3, Matrix4};
+use intro_3d::lib::{Matrix4, Vector3};
 
 pub struct Camera {
     pub fovy_angle: f32,
@@ -19,20 +19,20 @@ pub struct Camera {
 
 impl Camera {
     /// If `front` vector is None, it will be set from pitch and yaw.
-    pub fn new(fovy_angle: f32,
-               aspect: f32,
-               position: Vector3,
-               front: Option<Vector3>,
-               world_up: Vector3,
-               pitch: f32,
-               yaw: f32)
-        -> Camera
-        {
-            let v = if let Some(ref a) = front {
-                Vector3::new(a.x, a.y, a.z)
-            } else {
-                Vector3::new(0.0, 0.0, 0.0)
-            };
+    pub fn new(
+        fovy_angle: f32,
+        aspect: f32,
+        position: Vector3,
+        front: Option<Vector3>,
+        world_up: Vector3,
+        pitch: f32,
+        yaw: f32,
+    ) -> Camera {
+        let v = if let Some(ref a) = front {
+            Vector3::new(a.x, a.y, a.z)
+        } else {
+            Vector3::new(0.0, 0.0, 0.0)
+        };
 
         let mut camera = Camera {
             fovy_angle: fovy_angle,
@@ -64,27 +64,39 @@ impl Camera {
     }
 
     pub fn new_defaults(aspect: f32) -> Camera {
-        Camera::new(45.0,
-                    aspect,
-                    Vector3::new(0.0, 0.0, 10.0),
-                    None,
-                    Vector3::new(0.0, 1.0, 0.0),
-                    0.0,
-                    90.0)
+        Camera::new(
+            45.0,
+            aspect,
+            Vector3::new(0.0, 0.0, 10.0),
+            None,
+            Vector3::new(0.0, 1.0, 0.0),
+            0.0,
+            90.0,
+        )
     }
 
     pub fn get_copy(&self) -> Camera {
         let position = self.get_position_copy();
         let front = self.get_front_copy();
         let world_up = self.get_world_up_copy();
-        Camera::new(self.fovy_angle, self.aspect, position, Some(front), world_up, self.pitch, self.yaw)
+        Camera::new(
+            self.fovy_angle,
+            self.aspect,
+            position,
+            Some(front),
+            world_up,
+            self.pitch,
+            self.yaw,
+        )
     }
 
     pub fn update_projection(&mut self) {
-        let a = Matrix4::new_perspective(self.aspect,
-                                         self.fovy_angle.to_radians(),
-                                         self.clip_near,
-                                         self.clip_far);
+        let a = Matrix4::new_perspective(
+            self.aspect,
+            self.fovy_angle.to_radians(),
+            self.clip_near,
+            self.clip_far,
+        );
         self.projection = a.as_column_slice();
     }
 
@@ -114,7 +126,7 @@ impl Camera {
     }
 
     pub fn update_view(&mut self) {
-        let a = Matrix4::look_at_rh(&self.position, &{&self.position + &self.front}, &self.up);
+        let a = Matrix4::look_at_rh(&self.position, &{ &self.position + &self.front }, &self.up);
         self.view = a.as_row_slice();
     }
 
@@ -139,9 +151,7 @@ impl Camera {
     }
 
     pub fn get_position_copy(&self) -> Vector3 {
-        Vector3::new(self.position.x,
-                     self.position.y,
-                     self.position.z)
+        Vector3::new(self.position.x, self.position.y, self.position.z)
     }
 
     pub fn set_position(&mut self, position: Vector3) {
@@ -154,15 +164,11 @@ impl Camera {
     }
 
     pub fn get_front_copy(&self) -> Vector3 {
-        Vector3::new(self.front.x,
-                     self.front.y,
-                     self.front.z)
+        Vector3::new(self.front.x, self.front.y, self.front.z)
     }
 
     pub fn get_world_up_copy(&self) -> Vector3 {
-        Vector3::new(self.world_up.x,
-                     self.world_up.y,
-                     self.world_up.z)
+        Vector3::new(self.world_up.x, self.world_up.y, self.world_up.z)
     }
 
     pub fn set_front(&mut self, front: Vector3) {

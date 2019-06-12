@@ -1,4 +1,4 @@
-use crate::dmo_data::{UniformMapping, BufferMapping, ValueVec3, ValueFloat};
+use crate::dmo_data::{BufferMapping, UniformMapping, ValueFloat, ValueVec3};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PolygonScene {

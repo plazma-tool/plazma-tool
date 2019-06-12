@@ -1,5 +1,5 @@
-use std::time::Duration;
 use std::sync::mpsc;
+use std::time::Duration;
 
 use actix::*;
 use actix_web::ws::{ClientWriter, Message, ProtocolError};
@@ -10,7 +10,7 @@ pub struct ClientActor {
 }
 
 #[derive(Message)]
-pub struct ClientMessage{
+pub struct ClientMessage {
     pub data: String,
 }
 
@@ -27,7 +27,7 @@ impl Actor for ClientActor {
 
         info!("Send StopSystem");
         match self.channel_sender.send("StopSystem".to_owned()) {
-            Ok(_) => {},
+            Ok(_) => {}
             Err(e) => error!("Can't send StopSystem: {:?}", e),
         };
 
@@ -68,13 +68,10 @@ impl ClientActor {
 /// Handling incoming messages from the server.
 impl StreamHandler<Message, ProtocolError> for ClientActor {
     fn handle(&mut self, msg: Message, _: &mut Context<Self>) {
-
         match msg {
-            Message::Text(text) => {
-                match self.channel_sender.send(text) {
-                    Ok(x) => x,
-                    Err(e) => error!("🔥 Can't send on ClientActor.channel_sender: {:?}", e),
-                }
+            Message::Text(text) => match self.channel_sender.send(text) {
+                Ok(x) => x,
+                Err(e) => error!("🔥 Can't send on ClientActor.channel_sender: {:?}", e),
             },
             _ => (),
         }
@@ -89,4 +86,3 @@ impl StreamHandler<Message, ProtocolError> for ClientActor {
         ctx.stop()
     }
 }
-

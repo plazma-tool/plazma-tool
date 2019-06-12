@@ -3,9 +3,9 @@ use core::{mem, ptr};
 use gl;
 use gl::types::*;
 
-use crate::types::{Image, PixelFormat};
 use crate::error::RuntimeError;
 use crate::error::RuntimeError::*;
+use crate::types::{Image, PixelFormat};
 
 pub struct FrameBuffer {
     width: i32, // GLint = i32
@@ -19,7 +19,11 @@ pub struct FrameBuffer {
 }
 
 impl FrameBuffer {
-    pub fn new(kind: BufferKind, format: PixelFormat, image_data_idx: Option<usize>) -> FrameBuffer {
+    pub fn new(
+        kind: BufferKind,
+        format: PixelFormat,
+        image_data_idx: Option<usize>,
+    ) -> FrameBuffer {
         FrameBuffer {
             width: 0,
             height: 0,
@@ -32,18 +36,18 @@ impl FrameBuffer {
         }
     }
 
-    pub fn create_buffer(&mut self,
-                         width: i32,
-                         height: i32,
-                         image: Option<&Image>)
-                         -> Result<(), RuntimeError>
-    {
+    pub fn create_buffer(
+        &mut self,
+        width: i32,
+        height: i32,
+        image: Option<&Image>,
+    ) -> Result<(), RuntimeError> {
         self.width = width;
         self.height = height;
 
         match self.kind {
             BufferKind::NOOP => return Ok(()),
-            _ => {},
+            _ => {}
         }
 
         // start creating the framebuffer
@@ -70,24 +74,42 @@ impl FrameBuffer {
 
         // handle the cases of the framebuffer variants
         match self.kind {
-            BufferKind::NOOP => {},
+            BufferKind::NOOP => {}
 
-            BufferKind::Empty_Texture => {
-                unsafe { gl::TexImage2D(gl::TEXTURE_2D, 0, format as i32,
-                                        self.width, self.height, 0, format, data_type,
-                                        ptr::null()); }
+            BufferKind::Empty_Texture => unsafe {
+                gl::TexImage2D(
+                    gl::TEXTURE_2D,
+                    0,
+                    format as i32,
+                    self.width,
+                    self.height,
+                    0,
+                    format,
+                    data_type,
+                    ptr::null(),
+                );
             },
 
             BufferKind::Image_Texture => {
                 if let Some(img) = image {
                     // TODO this could use image.format as well
-                    unsafe { gl::TexImage2D(gl::TEXTURE_2D, 0, format as i32,
-                                            img.width as i32, img.height as i32, 0, format, data_type,
-                                            mem::transmute( img.raw_pixels.as_ptr() )); }
+                    unsafe {
+                        gl::TexImage2D(
+                            gl::TEXTURE_2D,
+                            0,
+                            format as i32,
+                            img.width as i32,
+                            img.height as i32,
+                            0,
+                            format,
+                            data_type,
+                            mem::transmute(img.raw_pixels.as_ptr()),
+                        );
+                    }
                 } else {
                     return Err(FrameBufferPixelDataIsMissing);
                 }
-            },
+            }
         }
 
         // finish the texture settings and complete the framebuffer
@@ -98,8 +120,13 @@ impl FrameBuffer {
             gl::BindTexture(gl::TEXTURE_2D, 0);
 
             // attach it to the framebuffer
-            gl::FramebufferTexture2D(gl::FRAMEBUFFER, gl::COLOR_ATTACHMENT0,
-                                     gl::TEXTURE_2D, texture_buffer, 0);
+            gl::FramebufferTexture2D(
+                gl::FRAMEBUFFER,
+                gl::COLOR_ATTACHMENT0,
+                gl::TEXTURE_2D,
+                texture_buffer,
+                0,
+            );
 
             // generate a render buffer
             gl::GenRenderbuffers(1, &mut render_buffer);
@@ -108,10 +135,12 @@ impl FrameBuffer {
             gl::BindRenderbuffer(gl::RENDERBUFFER, 0);
 
             // attach it to the framebuffer
-            gl::FramebufferRenderbuffer(gl::FRAMEBUFFER,
-                                        gl::DEPTH_STENCIL_ATTACHMENT,
-                                        gl::RENDERBUFFER,
-                                        render_buffer);
+            gl::FramebufferRenderbuffer(
+                gl::FRAMEBUFFER,
+                gl::DEPTH_STENCIL_ATTACHMENT,
+                gl::RENDERBUFFER,
+                render_buffer,
+            );
 
             // check status
             if gl::CheckFramebufferStatus(gl::FRAMEBUFFER) != gl::FRAMEBUFFER_COMPLETE {
@@ -132,7 +161,9 @@ impl FrameBuffer {
 
     pub fn bind_for_drawing(&self) {
         if let Some(fbo) = self.fbo {
-            unsafe { gl::BindFramebuffer(gl::DRAW_FRAMEBUFFER, fbo); }
+            unsafe {
+                gl::BindFramebuffer(gl::DRAW_FRAMEBUFFER, fbo);
+            }
         } else {
             panic!("Buffer hasn't been created");
         }
@@ -140,7 +171,9 @@ impl FrameBuffer {
 
     pub fn bind_for_reading(&self) {
         if let Some(fbo) = self.fbo {
-            unsafe { gl::BindFramebuffer(gl::READ_FRAMEBUFFER, fbo); }
+            unsafe {
+                gl::BindFramebuffer(gl::READ_FRAMEBUFFER, fbo);
+            }
         } else {
             panic!("Buffer hasn't been created");
         }
@@ -171,9 +204,21 @@ impl FrameBuffer {
     }
 
     pub fn gl_cleanup(&mut self) {
-        if let Some(n) = self.fbo            { unsafe { gl::DeleteFramebuffers(1, &n); } }
-        if let Some(n) = self.texture_buffer { unsafe { gl::DeleteTextures(1, &n); } }
-        if let Some(n) = self.render_buffer  { unsafe { gl::DeleteRenderbuffers(1, &n); } }
+        if let Some(n) = self.fbo {
+            unsafe {
+                gl::DeleteFramebuffers(1, &n);
+            }
+        }
+        if let Some(n) = self.texture_buffer {
+            unsafe {
+                gl::DeleteTextures(1, &n);
+            }
+        }
+        if let Some(n) = self.render_buffer {
+            unsafe {
+                gl::DeleteRenderbuffers(1, &n);
+            }
+        }
 
         self.fbo = None;
         self.texture_buffer = None;

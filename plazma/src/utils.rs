@@ -1,7 +1,7 @@
-use std::fs::File;
-use std::path::PathBuf;
 use std::error::Error;
+use std::fs::File;
 use std::io::Read;
+use std::path::PathBuf;
 
 /// Takes a path to a file and try to read the file into a String
 pub fn file_to_string(path: &PathBuf) -> Result<String, Box<dyn Error>> {
@@ -10,7 +10,7 @@ pub fn file_to_string(path: &PathBuf) -> Result<String, Box<dyn Error>> {
         Err(e) => {
             error!("[file_to_string]: Failed to open {:?}", path);
             return Err(Box::new(e));
-        },
+        }
     };
 
     let mut content = String::new();

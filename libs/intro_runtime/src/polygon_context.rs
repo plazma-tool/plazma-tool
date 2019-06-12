@@ -1,6 +1,6 @@
 use smallvec::SmallVec;
 
-use intro_3d::{Vector3, Matrix4, to_radians};
+use intro_3d::lib::{to_radians, Matrix4, Vector3};
 
 use crate::model::Model;
 
@@ -21,7 +21,7 @@ pub struct PolygonContext {
 
 impl Default for PolygonContext {
     fn default() -> PolygonContext {
-        PolygonContext::new_defaults(1.7777)// 16:9 aspect
+        PolygonContext::new_defaults(1.7777) // 16:9 aspect
     }
 }
 
@@ -34,19 +34,19 @@ impl PolygonContext {
             45.0,
             0.1,
             100.0,
-            aspect
+            aspect,
         )
     }
 
-    pub fn new(view_position: Vector3,
-               view_front: Vector3,
-               view_up: Vector3,
-               fovy: f32,
-               znear: f32,
-               zfar: f32,
-               aspect: f32)
-               -> PolygonContext
-    {
+    pub fn new(
+        view_position: Vector3,
+        view_front: Vector3,
+        view_up: Vector3,
+        fovy: f32,
+        znear: f32,
+        zfar: f32,
+        aspect: f32,
+    ) -> PolygonContext {
         let mut p = PolygonContext {
             view_position: view_position,
             view_front: view_front,
@@ -69,17 +69,16 @@ impl PolygonContext {
     }
 
     pub fn update_view_matrix(&mut self) {
-        let m = Matrix4::look_at_rh(&self.view_position,
-                                    &{&self.view_position + &self.view_front},
-                                    &self.view_up);
+        let m = Matrix4::look_at_rh(
+            &self.view_position,
+            &{ &self.view_position + &self.view_front },
+            &self.view_up,
+        );
         self.view_matrix = m.as_column_slice();
     }
 
     pub fn update_projection_matrix(&mut self, aspect: f32) {
-        let a = Matrix4::new_perspective(aspect,
-                                         to_radians(self.fovy),
-                                         self.znear,
-                                         self.zfar);
+        let a = Matrix4::new_perspective(aspect, to_radians(self.fovy), self.znear, self.zfar);
         self.projection_matrix = a.as_column_slice();
     }
 
@@ -91,4 +90,3 @@ impl PolygonContext {
         &self.view_front
     }
 }
-

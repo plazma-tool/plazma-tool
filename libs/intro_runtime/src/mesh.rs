@@ -5,14 +5,14 @@ use gl::types::*;
 
 use smallvec::SmallVec;
 
-use crate::ERR_MSG_LEN;
-use crate::shapes::{CUBE_VERTICES, CUBE_ELEMENTS};
 use crate::context_gfx::ContextGfx;
-use crate::texture::Texture;
-use crate::types::{Vertex, BufferMapping, UniformMapping};
-use crate::shader::{compile_shader, link_program};
 use crate::error::RuntimeError;
 use crate::error::RuntimeError::*;
+use crate::shader::{compile_shader, link_program};
+use crate::shapes::{CUBE_ELEMENTS, CUBE_VERTICES};
+use crate::texture::Texture;
+use crate::types::{BufferMapping, UniformMapping, Vertex};
+use crate::ERR_MSG_LEN;
 
 pub struct Mesh {
     pub vert_src_idx: usize,
@@ -48,14 +48,14 @@ impl Default for Mesh {
 }
 
 impl Mesh {
-    pub fn new(vertices: &SmallVec<[Vertex; 8]>,
-               indices: &SmallVec<[u32; 8]>,
-               textures: &SmallVec<[Texture; 2]>,
-               vert_src: &str,
-               frag_src: &str,
-               err_msg_buf: &mut [u8; ERR_MSG_LEN])
-               -> Result<Mesh, RuntimeError>
-    {
+    pub fn new(
+        vertices: &SmallVec<[Vertex; 8]>,
+        indices: &SmallVec<[u32; 8]>,
+        textures: &SmallVec<[Texture; 2]>,
+        vert_src: &str,
+        frag_src: &str,
+        err_msg_buf: &mut [u8; ERR_MSG_LEN],
+    ) -> Result<Mesh, RuntimeError> {
         // TODO Possibly avoid this copy by organizing a two-step creation
         // process, first set the data and then compile the shaders and so on.
 
@@ -68,7 +68,9 @@ impl Mesh {
             indices: SmallVec::from_slice(indices),
             textures: textures.clone(),
             program: 0,
-            vao: 0, vbo: 0, ebo: 0,
+            vao: 0,
+            vbo: 0,
+            ebo: 0,
         };
 
         mesh.compile_program(vert_src, frag_src, err_msg_buf)?;
@@ -83,10 +85,12 @@ impl Mesh {
             gl::BindBuffer(gl::ARRAY_BUFFER, mesh.vbo);
             // Vertex struct's attribute order is arranged so that its memory
             // layout can be used as a byte array and we can pass a pointer to it here.
-            gl::BufferData(gl::ARRAY_BUFFER,
-                           (mesh.vertices.len() * mem::size_of::<Vertex>()) as isize,
-                           mem::transmute( mesh.vertices.as_ptr() ),
-                           gl::STATIC_DRAW);
+            gl::BufferData(
+                gl::ARRAY_BUFFER,
+                (mesh.vertices.len() * mem::size_of::<Vertex>()) as isize,
+                mem::transmute(mesh.vertices.as_ptr()),
+                gl::STATIC_DRAW,
+            );
 
             // Set vertex attribute pointers. Last parameter is byte offset.
             // Offset calculation hard-coded here, as a reliable offsetof() seems to be an open issue.
@@ -96,19 +100,34 @@ impl Mesh {
 
             // position
             gl::EnableVertexAttribArray(0);
-            gl::VertexAttribPointer(0, 3, gl::FLOAT, gl::FALSE,
-                                    mem::size_of::<Vertex>() as GLsizei,
-                                    ptr::null());
+            gl::VertexAttribPointer(
+                0,
+                3,
+                gl::FLOAT,
+                gl::FALSE,
+                mem::size_of::<Vertex>() as GLsizei,
+                ptr::null(),
+            );
             // normal
             gl::EnableVertexAttribArray(1);
-            gl::VertexAttribPointer(1, 3, gl::FLOAT, gl::FALSE,
-                                    mem::size_of::<Vertex>() as GLsizei,
-                                    mem::transmute(3 * mem::size_of::<GLfloat>()));
+            gl::VertexAttribPointer(
+                1,
+                3,
+                gl::FLOAT,
+                gl::FALSE,
+                mem::size_of::<Vertex>() as GLsizei,
+                mem::transmute(3 * mem::size_of::<GLfloat>()),
+            );
             // texture coord
             gl::EnableVertexAttribArray(2);
-            gl::VertexAttribPointer(2, 2, gl::FLOAT, gl::FALSE,
-                                    mem::size_of::<Vertex>() as GLsizei,
-                                    mem::transmute((3+3) * mem::size_of::<GLfloat>()));
+            gl::VertexAttribPointer(
+                2,
+                2,
+                gl::FLOAT,
+                gl::FALSE,
+                mem::size_of::<Vertex>() as GLsizei,
+                mem::transmute((3 + 3) * mem::size_of::<GLfloat>()),
+            );
             // // tangent
             // gl::EnableVertexAttribArray(3);
             // gl::VertexAttribPointer(3, 3, gl::FLOAT, gl::FALSE,
@@ -125,26 +144,28 @@ impl Mesh {
 
             // ebo indices
             gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, mesh.ebo);
-            gl::BufferData(gl::ELEMENT_ARRAY_BUFFER,
-                           (mesh.indices.len() * mem::size_of::<u32>()) as isize,
-                           mem::transmute( mesh.indices.as_ptr() ),
-                           gl::STATIC_DRAW);
+            gl::BufferData(
+                gl::ELEMENT_ARRAY_BUFFER,
+                (mesh.indices.len() * mem::size_of::<u32>()) as isize,
+                mem::transmute(mesh.indices.as_ptr()),
+                gl::STATIC_DRAW,
+            );
         }
 
         Ok(mesh)
     }
 
-    pub fn new_cube(vert_src: &str,
-                    frag_src: &str,
-                    err_msg_buf: &mut [u8; ERR_MSG_LEN])
-                    -> Result<Mesh, RuntimeError>
-    {
+    pub fn new_cube(
+        vert_src: &str,
+        frag_src: &str,
+        err_msg_buf: &mut [u8; ERR_MSG_LEN],
+    ) -> Result<Mesh, RuntimeError> {
         let mut vertices: SmallVec<[Vertex; 8]> = SmallVec::new();
 
         for v in CUBE_VERTICES.iter() {
             vertices.push(Vertex {
-                position:  [v[0], v[1], v[2]],
-                normal:    [v[3], v[4], v[5]],
+                position: [v[0], v[1], v[2]],
+                normal: [v[3], v[4], v[5]],
                 texcoords: [v[6], v[7]],
                 //tangent:   [0.0, 0.0, 0.0],
                 //bitangent: [0.0, 0.0, 0.0],
@@ -157,35 +178,38 @@ impl Mesh {
         let textures: SmallVec<[Texture; 2]> = SmallVec::new();
 
         let cube = Mesh::new(
-            &vertices, &indices, &textures,
-            vert_src, frag_src,
-            err_msg_buf
+            &vertices,
+            &indices,
+            &textures,
+            vert_src,
+            frag_src,
+            err_msg_buf,
         )?;
         Ok(cube)
     }
 
-    pub fn compile_program(&mut self,
-                           vert_src: &str,
-                           frag_src: &str,
-                           err_msg_buf: &mut [u8; ERR_MSG_LEN])
-        -> Result<(), RuntimeError>
-    {
+    pub fn compile_program(
+        &mut self,
+        vert_src: &str,
+        frag_src: &str,
+        err_msg_buf: &mut [u8; ERR_MSG_LEN],
+    ) -> Result<(), RuntimeError> {
         let vs = compile_shader(vert_src, gl::VERTEX_SHADER, err_msg_buf)?;
         let fs = compile_shader(frag_src, gl::FRAGMENT_SHADER, err_msg_buf)?;
         self.program = link_program(vs, fs, err_msg_buf)?;
         Ok(())
     }
 
-    pub fn draw(&self,
-                context: &ContextGfx,
-                layout_to_vars: &SmallVec<[UniformMapping; 64]>,
-                binding_to_buffers: &SmallVec<[BufferMapping; 64]>,
-                model: &[[f32; 4]; 4],
-                view: &[[f32; 4]; 4],
-                projection: &[[f32; 4]; 4],
-                camera_pos: &[f32; 3])
-                -> Result<(), RuntimeError>
-    {
+    pub fn draw(
+        &self,
+        context: &ContextGfx,
+        layout_to_vars: &SmallVec<[UniformMapping; 64]>,
+        binding_to_buffers: &SmallVec<[BufferMapping; 64]>,
+        model: &[[f32; 4]; 4],
+        view: &[[f32; 4]; 4],
+        projection: &[[f32; 4]; 4],
+        camera_pos: &[f32; 3],
+    ) -> Result<(), RuntimeError> {
         // bind vao, use shader
         unsafe {
             gl::BindVertexArray(self.vao);
@@ -212,33 +236,41 @@ impl Mesh {
             for item in layout_to_vars.iter() {
                 use crate::types::UniformMapping::*;
                 match *item {
-                    NOOP => {},
+                    NOOP => {}
 
                     Float(layout_idx, var_idx) => {
-                        gl::Uniform1f(layout_idx as i32,
-                                      context.sync_vars.get_index(var_idx as usize)? as f32);
-                    },
+                        gl::Uniform1f(
+                            layout_idx as i32,
+                            context.sync_vars.get_index(var_idx as usize)? as f32,
+                        );
+                    }
 
                     Vec2(layout_idx, var1, var2) => {
-                        gl::Uniform2f(layout_idx as i32,
-                                      context.sync_vars.get_index(var1 as usize)? as f32,
-                                      context.sync_vars.get_index(var2 as usize)? as f32);
-                    },
+                        gl::Uniform2f(
+                            layout_idx as i32,
+                            context.sync_vars.get_index(var1 as usize)? as f32,
+                            context.sync_vars.get_index(var2 as usize)? as f32,
+                        );
+                    }
 
                     Vec3(layout_idx, var1, var2, var3) => {
-                        gl::Uniform3f(layout_idx as i32,
-                                      context.sync_vars.get_index(var1 as usize)? as f32,
-                                      context.sync_vars.get_index(var2 as usize)? as f32,
-                                      context.sync_vars.get_index(var3 as usize)? as f32);
-                    },
+                        gl::Uniform3f(
+                            layout_idx as i32,
+                            context.sync_vars.get_index(var1 as usize)? as f32,
+                            context.sync_vars.get_index(var2 as usize)? as f32,
+                            context.sync_vars.get_index(var3 as usize)? as f32,
+                        );
+                    }
 
                     Vec4(layout_idx, var1, var2, var3, var4) => {
-                        gl::Uniform4f(layout_idx as i32,
-                                      context.sync_vars.get_index(var1 as usize)? as f32,
-                                      context.sync_vars.get_index(var2 as usize)? as f32,
-                                      context.sync_vars.get_index(var3 as usize)? as f32,
-                                      context.sync_vars.get_index(var4 as usize)? as f32);
-                    },
+                        gl::Uniform4f(
+                            layout_idx as i32,
+                            context.sync_vars.get_index(var1 as usize)? as f32,
+                            context.sync_vars.get_index(var2 as usize)? as f32,
+                            context.sync_vars.get_index(var3 as usize)? as f32,
+                            context.sync_vars.get_index(var4 as usize)? as f32,
+                        );
+                    }
                 }
             }
         }
@@ -250,7 +282,7 @@ impl Mesh {
             for item in binding_to_buffers.iter() {
                 use crate::types::BufferMapping::*;
                 match *item {
-                    NOOP => {},
+                    NOOP => {}
 
                     Sampler2D(binding_idx, buffer_idx) => {
                         if (buffer_idx as usize) < context.frame_buffers.len() {
@@ -267,7 +299,7 @@ impl Mesh {
                         } else {
                             return Err(TextureBindingIdxDoesntExist);
                         }
-                    },
+                    }
                 }
             }
         }
@@ -285,7 +317,12 @@ impl Mesh {
                 // If the indices list is not empty, assume the vertices are EBO
                 // indexed array.
                 gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, self.ebo);
-                gl::DrawElements(gl::TRIANGLES, self.indices.len() as i32, gl::UNSIGNED_INT, ptr::null());
+                gl::DrawElements(
+                    gl::TRIANGLES,
+                    self.indices.len() as i32,
+                    gl::UNSIGNED_INT,
+                    ptr::null(),
+                );
             } else {
                 // Otherwise, draw the vertices as a triangle array.
                 gl::DrawArrays(gl::TRIANGLES, 0, self.vertices.len() as i32);

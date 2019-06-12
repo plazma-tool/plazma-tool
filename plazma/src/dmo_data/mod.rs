@@ -1,26 +1,26 @@
-use std::path::PathBuf;
-use std::error::Error;
 use std::collections::HashMap;
+use std::error::Error;
 use std::io::BufReader;
+use std::path::PathBuf;
 
 use tobj;
 
 pub mod context_data;
 pub mod data_index;
-pub mod quad_scene;
-pub mod polygon_scene;
-pub mod polygon_context;
 pub mod model;
+pub mod polygon_context;
+pub mod polygon_scene;
+pub mod quad_scene;
 pub mod timeline;
 
 use intro_runtime::dmo_gfx::DmoGfx;
 
-use crate::project_data::get_template_asset_string;
-use crate::error::ToolError;
-use crate::dmo_data::context_data::{ContextData, FrameBuffer, BufferKind, PixelFormat};
-use crate::dmo_data::quad_scene::{DRAW_RESULT_VERT_SRC_PATH, DRAW_RESULT_FRAG_SRC_PATH};
+use crate::dmo_data::context_data::{BufferKind, ContextData, FrameBuffer, PixelFormat};
 use crate::dmo_data::quad_scene::QuadScene;
-use crate::dmo_data::timeline::{Timeline, TimeTrack, SceneBlock, DrawOp};
+use crate::dmo_data::quad_scene::{DRAW_RESULT_FRAG_SRC_PATH, DRAW_RESULT_VERT_SRC_PATH};
+use crate::dmo_data::timeline::{DrawOp, SceneBlock, TimeTrack, Timeline};
+use crate::error::ToolError;
+use crate::project_data::get_template_asset_string;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DmoData {
@@ -48,7 +48,6 @@ pub struct ProjectData {
 
     /// The folder from which the demo YAML was read from.
     pub project_root: Option<PathBuf>,
-
     // /// The deserialized value of the YAML since the last read. Can be used to find what has
     // /// changed when selecively rebuilding parts of the DmoGfx after detecting that the YAML files
     // /// was modified on the disk.
@@ -84,7 +83,10 @@ impl ProjectData {
         if let Some(yml_path) = demo_yml_path {
             let p = yml_path.parent().ok_or("missing demo yml parent folder")?;
             let project_root = p.to_path_buf();
-            info!("plazma::DmoData::ProjectData::new() project_root: {:?}", &project_root);
+            info!(
+                "plazma::DmoData::ProjectData::new() project_root: {:?}",
+                &project_root
+            );
             Ok(ProjectData {
                 demo_yml_path: Some(yml_path.clone()),
                 project_root: Some(project_root),
@@ -100,34 +102,43 @@ impl ProjectData {
 }
 
 impl DmoData {
-    pub fn new_from_yml_str(text: &str,
-                            project_root: &Option<PathBuf>,
-                            read_shader_paths: bool,
-                            read_image_paths: bool,
-                            embedded: bool)
-        -> Result<DmoData, Box<dyn Error>>
-    {
+    pub fn new_from_yml_str(
+        text: &str,
+        project_root: &Option<PathBuf>,
+        read_shader_paths: bool,
+        read_image_paths: bool,
+        embedded: bool,
+    ) -> Result<DmoData, Box<dyn Error>> {
         let mut dmo_data: DmoData = serde_yaml::from_str(text)?;
         dmo_data.ensure_implicit_builtins();
-        dmo_data.context.build_index(project_root, read_shader_paths, read_image_paths, embedded)?;
+        dmo_data.context.build_index(
+            project_root,
+            read_shader_paths,
+            read_image_paths,
+            embedded,
+        )?;
         Ok(dmo_data)
     }
 
-    pub fn new_from_json_str(text: &str,
-                             project_root: &Option<PathBuf>,
-                             read_shader_paths: bool,
-                             read_image_paths: bool,
-                             embedded: bool)
-        -> Result<DmoData, Box<dyn Error>>
-    {
+    pub fn new_from_json_str(
+        text: &str,
+        project_root: &Option<PathBuf>,
+        read_shader_paths: bool,
+        read_image_paths: bool,
+        embedded: bool,
+    ) -> Result<DmoData, Box<dyn Error>> {
         let mut dmo_data: DmoData = serde_json::from_str(text)?;
         dmo_data.ensure_implicit_builtins();
-        dmo_data.context.build_index(&project_root, read_shader_paths, read_image_paths, embedded)?;
+        dmo_data.context.build_index(
+            &project_root,
+            read_shader_paths,
+            read_image_paths,
+            embedded,
+        )?;
         Ok(dmo_data)
     }
 
-    pub fn new_minimal() -> Result<DmoData, Box<dyn Error>>
-    {
+    pub fn new_minimal() -> Result<DmoData, Box<dyn Error>> {
         // don't read anything from disk for the minimal demo, include assets in the binary
         let mut dmo_data = DmoData::default();
         dmo_data.ensure_implicit_builtins();
@@ -138,11 +149,17 @@ impl DmoData {
 
         use crate::dmo_data::BuiltIn::*;
 
-        dmo_data.context.index.add_shader_path_to_index("circle.frag");
+        dmo_data
+            .context
+            .index
+            .add_shader_path_to_index("circle.frag");
         let a = include_str!("../../data/builtin/circle.frag");
         dmo_data.context.shader_sources.push(a.to_owned());
 
-        dmo_data.context.index.add_shader_path_to_index("cross.frag");
+        dmo_data
+            .context
+            .index
+            .add_shader_path_to_index("cross.frag");
         let a = include_str!("../../data/builtin/cross.frag");
         dmo_data.context.shader_sources.push(a.to_owned());
 
@@ -162,12 +179,14 @@ impl DmoData {
             binding_to_buffers: vec![],
         };
 
-        dmo_data.context.index.add_quad_scene(&a,
-                                              dmo_data.context.quad_scenes.len(),
-                                              &None,
-                                              false,
-                                              &mut vec![],
-                                              false)?;
+        dmo_data.context.index.add_quad_scene(
+            &a,
+            dmo_data.context.quad_scenes.len(),
+            &None,
+            false,
+            &mut vec![],
+            false,
+        )?;
 
         dmo_data.context.quad_scenes.push(a);
 
@@ -184,17 +203,17 @@ impl DmoData {
                 UniformMapping::Vec2(1, Window_Width, Window_Height),
                 UniformMapping::Vec2(2, Screen_Width, Screen_Height),
             ],
-            binding_to_buffers: vec![
-                BufferMapping::Sampler2D(0, "scene buf".to_owned()),
-            ],
+            binding_to_buffers: vec![BufferMapping::Sampler2D(0, "scene buf".to_owned())],
         };
 
-        dmo_data.context.index.add_quad_scene(&a,
-                                              dmo_data.context.quad_scenes.len(),
-                                              &None,
-                                              false,
-                                              &mut vec![],
-                                              false)?;
+        dmo_data.context.index.add_quad_scene(
+            &a,
+            dmo_data.context.quad_scenes.len(),
+            &None,
+            false,
+            &mut vec![],
+            false,
+        )?;
 
         dmo_data.context.quad_scenes.push(a);
 
@@ -207,12 +226,14 @@ impl DmoData {
             image_path: "".to_owned(),
         };
 
-        dmo_data.context.index.add_frame_buffer(&a,
-                                                dmo_data.context.frame_buffers.len(),
-                                                &None,
-                                                false,
-                                                &mut vec![],
-                                                false)?;
+        dmo_data.context.index.add_frame_buffer(
+            &a,
+            dmo_data.context.frame_buffers.len(),
+            &None,
+            false,
+            &mut vec![],
+            false,
+        )?;
 
         dmo_data.context.frame_buffers.push(a);
 
@@ -241,9 +262,7 @@ impl DmoData {
         track.scene_blocks.push(scene);
 
         let timeline = Timeline {
-            tracks: vec![
-                track,
-            ],
+            tracks: vec![track],
         };
 
         dmo_data.timeline = timeline;
@@ -269,12 +288,9 @@ impl DmoData {
         }
 
         if !has_result_image {
-            let mut frame_buffers = vec![
-                FrameBuffer::framebuffer_result_image()
-            ];
+            let mut frame_buffers = vec![FrameBuffer::framebuffer_result_image()];
             frame_buffers.append(&mut self.context.frame_buffers);
             self.context.frame_buffers = frame_buffers;
-
         }
 
         // Ensure "DRAW_RESULT" QuadScene. Must have index 0, so we are going to prepend it.
@@ -287,53 +303,63 @@ impl DmoData {
         }
 
         if !has_draw_result {
-            self.context.index.add_shader_path_to_index(DRAW_RESULT_VERT_SRC_PATH);
+            self.context
+                .index
+                .add_shader_path_to_index(DRAW_RESULT_VERT_SRC_PATH);
             let a = include_str!("../../data/builtin/screen_quad.vert");
             self.context.shader_sources.push(a.to_owned());
 
-            self.context.index.add_shader_path_to_index(DRAW_RESULT_FRAG_SRC_PATH);
+            self.context
+                .index
+                .add_shader_path_to_index(DRAW_RESULT_FRAG_SRC_PATH);
             let a = include_str!("../../data/builtin/draw_result.frag");
             self.context.shader_sources.push(a.to_owned());
 
-            let mut quad_scenes = vec![
-                QuadScene::scene_draw_result(),
-            ];
+            let mut quad_scenes = vec![QuadScene::scene_draw_result()];
             quad_scenes.append(&mut self.context.quad_scenes);
             self.context.quad_scenes = quad_scenes;
         }
     }
 
-    pub fn add_models_to(&self,
-                         dmo_gfx: &mut DmoGfx,
-                         project_root: &Option<PathBuf>,
-                         embedded: bool)
-        -> Result<(), Box<dyn Error>>
-    {
+    pub fn add_models_to(
+        &self,
+        dmo_gfx: &mut DmoGfx,
+        project_root: &Option<PathBuf>,
+        embedded: bool,
+    ) -> Result<(), Box<dyn Error>> {
         use crate::dmo_data as d;
 
         for model_data in self.context.polygon_context.models.iter() {
             match model_data.model_type {
                 d::model::ModelType::Cube => self.add_model_cube_to(dmo_gfx, model_data)?,
-                d::model::ModelType::Obj => self.add_model_obj_to(dmo_gfx, model_data, project_root, embedded)?,
-                d::model::ModelType::NOOP => {},
+                d::model::ModelType::Obj => {
+                    self.add_model_obj_to(dmo_gfx, model_data, project_root, embedded)?
+                }
+                d::model::ModelType::NOOP => {}
             }
         }
 
         Ok(())
     }
 
-    pub fn add_model_cube_to(&self,
-                            dmo_gfx: &mut DmoGfx,
-                            model_data: &self::model::Model)
-                            -> Result<(), Box<dyn Error>>
-    {
-        use intro_runtime::model::Model;
+    pub fn add_model_cube_to(
+        &self,
+        dmo_gfx: &mut DmoGfx,
+        model_data: &self::model::Model,
+    ) -> Result<(), Box<dyn Error>> {
         use intro_runtime::mesh::Mesh;
+        use intro_runtime::model::Model;
 
         let mut model = Model::empty_cube();
 
-        let vert_src_idx = self.context.index.get_shader_index(&model_data.vert_src_path)?;
-        let frag_src_idx = self.context.index.get_shader_index(&model_data.frag_src_path)?;
+        let vert_src_idx = self
+            .context
+            .index
+            .get_shader_index(&model_data.vert_src_path)?;
+        let frag_src_idx = self
+            .context
+            .index
+            .get_shader_index(&model_data.frag_src_path)?;
 
         // Add a mesh but no vertices, those will be created from shapes.
         let mut mesh = Mesh::default();
@@ -347,15 +373,15 @@ impl DmoData {
         Ok(())
     }
 
-    pub fn add_model_obj_to(&self,
-                        dmo_gfx: &mut DmoGfx,
-                        model_data: &self::model::Model,
-                        project_root: &Option<PathBuf>,
-                        embedded: bool)
-        -> Result<(), Box<dyn Error>>
-    {
-        use intro_runtime::model::Model;
+    pub fn add_model_obj_to(
+        &self,
+        dmo_gfx: &mut DmoGfx,
+        model_data: &self::model::Model,
+        project_root: &Option<PathBuf>,
+        embedded: bool,
+    ) -> Result<(), Box<dyn Error>> {
         use intro_runtime::mesh::Mesh;
+        use intro_runtime::model::Model;
         use intro_runtime::types::Vertex;
 
         let project_root = if let Some(p) = project_root {
@@ -370,8 +396,14 @@ impl DmoData {
 
         let mut model = Model::empty_obj();
 
-        let vert_src_idx = self.context.index.get_shader_index(&model_data.vert_src_path)?;
-        let frag_src_idx = self.context.index.get_shader_index(&model_data.frag_src_path)?;
+        let vert_src_idx = self
+            .context
+            .index
+            .get_shader_index(&model_data.vert_src_path)?;
+        let frag_src_idx = self
+            .context
+            .index
+            .get_shader_index(&model_data.frag_src_path)?;
 
         // Add meshes.
         {
@@ -379,9 +411,7 @@ impl DmoData {
             let (meshes, _materials) = if embedded {
                 let text = get_template_asset_string(&p)?;
                 let mut reader = BufReader::new(text.as_bytes());
-                tobj::load_obj_buf(&mut reader, |_p| {
-                    Ok((Vec::new(), HashMap::new()))
-                })?
+                tobj::load_obj_buf(&mut reader, |_p| Ok((Vec::new(), HashMap::new())))?
             } else {
                 tobj::load_obj(&p)?
             };
@@ -395,20 +425,24 @@ impl DmoData {
 
                 let n_index = mesh.indices.len();
                 if n_index > std::u32::MAX as usize {
-                    panic!{"Index list must not be over u32 max"};
+                    panic! {"Index list must not be over u32 max"};
                 }
 
                 // Add vertex data.
                 for index in mesh.indices.iter() {
                     let i = *index as usize;
 
-                    let position: [f32; 3] = [mesh.positions[3*i],
-                                              mesh.positions[3*i+1],
-                                              mesh.positions[3*i+2]];
+                    let position: [f32; 3] = [
+                        mesh.positions[3 * i],
+                        mesh.positions[3 * i + 1],
+                        mesh.positions[3 * i + 2],
+                    ];
 
-                    let normal: [f32; 3] = [mesh.normals[3*i],
-                                            mesh.normals[3*i+1],
-                                            mesh.normals[3*i+2]];
+                    let normal: [f32; 3] = [
+                        mesh.normals[3 * i],
+                        mesh.normals[3 * i + 1],
+                        mesh.normals[3 * i + 2],
+                    ];
 
                     let vertex = Vertex {
                         position: position,
@@ -554,4 +588,3 @@ pub enum BuiltIn {
 
     Custom(String),
 }
-

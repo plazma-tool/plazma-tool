@@ -1,9 +1,9 @@
 use smallvec::SmallVec;
 
-use crate::mesh::Mesh;
 use crate::context_gfx::ContextGfx;
-use crate::types::{BufferMapping, UniformMapping};
 use crate::error::RuntimeError;
+use crate::mesh::Mesh;
+use crate::types::{BufferMapping, UniformMapping};
 
 pub struct Model {
     pub model_type: ModelType,
@@ -61,18 +61,26 @@ impl Model {
         model
     }
 
-    pub fn draw(&self,
-                context: &ContextGfx,
-                layout_to_vars: &SmallVec<[UniformMapping; 64]>,
-                binding_to_buffers: &SmallVec<[BufferMapping; 64]>,
-                model: &[[f32; 4]; 4],
-                view: &[[f32; 4]; 4],
-                projection: &[[f32; 4]; 4],
-                camera_pos: &[f32; 3])
-                -> Result<(), RuntimeError>
-    {
+    pub fn draw(
+        &self,
+        context: &ContextGfx,
+        layout_to_vars: &SmallVec<[UniformMapping; 64]>,
+        binding_to_buffers: &SmallVec<[BufferMapping; 64]>,
+        model: &[[f32; 4]; 4],
+        view: &[[f32; 4]; 4],
+        projection: &[[f32; 4]; 4],
+        camera_pos: &[f32; 3],
+    ) -> Result<(), RuntimeError> {
         for m in self.meshes.iter() {
-            m.draw(context, layout_to_vars, binding_to_buffers, model, view, projection, camera_pos)?;
+            m.draw(
+                context,
+                layout_to_vars,
+                binding_to_buffers,
+                model,
+                view,
+                projection,
+                camera_pos,
+            )?;
         }
         Ok(())
     }
@@ -89,4 +97,3 @@ impl Drop for Model {
         self.gl_cleanup();
     }
 }
-

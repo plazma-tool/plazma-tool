@@ -4,15 +4,15 @@ use smallvec::SmallVec;
 use gl;
 use gl::types::*;
 
-use crate::ERR_MSG_LEN;
 use crate::error::RuntimeError;
 use crate::error::RuntimeError::*;
+use crate::ERR_MSG_LEN;
 
-pub fn compile_shader(src: &str,
-                      ty: GLenum,
-                      err_msg_buf: &mut [u8; ERR_MSG_LEN])
-                      -> Result<GLuint, RuntimeError>
-{
+pub fn compile_shader(
+    src: &str,
+    ty: GLenum,
+    err_msg_buf: &mut [u8; ERR_MSG_LEN],
+) -> Result<GLuint, RuntimeError> {
     let shader;
     unsafe {
         shader = gl::CreateShader(ty);
@@ -20,7 +20,12 @@ pub fn compile_shader(src: &str,
 
         // have to take the length so that we don't have to pass it as a null-terminated c-string
         let len = src.len() as i32;
-        gl::ShaderSource(shader, 1, [src.as_ptr() as *const i8].as_ptr(), [len].as_ptr());
+        gl::ShaderSource(
+            shader,
+            1,
+            [src.as_ptr() as *const i8].as_ptr(),
+            [len].as_ptr(),
+        );
 
         gl::CompileShader(shader);
 
@@ -35,9 +40,14 @@ pub fn compile_shader(src: &str,
             let mut buf: SmallVec<[u8; 1024]> = SmallVec::new();
             // Takes current size (i.e. 0) and grows the vec for additional items.
             buf.reserve((len as usize) - 1); // subtract 1 to skip the trailing null character
-            // Sets the current size.
+                                             // Sets the current size.
             buf.set_len((len as usize) - 1);
-            gl::GetShaderInfoLog(shader, len, ptr::null_mut(), buf.as_mut_ptr() as *mut GLchar);
+            gl::GetShaderInfoLog(
+                shader,
+                len,
+                ptr::null_mut(),
+                buf.as_mut_ptr() as *mut GLchar,
+            );
 
             let mut n = 0;
             for i in buf.iter() {
@@ -53,11 +63,11 @@ pub fn compile_shader(src: &str,
     Ok(shader)
 }
 
-pub fn link_program(vs: GLuint,
-                    fs: GLuint,
-                    err_msg_buf: &mut [u8; ERR_MSG_LEN])
-                    -> Result<GLuint, RuntimeError>
-{
+pub fn link_program(
+    vs: GLuint,
+    fs: GLuint,
+    err_msg_buf: &mut [u8; ERR_MSG_LEN],
+) -> Result<GLuint, RuntimeError> {
     let program;
     unsafe {
         program = gl::CreateProgram();
@@ -75,9 +85,14 @@ pub fn link_program(vs: GLuint,
             let mut buf: SmallVec<[u8; 1024]> = SmallVec::new();
             // Takes current size (i.e. 0) and grows the vec for additional items.
             buf.reserve((len as usize) - 1); // subtract 1 to skip the trailing null character
-            // Sets the current size.
+                                             // Sets the current size.
             buf.set_len((len as usize) - 1);
-            gl::GetProgramInfoLog(program, len, ptr::null_mut(), buf.as_mut_ptr() as *mut GLchar);
+            gl::GetProgramInfoLog(
+                program,
+                len,
+                ptr::null_mut(),
+                buf.as_mut_ptr() as *mut GLchar,
+            );
 
             let mut n = 0;
             for i in buf.iter() {

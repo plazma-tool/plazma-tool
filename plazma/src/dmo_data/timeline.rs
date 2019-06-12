@@ -1,7 +1,7 @@
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Timeline {
     pub tracks: Vec<TimeTrack>,
- }
+}
 
 impl Default for Timeline {
     fn default() -> Timeline {
@@ -22,9 +22,7 @@ impl Default for Timeline {
         track.scene_blocks.push(scene);
 
         Timeline {
-            tracks: vec![
-                track,
-            ],
+            tracks: vec![track],
         }
     }
 }
@@ -51,4 +49,3 @@ pub enum DrawOp {
     Target_Buffer_Default,
     Profile(String),
 }
-

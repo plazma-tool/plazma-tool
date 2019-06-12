@@ -52,7 +52,7 @@ pub struct SyncTrack {
 }
 
 pub enum SyncError {
-    TrackDoesntExist
+    TrackDoesntExist,
 }
 
 pub struct TrackKey {
@@ -63,10 +63,10 @@ pub struct TrackKey {
 }
 
 pub enum KeyType {
-    Step, // constant until value changes
+    Step,   // constant until value changes
     Linear, // linear interpolation
     Smooth, // smooth curve
-    Ramp, // exponential ramp
+    Ramp,   // exponential ramp
     NOOP,
 }
 
@@ -90,7 +90,6 @@ impl SyncTrack {
 
     /// Adds a key to the track, inserting sorted by row, replacing if one already exists on that row
     pub fn add_key(&mut self, track_key: TrackKey) {
-
         let res = self.find_active_key_idx_for_row(track_key.row);
 
         if let Some(idx) = res {
@@ -101,7 +100,7 @@ impl SyncTrack {
                 ExactRow(n) => self.keys[n] = track_key,
 
                 // add new key
-                PrevRow(n) => self.keys.insert(n+1, track_key),
+                PrevRow(n) => self.keys.insert(n + 1, track_key),
                 BeforeFirstRow => self.keys.insert(0, track_key),
                 AfterLastRow => self.keys.push(track_key),
             }
@@ -130,7 +129,6 @@ impl SyncTrack {
     }
 
     pub fn value_at(&self, row: u32) -> f64 {
-
         let hit_idx: usize;
 
         if let Some(hit) = self.find_active_key_idx_for_row(row) {
@@ -153,7 +151,7 @@ impl SyncTrack {
         let cur_key = &self.keys[hit_idx];
         let next_key = &self.keys[hit_idx + 1];
 
-	      let t: f64 = ((row - cur_key.row) as f64) / ((next_key.row - cur_key.row) as f64);
+        let t: f64 = ((row - cur_key.row) as f64) / ((next_key.row - cur_key.row) as f64);
         let a: f64 = cur_key.value as f64;
         let b: f64 = (next_key.value - cur_key.value) as f64;
 
@@ -163,13 +161,12 @@ impl SyncTrack {
 
             Linear => return a + b * t,
 
-            Smooth => return a + b * (t*t * (3.0 - 2.0 * t)),
+            Smooth => return a + b * (t * t * (3.0 - 2.0 * t)),
 
-            Ramp => return a + b * t*t,
+            Ramp => return a + b * t * t,
 
             NOOP => return 0.0,
         }
-
     }
 
     /// Find the active key idx for a row
@@ -222,11 +219,11 @@ pub fn rps(bpm: f64, rpb: u8) -> f64 {
 pub fn key_to_code(key: &KeyType) -> u8 {
     use self::KeyType::*;
     match *key {
-        Step      => 0,
-        Linear    => 1,
-        Smooth    => 2,
-        Ramp      => 3,
-        NOOP      => 255,
+        Step => 0,
+        Linear => 1,
+        Smooth => 2,
+        Ramp => 3,
+        NOOP => 255,
     }
 }
 

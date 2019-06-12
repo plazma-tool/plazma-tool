@@ -5,13 +5,13 @@ use gl::types::*;
 
 use smallvec::SmallVec;
 
-use crate::ERR_MSG_LEN;
-use crate::shader::{compile_shader, link_program};
-use crate::types::*;
-use crate::shapes::*;
 use crate::context_gfx::ContextGfx;
 use crate::error::RuntimeError;
 use crate::error::RuntimeError::*;
+use crate::shader::{compile_shader, link_program};
+use crate::shapes::*;
+use crate::types::*;
+use crate::ERR_MSG_LEN;
 
 pub struct QuadSceneGfx {
     /// an ID number to use with the `Draw_Quad_Scene(u8)` operator
@@ -46,85 +46,99 @@ impl QuadSceneGfx {
         }
     }
 
-    pub fn create_quad(&mut self,
-                       vert_src: &str,
-                       frag_src: &str,
-                       err_msg_buf: &mut [u8; ERR_MSG_LEN])
-        -> Result<(), RuntimeError>
-    {
+    pub fn create_quad(
+        &mut self,
+        vert_src: &str,
+        frag_src: &str,
+        err_msg_buf: &mut [u8; ERR_MSG_LEN],
+    ) -> Result<(), RuntimeError> {
         self.quad = Some(Quad::new(vert_src, frag_src, err_msg_buf)?);
         Ok(())
     }
 
     pub fn draw(&self, context: &ContextGfx) -> Result<(), RuntimeError> {
         match self.quad {
-            Some(ref quad) => { unsafe {
-                // Use shader
-                gl::UseProgram(quad.program);
+            Some(ref quad) => {
+                unsafe {
+                    // Use shader
+                    gl::UseProgram(quad.program);
 
-                // Mapping sync var indexes to uniform layout indexes
-                for item in self.layout_to_vars.iter() {
-                    use crate::types::UniformMapping::*;
-                    match *item {
-                        NOOP => {},
+                    // Mapping sync var indexes to uniform layout indexes
+                    for item in self.layout_to_vars.iter() {
+                        use crate::types::UniformMapping::*;
+                        match *item {
+                            NOOP => {}
 
-                        Float(layout_idx, var_idx) => {
-                            gl::Uniform1f(layout_idx as i32,
-                                          context.sync_vars.get_index(var_idx as usize)? as f32);
-                        },
+                            Float(layout_idx, var_idx) => {
+                                gl::Uniform1f(
+                                    layout_idx as i32,
+                                    context.sync_vars.get_index(var_idx as usize)? as f32,
+                                );
+                            }
 
-                        Vec2(layout_idx, var1, var2) => {
-                            gl::Uniform2f(layout_idx as i32,
-                                          context.sync_vars.get_index(var1 as usize)? as f32,
-                                          context.sync_vars.get_index(var2 as usize)? as f32);
-                        },
+                            Vec2(layout_idx, var1, var2) => {
+                                gl::Uniform2f(
+                                    layout_idx as i32,
+                                    context.sync_vars.get_index(var1 as usize)? as f32,
+                                    context.sync_vars.get_index(var2 as usize)? as f32,
+                                );
+                            }
 
-                        Vec3(layout_idx, var1, var2, var3) => {
-                            gl::Uniform3f(layout_idx as i32,
-                                          context.sync_vars.get_index(var1 as usize)? as f32,
-                                          context.sync_vars.get_index(var2 as usize)? as f32,
-                                          context.sync_vars.get_index(var3 as usize)? as f32);
-                        },
+                            Vec3(layout_idx, var1, var2, var3) => {
+                                gl::Uniform3f(
+                                    layout_idx as i32,
+                                    context.sync_vars.get_index(var1 as usize)? as f32,
+                                    context.sync_vars.get_index(var2 as usize)? as f32,
+                                    context.sync_vars.get_index(var3 as usize)? as f32,
+                                );
+                            }
 
-                        Vec4(layout_idx, var1, var2, var3, var4) => {
-                            gl::Uniform4f(layout_idx as i32,
-                                          context.sync_vars.get_index(var1 as usize)? as f32,
-                                          context.sync_vars.get_index(var2 as usize)? as f32,
-                                          context.sync_vars.get_index(var3 as usize)? as f32,
-                                          context.sync_vars.get_index(var4 as usize)? as f32);
-                        },
+                            Vec4(layout_idx, var1, var2, var3, var4) => {
+                                gl::Uniform4f(
+                                    layout_idx as i32,
+                                    context.sync_vars.get_index(var1 as usize)? as f32,
+                                    context.sync_vars.get_index(var2 as usize)? as f32,
+                                    context.sync_vars.get_index(var3 as usize)? as f32,
+                                    context.sync_vars.get_index(var4 as usize)? as f32,
+                                );
+                            }
+                        }
                     }
-                }
 
-                // Bind a buffer as texture
-                for item in self.binding_to_buffers.iter() {
-                    use crate::types::BufferMapping::*;
-                    match *item {
-                        NOOP => {},
+                    // Bind a buffer as texture
+                    for item in self.binding_to_buffers.iter() {
+                        use crate::types::BufferMapping::*;
+                        match *item {
+                            NOOP => {}
 
-                        Sampler2D(binding_idx, buffer_idx) => {
-                            if (buffer_idx as usize) < context.frame_buffers.len() {
-                                if binding_idx <= gl::MAX_COMBINED_TEXTURE_IMAGE_UNITS as u8 {
-                                    if let Some(fbo) = context.frame_buffers[buffer_idx as usize].fbo {
-                                        gl::ActiveTexture(gl::TEXTURE0 + (binding_idx as GLuint));
-                                        gl::BindTexture(gl::TEXTURE_2D, fbo);
+                            Sampler2D(binding_idx, buffer_idx) => {
+                                if (buffer_idx as usize) < context.frame_buffers.len() {
+                                    if binding_idx <= gl::MAX_COMBINED_TEXTURE_IMAGE_UNITS as u8 {
+                                        if let Some(fbo) =
+                                            context.frame_buffers[buffer_idx as usize].fbo
+                                        {
+                                            gl::ActiveTexture(
+                                                gl::TEXTURE0 + (binding_idx as GLuint),
+                                            );
+                                            gl::BindTexture(gl::TEXTURE_2D, fbo);
+                                        } else {
+                                            return Err(NoFbo);
+                                        }
                                     } else {
-                                        return Err(NoFbo);
+                                        return Err(TextureBindingIdxIsOverTheHardwareLimit);
                                     }
                                 } else {
-                                    return Err(TextureBindingIdxIsOverTheHardwareLimit);
+                                    return Err(TextureBindingIdxDoesntExist);
                                 }
-                            } else {
-                                return Err(TextureBindingIdxDoesntExist);
                             }
-                        },
+                        }
                     }
-                }
 
-                gl::BindVertexArray(quad.vao);
-                gl::DrawArrays(gl::TRIANGLE_STRIP, 0, 4);
-                gl::BindVertexArray(0);
-            } },
+                    gl::BindVertexArray(quad.vao);
+                    gl::DrawArrays(gl::TRIANGLE_STRIP, 0, 4);
+                    gl::BindVertexArray(0);
+                }
+            }
 
             None => return Err(NoQuad),
         }
@@ -141,12 +155,16 @@ impl QuadSceneGfx {
 }
 
 impl Quad {
-    pub fn new(vert_src: &str,
-               frag_src: &str,
-               err_msg_buf: &mut [u8; ERR_MSG_LEN])
-        -> Result<Quad, RuntimeError>
-    {
-        let mut quad = Quad { program: 0, vao: 0, vbo: 0 };
+    pub fn new(
+        vert_src: &str,
+        frag_src: &str,
+        err_msg_buf: &mut [u8; ERR_MSG_LEN],
+    ) -> Result<Quad, RuntimeError> {
+        let mut quad = Quad {
+            program: 0,
+            vao: 0,
+            vbo: 0,
+        };
         quad.compile_program(vert_src, frag_src, err_msg_buf)?;
 
         unsafe {
@@ -158,26 +176,38 @@ impl Quad {
 
             // VBO
             gl::BindBuffer(gl::ARRAY_BUFFER, quad.vbo);
-            gl::BufferData(gl::ARRAY_BUFFER,
-                           (QUAD_VERTICES.len() * mem::size_of::<GLfloat>()) as GLsizeiptr,
-                           mem::transmute(&QUAD_VERTICES[0]),
-                           gl::STATIC_DRAW);
+            gl::BufferData(
+                gl::ARRAY_BUFFER,
+                (QUAD_VERTICES.len() * mem::size_of::<GLfloat>()) as GLsizeiptr,
+                mem::transmute(&QUAD_VERTICES[0]),
+                gl::STATIC_DRAW,
+            );
 
             // Vertex data
 
             // layout (location = 0) in vec2 pos;
             let pos_attr: GLuint = 0;
             gl::EnableVertexAttribArray(pos_attr);
-            gl::VertexAttribPointer(pos_attr, 2, gl::FLOAT, gl::FALSE,
-                                    4 * mem::size_of::<GLfloat>() as GLsizei,
-                                    ptr::null());
+            gl::VertexAttribPointer(
+                pos_attr,
+                2,
+                gl::FLOAT,
+                gl::FALSE,
+                4 * mem::size_of::<GLfloat>() as GLsizei,
+                ptr::null(),
+            );
 
             // layout (location = 1) in vec2 tex;
             let tex_attr: GLuint = 1;
             gl::EnableVertexAttribArray(tex_attr);
-            gl::VertexAttribPointer(tex_attr, 2, gl::FLOAT, gl::FALSE,
-                                    4 * mem::size_of::<GLfloat>() as GLsizei,
-                                    mem::transmute(2 * mem::size_of::<GLfloat>()));
+            gl::VertexAttribPointer(
+                tex_attr,
+                2,
+                gl::FLOAT,
+                gl::FALSE,
+                4 * mem::size_of::<GLfloat>() as GLsizei,
+                mem::transmute(2 * mem::size_of::<GLfloat>()),
+            );
 
             gl::BindVertexArray(0);
         }
@@ -185,12 +215,12 @@ impl Quad {
         Ok(quad)
     }
 
-    pub fn compile_program(&mut self,
-                           vert_src: &str,
-                           frag_src: &str,
-                           err_msg_buf: &mut [u8; ERR_MSG_LEN])
-        -> Result<(), RuntimeError>
-    {
+    pub fn compile_program(
+        &mut self,
+        vert_src: &str,
+        frag_src: &str,
+        err_msg_buf: &mut [u8; ERR_MSG_LEN],
+    ) -> Result<(), RuntimeError> {
         let vs = compile_shader(vert_src, gl::VERTEX_SHADER, err_msg_buf)?;
         let fs = compile_shader(frag_src, gl::FRAGMENT_SHADER, err_msg_buf)?;
         self.program = link_program(vs, fs, err_msg_buf)?;

@@ -307,10 +307,12 @@ export class Toolbar extends React.Component<T_Props, T_State> {
                                     <span>Save (Ctrl+S)</span>
                                 </NavbarItem>
 
+                                {/*
                                 <NavbarItem href="#" onClick={() => { this.props.onClick_ImportProjectSet(true); }}>
                                     <Icon className="fa fa-plus-square" />
                                     <span>Import...</span>
                                 </NavbarItem>
+                                */}
 
                                 <NavbarItem href="#" onClick={this.props.onClick_ReloadProject}>
                                     <Icon className="fa fa-redo" />

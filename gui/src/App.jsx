@@ -19,7 +19,7 @@ import type { ServerMsg, DmoData, Shader, ShaderEditors, ViewState } from './Hel
 const PLAZMA_SERVER_PORT = 8080;
 
 type AppUpdates = {
-    SetDmo: bool,
+    SetDmoInline: bool,
     SetShader: bool,
     shaderIndexes: number[],
 };
@@ -82,7 +82,7 @@ class App extends Component<{}, AppState> {
             preview_is_open: false,
             sentUpdateSinceChange: true,
             updatesToSend: {
-                SetDmo: false,
+                SetDmoInline: false,
                 SetShader: false,
                 shaderIndexes: [],
             },
@@ -149,7 +149,7 @@ class App extends Component<{}, AppState> {
         this.setState({
             sentUpdateSinceChange: true,
             updatesToSend: {
-                SetDmo: false,
+                SetDmoInline: false,
                 SetShader: false,
                 shaderIndexes: [],
             },
@@ -159,12 +159,9 @@ class App extends Component<{}, AppState> {
     handleSocketOpen = (event: MessageEvent) =>
     {
         console.log("Connected to server socket.");
-        console.log("Send to server: FetchDmo");
+        console.log("Send to server: FetchDmoInline");
         // Request DmoData from server.
-        let msg: ServerMsg = {
-            data_type: 'FetchDmo',
-            data: '',
-        };
+        let msg: ServerMsg = { data_type: 'FetchDmoInline', data: '' };
         this.sendMsgOnSocket(msg);
         this.resetUpdates();
     }
@@ -191,8 +188,23 @@ class App extends Component<{}, AppState> {
             case 'NoOp':
                 break;
 
-            case 'SetDmo':
-                console.log('Received SetDmo.');
+            case 'SetDmoFile':
+                {
+                    // The browser can't handle SetDmoFile, so request it inline
+                    let m: ServerMsg = { data_type: 'FetchDmoInline', data: '' };
+                    this.sendMsgOnSocket(m);
+                    this.resetUpdates();
+                    // The browser can't delete the file path in SetDmoFile message, so tell the server to do that
+                    m = { data_type: 'DeleteMessageFile', data: msg.data };
+                    this.sendMsgOnSocket(m);
+                }
+                break;
+
+            case 'FetchDmoFile':
+                break;
+
+            case 'SetDmoInline':
+                console.log('Received SetDmoInline.');
                 let dmo_msg = JSON.parse(msg.data);
                 let project_root = dmo_msg.project_root;
                 let demo_yml_path = dmo_msg.demo_yml_path;
@@ -220,7 +232,7 @@ class App extends Component<{}, AppState> {
                     // resetUpdates
                     sentUpdateSinceChange: true,
                     updatesToSend: {
-                        SetDmo: false,
+                        SetDmoInline: false,
                         SetShader: false,
                         shaderIndexes: [],
                     },
@@ -460,22 +472,30 @@ class App extends Component<{}, AppState> {
     }
 
     sendDmoData = () => {
-        if (this.state.updatesToSend.SetDmo && this.state.socket) {
+        if (this.state.updatesToSend.SetDmoInline && this.state.socket) {
+            let data: string = JSON.stringify({
+                project_root: this.state.project_root,
+                demo_yml_path: this.state.demo_yml_path,
+                dmo_data_json_str: JSON.stringify(this.state.dmo_data),
+                embedded: this.state.embedded,
+            });
+
+            // FIXME this is 50k data, not sure where the bug occurs but somewhere around 100k
+            if (data.length > 50*1024) {
+                console.log("FIXME not sending large SetDmoInline");
+                return;
+            }
+
             let msg: ServerMsg = {
-                data_type: 'SetDmo',
-                data: JSON.stringify({
-                    project_root: this.state.project_root,
-                    demo_yml_path: this.state.demo_yml_path,
-                    dmo_data_json_str: JSON.stringify(this.state.dmo_data),
-                    embedded: this.state.embedded,
-                }),
+                data_type: 'SetDmoInline',
+                data: data,
             };
 
-            console.log('Sending server: SetDmo');
+            console.log('Sending server: SetDmoInline');
             this.sendMsgOnSocket(msg);
 
             let a = this.state.updatesToSend;
-            a.SetDmo = false;
+            a.SetDmoInline = false;
             this.setState({
                 updatesToSend: a,
             });

@@ -7,6 +7,8 @@ use std::time::Duration;
 use std::path::PathBuf;
 use std::error::Error;
 use std::borrow::Cow;
+use std::fs::{self, File};
+use std::io::prelude::*;
 
 use web_view::Content;
 use nfd::Response as NfdResponse;
@@ -78,6 +80,7 @@ pub struct AppStartParams {
 pub struct AppInfo {
     pub cwd: PathBuf,
     pub path_to_binary: PathBuf,
+    pub pid: u32,
 }
 
 impl Default for AppStartParams {
@@ -122,9 +125,10 @@ pub fn app_info() -> Result<AppInfo, Box<dyn Error>>
         return Err(From::from(format!("🔥 Path does not exist: {:?}", &path_to_binary)));
     }
 
-    Ok(AppInfo{
+    Ok(AppInfo {
         cwd: cwd,
         path_to_binary: path_to_binary,
+        pid: std::process::id(),
     })
 }
 
@@ -611,12 +615,12 @@ pub fn start_preview(plazma_server_port: Arc<usize>,
     // is processed.
 
     let msg = serde_json::to_string(&Sending{
-        data_type: MsgDataType::FetchDmo,
+        data_type: MsgDataType::FetchDmoFile,
         data: "".to_owned(),
     }).unwrap();
     match server_sender.send(msg) {
-        Ok(_) => info!("start_preview() Sent FetchDmo to server"),
-        Err(e) => error!("🔥 start_preview() Can't send FetchDmo on server_sender channel: {:?}", e),
+        Ok(_) => info!("start_preview() Sent FetchDmoFile to server"),
+        Err(e) => error!("🔥 start_preview() Can't send FetchDmoFile on server_sender channel: {:?}", e),
     };
 
     render_loop(&window, &mut events_loop, &mut state, &mut rocket, client_receiver, &server_sender);
@@ -692,10 +696,11 @@ fn render_loop(window: &GlWindow,
 
                         NoOp => {},
 
-                        FetchDmo => {},
+                        FetchDmoFile => {},
+                        FetchDmoInline => {},
 
-                        SetDmo => {
-                            info!("render_loop() Received SetDmo");
+                        SetDmoInline => {
+                            info!("render_loop() Received SetDmoInline");
                             let (sx, sy) = state.dmo_gfx.context.get_screen_resolution();
                             let (wx, wy) = state.dmo_gfx.context.get_window_resolution();
                             info!{"sx: {}, sy: {}", sx, sy};
@@ -717,7 +722,47 @@ fn render_loop(window: &GlWindow,
                                                 Err(e) => error!("🔥 callback_window_resized() {:?}", e),
                                             }
                                         },
-                                        Err(e) => error!{"🔥 Can't perform SetDmo: {:?}", e},
+                                        Err(e) => error!{"🔥 Can't perform SetDmoInline: {:?}", e},
+                                    }
+                                },
+                                Err(e) => error!("🔥 Can't deserialize SetDmoMsg: {:?}", e),
+                            };
+                        },
+
+                        SetDmoFile => {
+                            info!("render_loop() Received SetDmoFile");
+                            let (sx, sy) = state.dmo_gfx.context.get_screen_resolution();
+                            let (wx, wy) = state.dmo_gfx.context.get_window_resolution();
+                            info!{"sx: {}, sy: {}", sx, sy};
+                            let camera = state.dmo_gfx.context.camera.get_copy();
+
+                            let path = serde_json::from_str::<PathBuf>(&message.data).unwrap();
+                            let mut file = File::open(&path).unwrap();
+                            let mut data = String::new();
+                            file.read_to_string(&mut data).unwrap();
+
+                            match fs::remove_file(&path) {
+                                Ok(_) => {},
+                                Err(e) => error!{"Can't remove file: {:?}", e},
+                            };
+
+                            match serde_json::from_str(&data) {
+                                Ok(msg) => {
+                                    // - don't read in shader files again,
+                                    //   the updated shaders are sent directly from the UI
+                                    // - do read in images,
+                                    //   these are passed only by path from the UI
+                                    match state.build_dmo_gfx_from_dmo_msg(&msg, false, true,
+                                                                           sx, sy,
+                                                                           Some(camera))
+                                    {
+                                        Ok(_) => {
+                                            match state.callback_window_resized(wx as f64, wy as f64) {
+                                                Ok(_) => {},
+                                                Err(e) => error!("🔥 callback_window_resized() {:?}", e),
+                                            }
+                                        },
+                                        Err(e) => error!{"🔥 Can't perform SetDmoFile: {:?}", e},
                                     }
                                 },
                                 Err(e) => error!("🔥 Can't deserialize SetDmoMsg: {:?}", e),
@@ -844,6 +889,7 @@ fn render_loop(window: &GlWindow,
                         ReloadProject => {},
                         SaveProject => {},
                         NewProject => {},
+                        DeleteMessageFile => {},
 
                         ExitApp => {
                             info!("render_loop() Received ExitApp.");
@@ -1259,8 +1305,16 @@ fn dialogs_loop(client_receiver: mpsc::Receiver<String>,
                     match message.data_type {
 
                         NoOp => {},
-                        FetchDmo => {},
-                        SetDmo => {},
+                        FetchDmoFile => {},
+                        FetchDmoInline => {},
+                        SetDmoInline => {},
+                        SetDmoFile => {
+                            let path = serde_json::from_str::<PathBuf>(&message.data).unwrap();
+                            match fs::remove_file(&path) {
+                                Ok(_) => {},
+                                Err(e) => error!{"Can't remove file: {:?}", e},
+                            };
+                        },
                         SetDmoTime => {},
                         GetDmoTime => {},
                         SetShader => {},
@@ -1304,6 +1358,7 @@ fn dialogs_loop(client_receiver: mpsc::Receiver<String>,
                         ReloadProject => {},
                         SaveProject => {},
                         NewProject => {},
+                        DeleteMessageFile => {},
 
                         ExitApp => {
                             info!("dialogs_loop() Received ExitApp.");

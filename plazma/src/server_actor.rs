@@ -4,6 +4,8 @@ use std::sync::{Arc, Mutex, mpsc};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use std::process::{Command, Child};
+use std::fs::{self, File, DirEntry};
+use std::io::prelude::*;
 
 use rand::Rng;
 
@@ -144,12 +146,36 @@ impl ServerActor {
         }
     }
 
-    fn send_message_to_everyone(&self, ctx: &<Self as Actor>::Context, message: &Sending) {
+    fn copy_file_and_send_message_to_others(&self, ctx: &<Self as Actor>::Context, message_type: MsgDataType, path: &PathBuf) {
         let state = ctx.state().lock().expect("👿 Can't lock ServerState.");
-        for (_id, addr) in &state.clients {
+
+        for (id, addr) in &state.clients {
+            if *id == self.client_id {
+                continue;
+            }
+
+            let new_path = get_new_temp_path(state.app_info.pid);
+            fs::copy(&path, &new_path).unwrap();
+
             let resp = Sending {
-                data_type: message.data_type,
-                data: message.data.clone(),
+                data_type: message_type,
+                data: serde_json::to_string(&new_path).unwrap(),
+            };
+            //info!{"💬 Sending {:?} to client {:?}", &message.data_type, id};
+            addr.do_send(resp);
+        }
+    }
+
+    fn copy_file_and_send_message_to_everyone(&self, ctx: &<Self as Actor>::Context, message_type: MsgDataType, path: &PathBuf) {
+        let state = ctx.state().lock().expect("👿 Can't lock ServerState.");
+
+        for (_id, addr) in &state.clients {
+            let new_path = get_new_temp_path(state.app_info.pid);
+            fs::copy(&path, &new_path).unwrap();
+
+            let resp = Sending {
+                data_type: message_type,
+                data: serde_json::to_string(&new_path).unwrap(),
             };
             //info!{"💬 Sending {:?} to client {:?}", &message.data_type, id};
             addr.do_send(resp);
@@ -176,8 +202,10 @@ impl ServerActor {
 #[derive(Serialize, Deserialize, Copy, Clone, Debug)]
 pub enum MsgDataType {
     NoOp,
-    FetchDmo,
-    SetDmo,
+    FetchDmoInline,
+    FetchDmoFile,
+    SetDmoInline,
+    SetDmoFile,
     SetDmoTime,
     GetDmoTime,
     SetShader,
@@ -196,6 +224,7 @@ pub enum MsgDataType {
     ReloadProject,
     SaveProject,
     NewProject,
+    DeleteMessageFile,
     ExitApp,
 }
 
@@ -293,19 +322,28 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                 };
                 //info!{"Received: message.data_type: {:?}", message.data_type};
 
+                let pid: u32;
+                {
+                    let state = ctx.state().lock().expect("👿 Can't lock ServerState.");
+                    pid = state.app_info.pid;
+                }
+
                 use self::MsgDataType::*;
                 match message.data_type {
                     NoOp => {},
 
-                    FetchDmo => {
+                    FetchDmoInline => {
+                        // Only the browser UI should request Dmo with this message. Actix clients
+                        // should use FetchDmoFile.
+
                         // Client is asking for Dmo data. Serialize ServerState.dmo
                         // and send it back.
-                        info!("handle() Received FetchDmo");
+                        info!("handle() Received FetchDmoInline");
                         let resp;
                         {
                             let state = ctx.state().lock().expect("👿 Can't lock ServerState.");
                             resp = Sending {
-                                data_type: SetDmo,
+                                data_type: SetDmoInline,
                                 data: serde_json::to_string(&SetDmoMsg {
                                     project_root: state.project_data.project_root.clone(),
                                     demo_yml_path: state.project_data.demo_yml_path.clone(),
@@ -319,12 +357,50 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                         ctx.text(body);
                     },
 
-                    SetDmo => {
-                        info!("SetDmo: received, data length {}", message.data.len());
+                    FetchDmoFile => {
+                        // Actix clients should use this to request Dmo data.
+
+                        // Client is asking for Dmo data. Serialize ServerState.dmo
+                        // and send it back.
+                        info!("handle() Received FetchDmoFile");
+                        let resp;
+                        {
+
+                            // NOTE: Don't send SetDmoMsg in data. Write a temp file and send its
+                            // path. The client is responsible for deleting it after reading.
+                            //
+                            // A bug affets large messages, such as when sending SetDmoMsg. When the
+                            // message body is too large (~100k), the server process dies for some
+                            // reason. Sending the message succeeds, but only the browser can
+                            // receive it successfully as client. When the client is an actix
+                            // process, it dies without even entering the handle() function.
+
+                            let state = ctx.state().lock().expect("👿 Can't lock ServerState.");
+
+                            let data = serde_json::to_string(&SetDmoMsg {
+                                project_root: state.project_data.project_root.clone(),
+                                demo_yml_path: state.project_data.demo_yml_path.clone(),
+                                dmo_data_json_str: serde_json::to_string(&state.project_data.dmo_data).unwrap(),
+                                embedded: state.project_data.embedded,
+                            }).unwrap();
+
+                            let path = write_data_to_temp(data.as_bytes(), pid).expect("Can't write temp file");
+
+                            resp = Sending {
+                                data_type: SetDmoFile,
+                                data: serde_json::to_string(&path).unwrap(),
+                            };
+                        }
+                        let body = serde_json::to_string(&resp).unwrap();
+                        info!("handle() respond with message length {}", body.len());
+                        ctx.text(body);
+                    },
+
+                    SetDmoInline => {
+                        info!("SetDmoInline: received, data length {}", message.data.len());
 
                         // Client is sending Dmo data. Deserialize and replace the
-                        // ServerState.dmo. Serialize and send all other clients the
-                        // new Dmo data.
+                        // ServerState.dmo. Repeat message to other clients.
                         match serde_json::from_str::<SetDmoMsg>(&message.data) {
 
                             Ok(dmo_msg) => {
@@ -348,7 +424,51 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                                 ctx.text(body);
                             }
                         }
-                    }
+                    },
+
+                    SetDmoFile => {
+                        info!("SetDmoFile: received, data length {}", message.data.len());
+
+                        // Client is sending Dmo data. Message data is a file name. Read it,
+                        // deserialize and replace the ServerState.dmo.
+                        //
+                        // Create copies of the file for each client and send them the message.
+                        // Each client will delete its message file after reading it.
+
+                        match serde_json::from_str::<PathBuf>(&message.data) {
+
+                            Ok(path) => {
+                                info!{"Deserialized path"};
+
+                                let mut file = File::open(&path).unwrap();
+                                let mut data = String::new();
+                                file.read_to_string(&mut data).unwrap();
+                                let dmo_msg: SetDmoMsg = serde_json::from_str(&data).unwrap();
+
+                                let mut state = ctx.state().lock().expect("👿 Can't lock ServerState.");
+                                state.project_data.project_root = dmo_msg.project_root.clone();
+                                state.project_data.demo_yml_path = dmo_msg.demo_yml_path.clone();
+                                state.project_data.dmo_data = serde_json::from_str(&dmo_msg.dmo_data_json_str).unwrap();
+
+                                self.copy_file_and_send_message_to_others(&ctx, message.data_type, &path);
+                                match fs::remove_file(&path) {
+                                    Ok(_) => {},
+                                    Err(e) => error!{"Can't remove file: {:?}", e},
+                                };
+                            },
+
+                            Err(e) => {
+                                error!{"🔥 Error deserializing Dmo: {:?}", e};
+                                // Could not deserialize data, tell client to show an error.
+                                let resp = Sending {
+                                    data_type: ShowErrorMessage,
+                                    data: format!{"{:?}", e},
+                                };
+                                let body = serde_json::to_string(&resp).unwrap();
+                                ctx.text(body);
+                            }
+                        }
+                    },
 
                     // Client is setting time. Send it to other clients to record it if they are
                     // tracking time.
@@ -522,8 +642,6 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                             },
                         };
 
-                        // Build a new ProjectData and send it to all clients.
-
                         let project_data = match ProjectData::new(Some(yml_path), false) {
                             Ok(x) => x,
                             Err(e) => {
@@ -532,19 +650,25 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                             }
                         };
 
-                        // Send SetDmo
-                        let resp = Sending {
-                            data_type: SetDmo,
-                            data: serde_json::to_string(&SetDmoMsg {
-                                project_root: project_data.project_root.clone(),
-                                demo_yml_path: project_data.demo_yml_path.clone(),
-                                dmo_data_json_str: serde_json::to_string(&project_data.dmo_data).unwrap(),
-                                embedded: project_data.embedded,
-                            }).unwrap(),
-                        };
+                        // Send SetDmoFile
+                        let data = serde_json::to_string(&SetDmoMsg {
+                            project_root: project_data.project_root.clone(),
+                            demo_yml_path: project_data.demo_yml_path.clone(),
+                            dmo_data_json_str: serde_json::to_string(&project_data.dmo_data).unwrap(),
+                            embedded: project_data.embedded,
+                        }).unwrap();
 
-                        info!("Send SetDmo to everyone");
-                        self.send_message_to_everyone(&ctx, &resp);
+                        let path = write_data_to_temp(data.as_bytes(), pid).expect("Can't write temp file");
+
+                        info!("Send SetDmoFile to everyone");
+                        // Send to everyone. Usually the dialogs process will send it, which
+                        // doesn't need the response, but in case the browser sends the message, it
+                        // will need the updated data.
+                        self.copy_file_and_send_message_to_everyone(&ctx, SetDmoFile, &path);
+                        match fs::remove_file(&path) {
+                            Ok(_) => {},
+                            Err(e) => error!{"Can't remove file: {:?}", e},
+                        };
 
                         let mut state = ctx.state().lock().expect("👿 Can't lock ServerState.");
                         state.project_data = project_data;
@@ -567,18 +691,24 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                             }
                         };
 
-                        // Send SetDmo
-                        let resp = Sending {
-                            data_type: SetDmo,
-                            data: serde_json::to_string(&SetDmoMsg {
-                                project_root: project_data.project_root.clone(),
-                                demo_yml_path: project_data.demo_yml_path.clone(),
-                                dmo_data_json_str: serde_json::to_string(&project_data.dmo_data).unwrap(),
-                                embedded: project_data.embedded,
-                            }).unwrap(),
-                        };
+                        // Send SetDmoFile
+                        let data = serde_json::to_string(&SetDmoMsg {
+                            project_root: project_data.project_root.clone(),
+                            demo_yml_path: project_data.demo_yml_path.clone(),
+                            dmo_data_json_str: serde_json::to_string(&project_data.dmo_data).unwrap(),
+                            embedded: project_data.embedded,
+                        }).unwrap();
 
-                        self.send_message_to_everyone(&ctx, &resp);
+                        let path = write_data_to_temp(data.as_bytes(), pid).expect("Can't write temp file");
+
+                        info!("Send SetDmoFile to everyone");
+                        // Send to everyone, otherwise the browser, which sent the message, will
+                        // not get the update
+                        self.copy_file_and_send_message_to_everyone(&ctx, SetDmoFile, &path);
+                        match fs::remove_file(&path) {
+                            Ok(_) => {},
+                            Err(e) => error!{"Can't remove file: {:?}", e},
+                        };
 
                         let mut state = ctx.state().lock().expect("👿 Can't lock ServerState.");
                         state.project_data = project_data;
@@ -612,8 +742,6 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                             },
                         };
 
-                        // Build a new ProjectData and send it to all clients.
-
                         let project_data = match ProjectData::new_from_embedded_template(template) {
                             Ok(x) => x,
                             Err(e) => {
@@ -622,25 +750,60 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
                             }
                         };
 
-                        // Send SetDmo
-                        let resp = Sending {
-                            data_type: SetDmo,
-                            data: serde_json::to_string(&SetDmoMsg {
-                                project_root: project_data.project_root.clone(),
-                                demo_yml_path: project_data.demo_yml_path.clone(),
-                                dmo_data_json_str: serde_json::to_string(&project_data.dmo_data).unwrap(),
-                                embedded: project_data.embedded,
-                            }).unwrap(),
-                        };
+                        // Send SetDmoFile
+                        let data = serde_json::to_string(&SetDmoMsg {
+                            project_root: project_data.project_root.clone(),
+                            demo_yml_path: project_data.demo_yml_path.clone(),
+                            dmo_data_json_str: serde_json::to_string(&project_data.dmo_data).unwrap(),
+                            embedded: project_data.embedded,
+                        }).unwrap();
 
-                        self.send_message_to_everyone(&ctx, &resp);
+                        let path = write_data_to_temp(data.as_bytes(), pid).expect("Can't write temp file");
+
+                        info!("Send SetDmoFile to everyone");
+                        // Send to everyone, otherwise the browser, which sent the message, will
+                        // not get the update
+                        self.copy_file_and_send_message_to_everyone(&ctx, SetDmoFile, &path);
+                        match fs::remove_file(&path) {
+                            Ok(_) => {},
+                            Err(e) => error!{"Can't remove file: {:?}", e},
+                        };
 
                         let mut state = ctx.state().lock().expect("👿 Can't lock ServerState.");
                         state.project_data = project_data;
                     },
 
+                    DeleteMessageFile => {
+                        match serde_json::from_str::<PathBuf>(&message.data) {
+                            Ok(path) => {
+                                match fs::remove_file(&path) {
+                                    Ok(_) => {},
+                                    Err(e) => error!{"🔥 Error deleting file: {:?}", e},
+                                };
+                            },
+                            Err(e) => error!{"🔥 Error deserializing path: {:?}", e},
+                        }
+                    },
+
                     ExitApp => {
+                        info!{"ExitApp"};
                         {
+                            info!{"Cleaning up temp files..."};
+
+                            match fs::read_dir(std::env::temp_dir()) {
+                                Ok(d) => {
+                                    for entry in d.filter_map(|e| e.ok())
+                                        .filter(|e| is_plazma_temp(e, pid)) {
+                                            match std::fs::remove_file(entry.path()) {
+                                                Ok(_) => info!{"Removed {:?}", entry.path()},
+                                                Err(e) => error!{"Can't remove: {:?}", e},
+                                            }
+                                    }
+                                },
+                                Err(e) => error!("Can't read dir: {:?}", e),
+                            };
+
+                            info!{"Repeat ExitApp to other clients"};
                             // Repeat the message for other websocket clients (such as dialogs process and
                             // preview window) to respond to it.
                             self.repeat_message_to_others(&ctx, &message);
@@ -744,4 +907,30 @@ fn run_dialogs_command(path_to_binary: &PathBuf) -> Option<Child>
             },
         }
     }
+}
+
+fn get_new_temp_path(pid: u32) -> PathBuf {
+    let dir = std::env::temp_dir();
+    let mut n = 0;
+    let mut path = dir.join(&PathBuf::from(&format!{"plazma-{}-{}.txt", pid, n}));
+    while path.exists() {
+        n += 1;
+        path = dir.join(&PathBuf::from(&format!{"plazma-{}-{}.txt", pid, n}));
+    }
+    path
+}
+
+fn write_data_to_temp(data: &[u8], pid: u32) -> Result<PathBuf, Box<dyn Error>> {
+    let path = get_new_temp_path(pid);
+    let mut file = File::create(&path)?;
+    file.write_all(data)?;
+    Ok(path)
+}
+
+fn is_plazma_temp(entry: &DirEntry, pid: u32) -> bool {
+    let prefix: String = format!{"plazma-{}-", pid};
+    entry.file_name()
+        .to_str()
+        .map(|s| s.starts_with(&prefix))
+        .unwrap_or(false)
 }

@@ -35,7 +35,12 @@ impl UniformBuffer {
             gl::GenBuffers(1, &mut ubo);
             gl::BindBuffer(gl::UNIFORM_BUFFER, ubo);
             // create the uniform buffer with empty data
-            gl::BufferData(gl::UNIFORM_BUFFER, byte_size as isize, ptr::null(), gl::DYNAMIC_DRAW);
+            gl::BufferData(
+                gl::UNIFORM_BUFFER,
+                byte_size as isize,
+                ptr::null(),
+                gl::DYNAMIC_DRAW,
+            );
             // unbind
             gl::BindBuffer(gl::UNIFORM_BUFFER, 0);
         }
@@ -47,10 +52,12 @@ impl UniformBuffer {
         if let Some(ubo) = self.ubo {
             unsafe {
                 gl::BindBuffer(gl::UNIFORM_BUFFER, ubo);
-                gl::BufferSubData(gl::UNIFORM_BUFFER,
-                                  0,
-                                  self.byte_size as isize,
-                                  mem::transmute( self.data.as_ptr() ));
+                gl::BufferSubData(
+                    gl::UNIFORM_BUFFER,
+                    0,
+                    self.byte_size as isize,
+                    mem::transmute(self.data.as_ptr()),
+                );
                 gl::BindBuffer(gl::UNIFORM_BUFFER, 0);
             }
         } else {
@@ -59,11 +66,11 @@ impl UniformBuffer {
         Ok(())
     }
 
-    pub fn set_f32_array(&mut self,
-                         start_offset: usize,
-                         data: &SmallVec<[f32; 16]>)
-                         -> Result<(), RuntimeError>
-    {
+    pub fn set_f32_array(
+        &mut self,
+        start_offset: usize,
+        data: &SmallVec<[f32; 16]>,
+    ) -> Result<(), RuntimeError> {
         for (data_idx, n) in data.iter().enumerate() {
             // Convert n (f32) to a [u8; 4].
             // Using a different size SmallVec to suit push_f32() argument.
@@ -71,7 +78,7 @@ impl UniformBuffer {
             push_f32(&mut v, *n);
 
             // in layout std140, a float array is padded as vec4 (16 bytes) for each item
-            let n_offset = start_offset + data_idx*16;
+            let n_offset = start_offset + data_idx * 16;
             if (n_offset + 3) < self.data.len() {
                 for i in 0..4 {
                     self.data[n_offset + i] = v[i];
@@ -79,7 +86,6 @@ impl UniformBuffer {
             } else {
                 return Err(RuntimeError::DataIdxIsOutOfBounds);
             }
-
         }
         Ok(())
     }
@@ -88,16 +94,18 @@ impl UniformBuffer {
         if binding_idx <= gl::MAX_UNIFORM_BUFFER_BINDINGS as u8 {
             if let Some(ubo) = self.ubo {
                 unsafe {
-                    gl::BindBufferBase(gl::UNIFORM_BUFFER,
-                                       binding_idx as GLuint,
-                                       ubo);
+                    gl::BindBufferBase(gl::UNIFORM_BUFFER, binding_idx as GLuint, ubo);
                 }
             } else {
-                unsafe { gl::BindBuffer(gl::UNIFORM_BUFFER, 0); }
+                unsafe {
+                    gl::BindBuffer(gl::UNIFORM_BUFFER, 0);
+                }
                 return Err(NoUbo);
             }
         } else {
-            unsafe { gl::BindBuffer(gl::UNIFORM_BUFFER, 0); }
+            unsafe {
+                gl::BindBuffer(gl::UNIFORM_BUFFER, 0);
+            }
             return Err(UniformBlockBindingIdxIsOverTheHardwareLimit);
         }
         Ok(())

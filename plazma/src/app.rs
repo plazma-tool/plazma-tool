@@ -1,35 +1,39 @@
+use std::borrow::Cow;
 use std::env;
+use std::error::Error;
+use std::fs::{self, File};
+use std::io::prelude::*;
+use std::path::PathBuf;
 use std::process::exit;
-use std::sync::{Arc, Mutex, mpsc};
 use std::sync::mpsc::TryRecvError;
+use std::sync::{mpsc, Arc, Mutex};
 use std::thread::{self, sleep};
 use std::time::Duration;
-use std::path::PathBuf;
-use std::error::Error;
-use std::borrow::Cow;
 
-use web_view::Content;
 use nfd::Response as NfdResponse;
+use web_view::Content;
 
 use mime_guess::guess_mime_type;
 
+use actix_web::actix::*;
 use actix_web::http::Method;
 use actix_web::{middleware, server, ws, App, Body, HttpRequest, HttpResponse};
-use actix_web::actix::*;
 
 use futures::Future;
 
-use glutin::{GlWindow, GlContext, EventsLoop, Event, WindowEvent, ElementState};
+use glutin::{ElementState, Event, EventsLoop, GlContext, GlWindow, WindowEvent};
 
-use intro_3d::Vector3;
+use intro_3d::lib::Vector3;
 use rocket_client::SyncClient;
 
-use intro_runtime::error::RuntimeError;
 use crate::error::ToolError;
+use intro_runtime::error::RuntimeError;
 
-use crate::server_actor::{ServerActor, ServerState, ServerStateWrap, Sending, Receiving,
-MsgDataType, SetDmoMsg, SetShaderMsg, ShaderCompilationFailedMsg, ShaderCompilationSuccessMsg};
 use crate::preview_client::client_actor::{ClientActor, ClientMessage};
+use crate::server_actor::{
+    MsgDataType, Receiving, Sending, ServerActor, ServerState, ServerStateWrap, SetDmoMsg,
+    SetShaderMsg, ShaderCompilationFailedMsg, ShaderCompilationSuccessMsg,
+};
 
 use crate::preview_client::preview_state::PreviewState;
 
@@ -38,30 +42,32 @@ use crate::preview_client::preview_state::PreviewState;
 pub struct WebAsset;
 
 fn handle_embedded_file(path: &str) -> HttpResponse {
-  match WebAsset::get(path) {
-    Some(content) => {
-      let body: Body = match content {
-        Cow::Borrowed(bytes) => bytes.into(),
-        Cow::Owned(bytes) => bytes.into(),
-      };
-      HttpResponse::Ok().content_type(guess_mime_type(path).as_ref()).body(body)
+    match WebAsset::get(path) {
+        Some(content) => {
+            let body: Body = match content {
+                Cow::Borrowed(bytes) => bytes.into(),
+                Cow::Owned(bytes) => bytes.into(),
+            };
+            HttpResponse::Ok()
+                .content_type(guess_mime_type(path).as_ref())
+                .body(body)
+        }
+        None => HttpResponse::NotFound().body("404 Not Found"),
     }
-    None => HttpResponse::NotFound().body("404 Not Found"),
-  }
 }
 
 fn static_index(_req: HttpRequest<ServerStateWrap>) -> HttpResponse {
-  handle_embedded_file("index.html")
+    handle_embedded_file("index.html")
 }
 
 fn static_assets(req: HttpRequest<ServerStateWrap>) -> HttpResponse {
-  let path = &req.path().trim_start_matches("/static/");
-  handle_embedded_file(path)
+    let path = &req.path().trim_start_matches("/static/");
+    handle_embedded_file(path)
 }
 
 fn fonts_assets(req: HttpRequest<ServerStateWrap>) -> HttpResponse {
-  let path = &req.path().trim_start_matches("/");
-  handle_embedded_file(path)
+    let path = &req.path().trim_start_matches("/");
+    handle_embedded_file(path)
 }
 
 #[derive(Debug)]
@@ -78,6 +84,7 @@ pub struct AppStartParams {
 pub struct AppInfo {
     pub cwd: PathBuf,
     pub path_to_binary: PathBuf,
+    pub pid: u32,
 }
 
 impl Default for AppStartParams {
@@ -102,8 +109,7 @@ impl AppStartParams {
     }
 }
 
-pub fn app_info() -> Result<AppInfo, Box<dyn Error>>
-{
+pub fn app_info() -> Result<AppInfo, Box<dyn Error>> {
     let cwd = PathBuf::from(std::env::current_dir()?).canonicalize()?;
     let mut path_to_binary = PathBuf::from(cwd.clone());
 
@@ -119,22 +125,24 @@ pub fn app_info() -> Result<AppInfo, Box<dyn Error>>
     path_to_binary = path_to_binary.canonicalize()?;
 
     if !path_to_binary.exists() {
-        return Err(From::from(format!("🔥 Path does not exist: {:?}", &path_to_binary)));
+        return Err(From::from(format!(
+            "🔥 Path does not exist: {:?}",
+            &path_to_binary
+        )));
     }
 
-    Ok(AppInfo{
+    Ok(AppInfo {
         cwd: cwd,
         path_to_binary: path_to_binary,
+        pid: std::process::id(),
     })
 }
 
-pub fn process_cli_args(matches: clap::ArgMatches)
-    -> Result<AppStartParams, Box<dyn Error>>
-{
+pub fn process_cli_args(matches: clap::ArgMatches) -> Result<AppStartParams, Box<dyn Error>> {
     let server_port = match matches.value_of("port").unwrap().parse::<usize>() {
         Ok(x) => x,
         Err(e) => {
-            error!{"🔥 {:?}", e};
+            error! {"🔥 {:?}", e};
             exit(2);
         }
     };
@@ -151,9 +159,9 @@ pub fn process_cli_args(matches: clap::ArgMatches)
                     error!("🔥 Path does not exist: {:?}", &path);
                     exit(2);
                 }
-            },
+            }
             Err(e) => {
-                error!{"🔥 {:?}", e};
+                error! {"🔥 {:?}", e};
                 exit(2);
             }
         };
@@ -169,45 +177,46 @@ pub fn process_cli_args(matches: clap::ArgMatches)
                     error!("🔥 Path does not exist: {:?}", &path);
                     exit(2);
                 }
-            },
+            }
             Err(e) => {
-                error!{"🔥 {:?}", e};
+                error! {"🔥 {:?}", e};
                 exit(2);
             }
         };
     }
 
     if let Some(_) = matches.subcommand_matches("server") {
-
         params.start_server = true;
         params.start_webview = false;
         params.start_preview = false;
-
     } else if let Some(_) = matches.subcommand_matches("preview") {
-
         params.start_server = false;
         params.start_webview = false;
         params.start_preview = true;
-
     } else if let Some(_) = matches.subcommand_matches("dialogs") {
-
         params.start_server = false;
         params.start_webview = false;
         params.start_preview = false;
         params.is_dialogs = true;
-
     };
 
     Ok(params)
 }
 
-pub fn start_server(port: Arc<usize>,
-                    app_info: AppInfo,
-                    yml_path: Option<PathBuf>,
-                    webview_sender_arc: Arc<Mutex<mpsc::Sender<String>>>,
-                    server_receiver: mpsc::Receiver<String>)
-    -> Result<(thread::JoinHandle<()>, thread::JoinHandle<()>, thread::JoinHandle<()>), Box<dyn Error>>
-{
+pub fn start_server(
+    port: Arc<usize>,
+    app_info: AppInfo,
+    yml_path: Option<PathBuf>,
+    webview_sender_arc: Arc<Mutex<mpsc::Sender<String>>>,
+    server_receiver: mpsc::Receiver<String>,
+) -> Result<
+    (
+        thread::JoinHandle<()>,
+        thread::JoinHandle<()>,
+        thread::JoinHandle<()>,
+    ),
+    Box<dyn Error>,
+> {
     let port_clone_a = Arc::clone(&port);
     let port_clone_b = Arc::clone(&port);
 
@@ -218,29 +227,22 @@ pub fn start_server(port: Arc<usize>,
 
         info!("ServerState::new() using yml_path: {:?}", &yml_path);
 
-        let server_state = Arc::new(
-            Mutex::new(
-                ServerState::new(app_info,
-                                 a,
-                                 yml_path).unwrap()
-                )
-            );
+        let server_state = Arc::new(Mutex::new(ServerState::new(app_info, a, yml_path).unwrap()));
 
         server::new(move || {
-
             App::with_state(server_state.clone())
-            // logger
+                // logger
                 .middleware(middleware::Logger::default())
-            // WebSocket routes (there is no CORS)
+                // WebSocket routes (there is no CORS)
                 .resource("/ws/", |r| r.f(|req| ws::start(req, ServerActor::new())))
-            // static files
+                // static files
                 .route("/static/", Method::GET, static_index)
                 .route("/static/{_:.*}", Method::GET, static_assets)
                 .route("/fonts/{_:.*}", Method::GET, fonts_assets)
         })
-            .bind(format!{"127.0.0.1:{}", port_clone_a})
-            .unwrap()
-            .start();
+        .bind(format! {"127.0.0.1:{}", port_clone_a})
+        .unwrap()
+        .start();
 
         sys.run();
     });
@@ -261,20 +263,18 @@ pub fn start_server(port: Arc<usize>,
         sleep(Duration::from_millis(5000));
 
         Arbiter::spawn(
-            ws::Client::new(format!{"http://127.0.0.1:{}/ws/", port_clone_b})
+            ws::Client::new(format! {"http://127.0.0.1:{}/ws/", port_clone_b})
                 .connect()
-
                 .map_err(|e| {
                     error!("🔥 ⚔️  Can not connect to server: {}", e);
                     // FIXME wait and keep trying to connect in a loop
                     //return; // this return is probably not necessary
                     ()
                 })
-
                 .map(|(reader, writer)| {
                     let addr = ClientActor::create(|ctx| {
                         ClientActor::add_stream(reader, ctx);
-                        ClientActor{
+                        ClientActor {
                             writer: writer,
                             channel_sender: client_sender,
                         }
@@ -286,9 +286,9 @@ pub fn start_server(port: Arc<usize>,
                             match server_receiver.try_recv() {
                                 Ok(text) => {
                                     info!("Webview thread: passing on message: {:?}", text);
-                                    addr.do_send(ClientMessage{ data: text });
-                                },
-                                Err(_) => {},
+                                    addr.do_send(ClientMessage { data: text });
+                                }
+                                Err(_) => {}
                             }
                             sleep(Duration::from_millis(100));
                         }
@@ -312,42 +312,50 @@ pub fn start_server(port: Arc<usize>,
 
                         let webview_sender = a.lock().expect("Can't lock webview sender.");
                         match webview_sender.send("WebviewExit".to_owned()) {
-                            Ok(_) => {},
+                            Ok(_) => {}
                             Err(e) => error!("Can't send on webview_sender: {:?}", e),
                         };
 
                         break;
                     }
-                },
-                Err(_) => {},
+                }
+                Err(_) => {}
             }
             sleep(Duration::from_millis(100));
         }
     });
 
-    Ok((server_handle, server_receiver_handle, client_receiver_handle))
+    Ok((
+        server_handle,
+        server_receiver_handle,
+        client_receiver_handle,
+    ))
 }
 
-pub fn start_webview(plazma_server_port: Arc<usize>,
-                     webview_receiver: mpsc::Receiver<String>,
-                     server_sender_arc: Arc<Mutex<mpsc::Sender<String>>>)
-    -> Result<(), Box<dyn Error>>
-{
+pub fn start_webview(
+    plazma_server_port: Arc<usize>,
+    webview_receiver: mpsc::Receiver<String>,
+    server_sender_arc: Arc<Mutex<mpsc::Sender<String>>>,
+) -> Result<(), Box<dyn Error>> {
     // Starting the webview also means we will want to open dialogs, so tell the server to
     // start a child process for dialogs.
     let a = server_sender_arc.clone();
     let server_sender = a.lock().expect("Can't lock server sender.");
 
-    let msg = serde_json::to_string(&Sending{
+    let msg = serde_json::to_string(&Sending {
         data_type: MsgDataType::StartDialogs,
         data: "".to_owned(),
-    }).unwrap();
+    })
+    .unwrap();
     match server_sender.send(msg) {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(e) => {
-            error!("🔥 Can't send StartDialogs on server_sender channel: {:?}", e);
+            error!(
+                "🔥 Can't send StartDialogs on server_sender channel: {:?}",
+                e
+            );
             return Err(Box::new(e));
-        },
+        }
     };
 
     // In development mode, use the React dev server port.
@@ -358,16 +366,16 @@ pub fn start_webview(plazma_server_port: Arc<usize>,
             } else {
                 None
             }
-        },
-        Err(_) => None
+        }
+        Err(_) => None,
     };
 
     // If the React dev server is running, load content from there. If not, load
     // our static files route which is serving the React build directory.
     let content_url = if let Some(port) = react_server_port {
-        format!{"http://localhost:{}/static/", port}
+        format! {"http://localhost:{}/static/", port}
     } else {
-        format!{"http://localhost:{}/static/", plazma_server_port}
+        format! {"http://localhost:{}/static/", plazma_server_port}
     };
 
     struct UserData {
@@ -385,7 +393,8 @@ pub fn start_webview(plazma_server_port: Arc<usize>,
                 webview_receiver: webview_receiver,
             })
             .invoke_handler(|_webview, _arg| Ok(()))
-        .build().unwrap();
+            .build()
+            .unwrap();
 
         let webview_handle = webview.handle();
 
@@ -408,31 +417,30 @@ pub fn start_webview(plazma_server_port: Arc<usize>,
         thread::spawn(move || loop {
             {
                 let res = webview_handle.dispatch(move |webview| {
-
-                    let UserData {
-                        webview_receiver,
-                    } = webview.user_data();
+                    let UserData { webview_receiver } = webview.user_data();
 
                     match webview_receiver.try_recv() {
                         Ok(text) => {
                             match text.as_ref() {
                                 "WebviewExit" => {
-                                    info!("💬 webview dispatch: WebviewExit received from server.");
+                                    info!(
+                                        "💬 webview dispatch: WebviewExit received from server."
+                                    );
                                     info!("Terminating the webview.");
                                     webview.terminate();
                                 }
 
-                                _ => {},
+                                _ => {}
                             };
-                        },
-                        Err(_) => {},
+                        }
+                        Err(_) => {}
                     }
 
                     Ok(())
                 });
 
                 match res {
-                    Ok(_) => {},
+                    Ok(_) => {}
                     Err(e) => error!("🔥 webview_handle.dispatch() {:?}", e),
                 }
             }
@@ -444,16 +452,15 @@ pub fn start_webview(plazma_server_port: Arc<usize>,
         webview.run()?;
 
         // Actor and System are stopped in server_actor.rs when handling ExitApp message.
-
     }
 
     Ok(())
 }
 
-pub fn start_preview(plazma_server_port: Arc<usize>,
-                     yml_path: Option<PathBuf>)
-    -> Result<(), Box<dyn Error>>
-{
+pub fn start_preview(
+    plazma_server_port: Arc<usize>,
+    yml_path: Option<PathBuf>,
+) -> Result<(), Box<dyn Error>> {
     info!("⚽ start_preview() start");
 
     // Channel to pass messages from the Websocket client to the OpenGL window.
@@ -481,9 +488,8 @@ pub fn start_preview(plazma_server_port: Arc<usize>,
         // FIXME check if server is up
 
         Arbiter::spawn(
-            ws::Client::new(format!{"http://127.0.0.1:{}/ws/", plazma_server_port_clone})
+            ws::Client::new(format! {"http://127.0.0.1:{}/ws/", plazma_server_port_clone})
                 .connect()
-
                 .map_err(|e| {
                     error!("🔥 ⚔️  Can not connect to server: {}", e);
                     // FIXME wait and keep trying to connect in a loop
@@ -499,8 +505,8 @@ pub fn start_preview(plazma_server_port: Arc<usize>,
                                         // FIXME stop the arbiter instead
                                         exit(0);
                                     }
-                                },
-                                Err(_) => {},
+                                }
+                                Err(_) => {}
                             }
 
                             sleep(Duration::from_millis(100));
@@ -509,11 +515,10 @@ pub fn start_preview(plazma_server_port: Arc<usize>,
 
                     ()
                 })
-
                 .map(|(reader, writer)| {
                     let addr = ClientActor::create(|ctx| {
                         ClientActor::add_stream(reader, ctx);
-                        ClientActor{
+                        ClientActor {
                             writer: writer,
                             channel_sender: client_sender,
                         }
@@ -526,9 +531,9 @@ pub fn start_preview(plazma_server_port: Arc<usize>,
                                 Ok(text) => {
                                     // A bit noisy because of the frequent SetDmoTime messages.
                                     //info!("Preview thread: passing on message: {:?}", text);
-                                    addr.do_send(ClientMessage{ data: text });
-                                },
-                                Err(_) => {},
+                                    addr.do_send(ClientMessage { data: text });
+                                }
+                                Err(_) => {}
                             }
                             sleep(Duration::from_millis(100));
                         }
@@ -544,13 +549,17 @@ pub fn start_preview(plazma_server_port: Arc<usize>,
     // Tell the UI that preview is open. Allow the OpenGL window to open and the builtin demo to be
     // rendered for user to see the response. Then request the demo currently loaded on the server.
 
-    let msg = serde_json::to_string(&Sending{
+    let msg = serde_json::to_string(&Sending {
         data_type: MsgDataType::PreviewOpened,
         data: "".to_owned(),
-    }).unwrap();
+    })
+    .unwrap();
     match server_sender.send(msg) {
-        Ok(_) => {},
-        Err(e) => error!("🔥 Can't send PreviewOpened on server_sender channel: {:?}", e),
+        Ok(_) => {}
+        Err(e) => error!(
+            "🔥 Can't send PreviewOpened on server_sender channel: {:?}",
+            e
+        ),
     };
 
     // Start OpenGL window on the main thread.
@@ -561,15 +570,17 @@ pub fn start_preview(plazma_server_port: Arc<usize>,
 
     let mut events_loop = glutin::EventsLoop::new();
 
-    let monitor = events_loop.get_available_monitors().nth(0).expect("no monitor found");
+    let monitor = events_loop
+        .get_available_monitors()
+        .nth(0)
+        .expect("no monitor found");
 
     let window_builder = if start_fullscreen {
         glutin::WindowBuilder::new()
             .with_title("plazma preview")
             .with_fullscreen(Some(monitor))
     } else {
-        glutin::WindowBuilder::new()
-            .with_title("plazma preview")
+        glutin::WindowBuilder::new().with_title("plazma preview")
     };
 
     let context_builder = glutin::ContextBuilder::new();
@@ -581,10 +592,14 @@ pub fn start_preview(plazma_server_port: Arc<usize>,
     gl::load_with(|ptr| window.context().get_proc_address(ptr) as *const _);
 
     // the polygon scenes need depth desting
-    unsafe { gl::Enable(gl::DEPTH_TEST); }
+    unsafe {
+        gl::Enable(gl::DEPTH_TEST);
+    }
 
     // set the clear color at least once
-    unsafe { gl::ClearColor(0.1, 0.2, 0.3, 1.0); }
+    unsafe {
+        gl::ClearColor(0.1, 0.2, 0.3, 1.0);
+    }
 
     let logical_size = window.window().get_inner_size().unwrap();
     let dpi_factor = window.window().get_hidpi_factor();
@@ -610,16 +625,27 @@ pub fn start_preview(plazma_server_port: Arc<usize>,
     // server. The render loop will probably render a frame of the builtin demo before the response
     // is processed.
 
-    let msg = serde_json::to_string(&Sending{
-        data_type: MsgDataType::FetchDmo,
+    let msg = serde_json::to_string(&Sending {
+        data_type: MsgDataType::FetchDmoFile,
         data: "".to_owned(),
-    }).unwrap();
+    })
+    .unwrap();
     match server_sender.send(msg) {
-        Ok(_) => info!("start_preview() Sent FetchDmo to server"),
-        Err(e) => error!("🔥 start_preview() Can't send FetchDmo on server_sender channel: {:?}", e),
+        Ok(_) => info!("start_preview() Sent FetchDmoFile to server"),
+        Err(e) => error!(
+            "🔥 start_preview() Can't send FetchDmoFile on server_sender channel: {:?}",
+            e
+        ),
     };
 
-    render_loop(&window, &mut events_loop, &mut state, &mut rocket, client_receiver, &server_sender);
+    render_loop(
+        &window,
+        &mut events_loop,
+        &mut state,
+        &mut rocket,
+        client_receiver,
+        &server_sender,
+    );
 
     // TODO app_sender will error when server is connected. Detect that condition and don't send
     // messages.
@@ -632,9 +658,9 @@ pub fn start_preview(plazma_server_port: Arc<usize>,
     }
 
     match client_handle.join() {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(e) => {
-            error!{"{:?}", e};
+            error! {"{:?}", e};
         }
     };
 
@@ -643,20 +669,19 @@ pub fn start_preview(plazma_server_port: Arc<usize>,
     Ok(())
 }
 
-fn render_loop(window: &GlWindow,
-               events_loop: &mut EventsLoop,
-               state: &mut PreviewState,
-               mut rocket: &mut Option<SyncClient>,
-               client_receiver: mpsc::Receiver<String>,
-               server_sender: &mpsc::Sender<String>)
-    -> ()
-{
+fn render_loop(
+    window: &GlWindow,
+    events_loop: &mut EventsLoop,
+    state: &mut PreviewState,
+    mut rocket: &mut Option<SyncClient>,
+    client_receiver: mpsc::Receiver<String>,
+    server_sender: &mpsc::Sender<String>,
+) -> () {
     info!("⚽ render_loop() start");
 
     let mut dpi_factor = window.window().get_hidpi_factor();
 
     while state.get_is_running() {
-
         state.draw_anyway = false;
 
         // 000. handle server messages
@@ -676,29 +701,31 @@ fn render_loop(window: &GlWindow,
                     info!("render_loop() Received StopSystem.");
                     state.set_is_running(false);
                 } else {
-
                     let message: Receiving = match serde_json::from_str(&text) {
                         Ok(x) => x,
                         Err(e) => {
-                            error!{"🔥 render_loop() Can't deserialize message: {:?}", e};
+                            error! {"🔥 render_loop() Can't deserialize message: {:?}", e};
                             // Assign a NOOP instead of returning from the function.
-                            Receiving { data_type: NoOp, data: "".to_string() }
-                        },
+                            Receiving {
+                                data_type: NoOp,
+                                data: "".to_string(),
+                            }
+                        }
                     };
                     //info!{"Received: message.data_type: {:?}", message.data_type};
 
                     use crate::server_actor::MsgDataType::*;
                     match message.data_type {
+                        NoOp => {}
 
-                        NoOp => {},
+                        FetchDmoFile => {}
+                        FetchDmoInline => {}
 
-                        FetchDmo => {},
-
-                        SetDmo => {
-                            info!("render_loop() Received SetDmo");
+                        SetDmoInline => {
+                            info!("render_loop() Received SetDmoInline");
                             let (sx, sy) = state.dmo_gfx.context.get_screen_resolution();
                             let (wx, wy) = state.dmo_gfx.context.get_window_resolution();
-                            info!{"sx: {}, sy: {}", sx, sy};
+                            info! {"sx: {}, sy: {}", sx, sy};
                             let camera = state.dmo_gfx.context.camera.get_copy();
 
                             match serde_json::from_str::<SetDmoMsg>(&message.data) {
@@ -707,53 +734,112 @@ fn render_loop(window: &GlWindow,
                                     //   the updated shaders are sent directly from the UI
                                     // - do read in images,
                                     //   these are passed only by path from the UI
-                                    match state.build_dmo_gfx_from_dmo_msg(&msg, false, true,
-                                                                           sx, sy,
-                                                                           Some(camera))
-                                    {
+                                    match state.build_dmo_gfx_from_dmo_msg(
+                                        &msg,
+                                        false,
+                                        true,
+                                        sx,
+                                        sy,
+                                        Some(camera),
+                                    ) {
                                         Ok(_) => {
-                                            match state.callback_window_resized(wx as f64, wy as f64) {
-                                                Ok(_) => {},
-                                                Err(e) => error!("🔥 callback_window_resized() {:?}", e),
+                                            match state
+                                                .callback_window_resized(wx as f64, wy as f64)
+                                            {
+                                                Ok(_) => {}
+                                                Err(e) => {
+                                                    error!("🔥 callback_window_resized() {:?}", e)
+                                                }
                                             }
-                                        },
-                                        Err(e) => error!{"🔥 Can't perform SetDmo: {:?}", e},
+                                        }
+                                        Err(e) => {
+                                            error! {"🔥 Can't perform SetDmoInline: {:?}", e}
+                                        }
                                     }
-                                },
+                                }
                                 Err(e) => error!("🔥 Can't deserialize SetDmoMsg: {:?}", e),
                             };
-                        },
+                        }
+
+                        SetDmoFile => {
+                            info!("render_loop() Received SetDmoFile");
+                            let (sx, sy) = state.dmo_gfx.context.get_screen_resolution();
+                            let (wx, wy) = state.dmo_gfx.context.get_window_resolution();
+                            info! {"sx: {}, sy: {}", sx, sy};
+                            let camera = state.dmo_gfx.context.camera.get_copy();
+
+                            let path = serde_json::from_str::<PathBuf>(&message.data).unwrap();
+                            let mut file = File::open(&path).unwrap();
+                            let mut data = String::new();
+                            file.read_to_string(&mut data).unwrap();
+
+                            match fs::remove_file(&path) {
+                                Ok(_) => {}
+                                Err(e) => error! {"Can't remove file: {:?}", e},
+                            };
+
+                            match serde_json::from_str(&data) {
+                                Ok(msg) => {
+                                    // - don't read in shader files again,
+                                    //   the updated shaders are sent directly from the UI
+                                    // - do read in images,
+                                    //   these are passed only by path from the UI
+                                    match state.build_dmo_gfx_from_dmo_msg(
+                                        &msg,
+                                        false,
+                                        true,
+                                        sx,
+                                        sy,
+                                        Some(camera),
+                                    ) {
+                                        Ok(_) => {
+                                            match state
+                                                .callback_window_resized(wx as f64, wy as f64)
+                                            {
+                                                Ok(_) => {}
+                                                Err(e) => {
+                                                    error!("🔥 callback_window_resized() {:?}", e)
+                                                }
+                                            }
+                                        }
+                                        Err(e) => error! {"🔥 Can't perform SetDmoFile: {:?}", e},
+                                    }
+                                }
+                                Err(e) => error!("🔥 Can't deserialize SetDmoMsg: {:?}", e),
+                            };
+                        }
 
                         SetDmoTime => {
                             let time: f64 = match serde_json::from_str(&message.data) {
                                 Ok(x) => x,
                                 Err(e) => {
-                                    error!{"🔥 Can't deserialize to time f64: {:?}", e};
+                                    error! {"🔥 Can't deserialize to time f64: {:?}", e};
                                     return;
-                                },
+                                }
                             };
                             state.set_time(time);
-                        },
+                        }
 
                         GetDmoTime => {
                             // When Rocket is not connected, send the server the time.
-                            let msg = serde_json::to_string(&Sending{
+                            let msg = serde_json::to_string(&Sending {
                                 data_type: MsgDataType::SetDmoTime,
-                                data: format!{"{}", state.get_time()},
-                            }).unwrap();
+                                data: format! {"{}", state.get_time()},
+                            })
+                            .unwrap();
                             match server_sender.send(msg) {
-                                Ok(_) => {},
-                                Err(_) => {},
+                                Ok(_) => {}
+                                Err(_) => {}
                             };
-                        },
+                        }
 
                         SetShader => {
                             let msg: SetShaderMsg = match serde_json::from_str(&message.data) {
                                 Ok(x) => x,
                                 Err(e) => {
-                                    error!{"🔥 Can't deserialize to SetShaderMsg: {:?}", e};
+                                    error! {"🔥 Can't deserialize to SetShaderMsg: {:?}", e};
                                     return;
-                                },
+                                }
                             };
 
                             match state.set_shader(msg.idx, &msg.content) {
@@ -761,56 +847,55 @@ fn render_loop(window: &GlWindow,
                                     info!("ShaderCompilationSuccess");
                                     state.draw_anyway = true;
 
-                                    let data = ShaderCompilationSuccessMsg {
-                                        idx: msg.idx,
-                                    };
+                                    let data = ShaderCompilationSuccessMsg { idx: msg.idx };
 
-                                    let msg = serde_json::to_string(&Sending{
+                                    let msg = serde_json::to_string(&Sending {
                                         data_type: MsgDataType::ShaderCompilationSuccess,
                                         data: serde_json::to_string(&data).unwrap(),
-                                    }).unwrap();
+                                    })
+                                    .unwrap();
                                     match server_sender.send(msg) {
                                         Ok(_) => {},
                                         Err(e) => error!("🔥 Can't send ShaderCompilationSuccess on server_sender: {:?}", e),
                                     };
-                                },
+                                }
                                 Err(e) => match e {
                                     ToolError::Runtime(ref e, ref error_msg) => {
                                         info!("{:?}, error message:\n{:#?}", e, error_msg);
                                         match e {
                                             RuntimeError::ShaderCompilationFailed => {
-
                                                 let data = ShaderCompilationFailedMsg {
                                                     idx: msg.idx,
                                                     error_message: error_msg.clone(),
                                                 };
 
-                                                let msg = serde_json::to_string(&Sending{
+                                                let msg = serde_json::to_string(&Sending {
                                                     data_type: MsgDataType::ShaderCompilationFailed,
                                                     data: serde_json::to_string(&data).unwrap(),
-                                                }).unwrap();
+                                                })
+                                                .unwrap();
                                                 match server_sender.send(msg) {
                                                     Ok(_) => {},
                                                     Err(e) => error!("🔥 Can't send ShaderCompilationFailed on server_sender: {:?}", e),
                                                 };
-
-                                            },
-                                            _ => error!{"🔥 Can't perform SetShader: {:?}", e},
+                                            }
+                                            _ => error! {"🔥 Can't perform SetShader: {:?}", e},
                                         }
                                     }
-                                    _ => error!{"🔥 Can't perform SetShader: {:?}", e},
+                                    _ => error! {"🔥 Can't perform SetShader: {:?}", e},
                                 },
                             };
-                        },
+                        }
 
                         SetSettings => {
-                            let settings_data: crate::dmo_data::Settings = match serde_json::from_str(&message.data) {
-                                Ok(x) => x,
-                                Err(e) => {
-                                    error!{"🔥 Can't deserialize to Settings: {:?}", e};
-                                    return;
-                                },
-                            };
+                            let settings_data: crate::dmo_data::Settings =
+                                match serde_json::from_str(&message.data) {
+                                    Ok(x) => x,
+                                    Err(e) => {
+                                        error! {"🔥 Can't deserialize to Settings: {:?}", e};
+                                        return;
+                                    }
+                                };
 
                             let settings = intro_runtime::dmo_gfx::Settings {
                                 start_full_screen: settings_data.start_full_screen,
@@ -820,50 +905,52 @@ fn render_loop(window: &GlWindow,
                                 total_length: settings_data.total_length,
                             };
                             state.dmo_gfx.settings = settings;
-                        },
+                        }
 
-                        SetMetadata => {},
+                        SetMetadata => {}
 
-                        ShowErrorMessage =>
-                            error!{"🔥 Server is sending error: {:?}", message.data},
+                        ShowErrorMessage => {
+                            error! {"🔥 Server is sending error: {:?}", message.data}
+                        }
 
-                        ShaderCompilationSuccess => {},
-                        ShaderCompilationFailed => {},
-                        StartPreview => {},
+                        ShaderCompilationSuccess => {}
+                        ShaderCompilationFailed => {}
+                        StartPreview => {}
 
                         StopPreview => {
                             info!("render_loop() Received StopPreview.");
                             state.set_is_running(false);
-                        },
+                        }
 
-                        PreviewOpened => {},
-                        PreviewClosed => {},
-                        StartDialogs => {},
-                        OpenProjectFileDialog => {},
-                        OpenProjectFilePath => {},
-                        ReloadProject => {},
-                        SaveProject => {},
-                        NewProject => {},
+                        PreviewOpened => {}
+                        PreviewClosed => {}
+                        StartDialogs => {}
+                        OpenProjectFileDialog => {}
+                        OpenProjectFilePath => {}
+                        ReloadProject => {}
+                        SaveProject => {}
+                        NewProject => {}
+                        DeleteMessageFile => {}
 
                         ExitApp => {
                             info!("render_loop() Received ExitApp.");
                             state.set_is_running(false);
-                        },
+                        }
                     }
                 }
-            },
+            }
 
             Err(e) => match e {
-                TryRecvError::Empty => {},
+                TryRecvError::Empty => {}
                 _ => error!("render_loop() can't receive: {:?}", e),
-            }
+            },
         }
 
         // 00. recompile if flag was set
         // FIXME process ShaderCompilationFailed
         match state.recompile_dmo() {
-            Ok(_) => {},
-            Err(e) => error!{"{:?}", e},
+            Ok(_) => {}
+            Err(e) => error! {"{:?}", e},
         }
 
         // 0. update time
@@ -879,12 +966,12 @@ fn render_loop(window: &GlWindow,
         // 1. sync vars (time, camera, etc.)
 
         match state.update_rocket(&mut rocket) {
-            Ok(_) => {},
+            Ok(_) => {}
             Err(e) => error!("🔥 state.update_rocket() returned: {:?}", e),
         }
 
         match state.update_vars() {
-            Ok(_) => {},
+            Ok(_) => {}
             Err(e) => error!("🔥 state.update_vars() returned: {:?}", e),
         }
 
@@ -902,13 +989,15 @@ fn render_loop(window: &GlWindow,
                 Event::WindowEvent { event, .. } => match event {
                     WindowEvent::CloseRequested => {
                         state.set_is_running(false);
-                    },
+                    }
 
-                    WindowEvent::KeyboardInput{ device_id: _, input } => {
+                    WindowEvent::KeyboardInput {
+                        device_id: _,
+                        input,
+                    } => {
                         use glutin::VirtualKeyCode::*;
 
                         if let Some(vcode) = input.virtual_keycode {
-
                             let pressed = match input.state {
                                 ElementState::Pressed => true,
                                 ElementState::Released => false,
@@ -920,7 +1009,7 @@ fn render_loop(window: &GlWindow,
                                 // movement
                                 W | A | S | D => {
                                     state.set_key_pressed(vcode, pressed);
-                                },
+                                }
 
                                 // explore mode
                                 X => {
@@ -935,84 +1024,112 @@ fn render_loop(window: &GlWindow,
                                     if state.explore_mode {
                                         state.set_camera_from_context();
                                     }
-                                },
+                                }
 
                                 // pause time
-                                Space => if !pressed {
-                                    // Only when Rocket is not on. Otherwise it controls paused state.
-                                    if rocket.is_none() { state.toggle_paused(); }
-                                },
+                                Space => {
+                                    if !pressed {
+                                        // Only when Rocket is not on. Otherwise it controls paused state.
+                                        if rocket.is_none() {
+                                            state.toggle_paused();
+                                        }
+                                    }
+                                }
 
                                 // move time backwards 2s
-                                Left => if !pressed {
-                                    if rocket.is_none() {
-                                        state.move_time_ms(-2000);
-                                        match state.update_vars() {
-                                            Ok(_) => {},
-                                            Err(e) => error!("🔥 update_vars() {:?}", e),
+                                Left => {
+                                    if !pressed {
+                                        if rocket.is_none() {
+                                            state.move_time_ms(-2000);
+                                            match state.update_vars() {
+                                                Ok(_) => {}
+                                                Err(e) => error!("🔥 update_vars() {:?}", e),
+                                            }
                                         }
                                     }
-                                },
+                                }
 
                                 // move time forward 2s
-                                Right => if !pressed {
-                                    if rocket.is_none() {
-                                        state.move_time_ms(2000);
-                                        match state.update_vars() {
-                                            Ok(_) => {},
-                                            Err(e) => error!("🔥 update_vars() {:?}", e),
+                                Right => {
+                                    if !pressed {
+                                        if rocket.is_none() {
+                                            state.move_time_ms(2000);
+                                            match state.update_vars() {
+                                                Ok(_) => {}
+                                                Err(e) => error!("🔥 update_vars() {:?}", e),
+                                            }
                                         }
                                     }
-                                },
+                                }
 
                                 // print camera values
-                                C => if pressed {
-                                    println!("------------------------------");
-                                    println!("");
-                                    println!("--- dmo_gfx.context.camera ---");
-                                    let a: &Vector3 = state.dmo_gfx.context.camera.get_position();
-                                    println!(".position: {}, {}, {}", a.x, a.y, a.z);
-                                    let a: &Vector3 = state.dmo_gfx.context.camera.get_front();
-                                    println!(".front: {}, {}, {}", a.x, a.y, a.z);
-                                    println!(".pitch: {}", state.dmo_gfx.context.camera.pitch);
-                                    println!(".yaw: {}", state.dmo_gfx.context.camera.yaw);
-                                    println!("");
-                                    println!("--- dmo_gfx.context.polygon_context ---");
-                                    let a: &Vector3 = state.dmo_gfx.context.polygon_context.get_view_position();
-                                    println!(".view_position: {}, {}, {}", a.x, a.y, a.z);
-                                    let a: &Vector3 = state.dmo_gfx.context.polygon_context.get_view_front();
-                                    println!(".view_front: {}, {}, {}", a.x, a.y, a.z);
-                                    println!("");
+                                C => {
+                                    if pressed {
+                                        println!("------------------------------");
+                                        println!("");
+                                        println!("--- dmo_gfx.context.camera ---");
+                                        let a: &Vector3 =
+                                            state.dmo_gfx.context.camera.get_position();
+                                        println!(".position: {}, {}, {}", a.x, a.y, a.z);
+                                        let a: &Vector3 = state.dmo_gfx.context.camera.get_front();
+                                        println!(".front: {}, {}, {}", a.x, a.y, a.z);
+                                        println!(".pitch: {}", state.dmo_gfx.context.camera.pitch);
+                                        println!(".yaw: {}", state.dmo_gfx.context.camera.yaw);
+                                        println!("");
+                                        println!("--- dmo_gfx.context.polygon_context ---");
+                                        let a: &Vector3 = state
+                                            .dmo_gfx
+                                            .context
+                                            .polygon_context
+                                            .get_view_position();
+                                        println!(".view_position: {}, {}, {}", a.x, a.y, a.z);
+                                        let a: &Vector3 =
+                                            state.dmo_gfx.context.polygon_context.get_view_front();
+                                        println!(".view_front: {}, {}, {}", a.x, a.y, a.z);
+                                        println!("");
+                                    }
                                 }
 
                                 _ => (),
                             }
                         }
-                    },
+                    }
 
-                    WindowEvent::CursorMoved{ device_id: _, position, modifiers: _ } => {
+                    WindowEvent::CursorMoved {
+                        device_id: _,
+                        position,
+                        modifiers: _,
+                    } => {
                         let (mx, my) = position.into();
                         state.callback_mouse_moved(mx, my);
-                    },
+                    }
 
-                    WindowEvent::MouseWheel{ device_id: _, delta, phase: _, modifiers: _ } => {
-                        match delta {
-                            glutin::MouseScrollDelta::LineDelta(_, dy) => {
-                                state.callback_mouse_wheel(dy);
-                            },
-                            glutin::MouseScrollDelta::PixelDelta(position) => {
-                                let (_, dy): (f64, f64) = position.into();
-                                state.callback_mouse_wheel(dy as f32);
-                            }
+                    WindowEvent::MouseWheel {
+                        device_id: _,
+                        delta,
+                        phase: _,
+                        modifiers: _,
+                    } => match delta {
+                        glutin::MouseScrollDelta::LineDelta(_, dy) => {
+                            state.callback_mouse_wheel(dy);
+                        }
+                        glutin::MouseScrollDelta::PixelDelta(position) => {
+                            let (_, dy): (f64, f64) = position.into();
+                            state.callback_mouse_wheel(dy as f32);
                         }
                     },
 
-                    WindowEvent::MouseInput{ device_id: _, state: pressed_state, button, modifiers: _ } => {
+                    WindowEvent::MouseInput {
+                        device_id: _,
+                        state: pressed_state,
+                        button,
+                        modifiers: _,
+                    } => {
                         state.callback_mouse_input(pressed_state, button);
-                    },
+                    }
 
-                    WindowEvent::CursorEntered{ device_id: _ } => {},
-                    WindowEvent::CursorLeft{ device_id: _ } => {},
+                    WindowEvent::CursorEntered { device_id: _ } => {}
+                    WindowEvent::CursorLeft { device_id: _ } => {}
 
                     WindowEvent::HiDpiFactorChanged(dpi) => {
                         dpi_factor = dpi;
@@ -1020,19 +1137,19 @@ fn render_loop(window: &GlWindow,
 
                     WindowEvent::Refresh => {
                         state.draw_anyway = true;
-                    },
+                    }
 
                     WindowEvent::Resized(logical_size) => {
-                        info!{"WindowEvent::Resized"};
+                        info! {"WindowEvent::Resized"};
 
                         let physical_size = logical_size.to_physical(dpi_factor);
                         let (wx, wy) = (physical_size.width, physical_size.height);
 
                         match state.callback_window_resized(wx as f64, wy as f64) {
-                            Ok(_) => {},
+                            Ok(_) => {}
                             Err(e) => error!("🔥 callback_window_resized() {:?}", e),
                         }
-                    },
+                    }
                     _ => (),
                 },
                 _ => (),
@@ -1050,7 +1167,7 @@ fn render_loop(window: &GlWindow,
         // 5. draw if we are not paused or should draw anyway (e.g. assets changed)
 
         match state.dmo_gfx.update_polygon_context() {
-            Ok(_) => {},
+            Ok(_) => {}
             Err(e) => error!("update_polygon_context() returned: {:?}", e),
         };
 
@@ -1069,7 +1186,7 @@ fn render_loop(window: &GlWindow,
         state.t_delta = state.t_frame_start.elapsed();
 
         if state.t_delta < state.t_frame_target {
-            if let Some(t_sleep) = state.t_frame_target.checked_sub(state.t_delta)  {
+            if let Some(t_sleep) = state.t_frame_target.checked_sub(state.t_delta) {
                 //info!("sleep: {}ms", t_sleep.subsec_nanos() / 1000 / 1000);
                 sleep(t_sleep);
             }
@@ -1098,26 +1215,28 @@ fn render_loop(window: &GlWindow,
         }
     }
 
-    let msg = serde_json::to_string(&Sending{
+    let msg = serde_json::to_string(&Sending {
         data_type: MsgDataType::PreviewClosed,
         data: "".to_owned(),
-    }).unwrap();
+    })
+    .unwrap();
     match server_sender.send(msg) {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(e) => error!("🔥 Can't send PreviewClosed on server_sender: {:?}", e),
     };
 
     match server_sender.send("StopSystem".to_owned()) {
         Ok(_) => info!("render_loop() sent StopSystem"),
-        Err(e) => error!("🔥 render_loop() Can't send StopSystem on server_sender: {:?}", e),
+        Err(e) => error!(
+            "🔥 render_loop() Can't send StopSystem on server_sender: {:?}",
+            e
+        ),
     };
 
     info!("🏁 render_loop() return");
 }
 
-pub fn start_dialogs(plazma_server_port: Arc<usize>)
-    -> Result<(), Box<dyn Error>>
-{
+pub fn start_dialogs(plazma_server_port: Arc<usize>) -> Result<(), Box<dyn Error>> {
     info!("⚽ start_dialogs() start");
 
     // Channel to pass messages from the Websocket client to the OpenGL window.
@@ -1145,9 +1264,8 @@ pub fn start_dialogs(plazma_server_port: Arc<usize>)
         // FIXME check if server is up
 
         Arbiter::spawn(
-            ws::Client::new(format!{"http://127.0.0.1:{}/ws/", plazma_server_port_clone})
+            ws::Client::new(format! {"http://127.0.0.1:{}/ws/", plazma_server_port_clone})
                 .connect()
-
                 .map_err(|e| {
                     error!("🔥 ⚔️  Can not connect to server: {}", e);
                     // FIXME wait and keep trying to connect in a loop
@@ -1163,8 +1281,8 @@ pub fn start_dialogs(plazma_server_port: Arc<usize>)
                                         // FIXME stop the arbiter instead
                                         exit(0);
                                     }
-                                },
-                                Err(_) => {},
+                                }
+                                Err(_) => {}
                             }
 
                             sleep(Duration::from_millis(100));
@@ -1173,11 +1291,10 @@ pub fn start_dialogs(plazma_server_port: Arc<usize>)
 
                     ()
                 })
-
                 .map(|(reader, writer)| {
                     let addr = ClientActor::create(|ctx| {
                         ClientActor::add_stream(reader, ctx);
-                        ClientActor{
+                        ClientActor {
                             writer: writer,
                             channel_sender: client_sender,
                         }
@@ -1189,9 +1306,9 @@ pub fn start_dialogs(plazma_server_port: Arc<usize>)
                             match server_receiver.try_recv() {
                                 Ok(text) => {
                                     info!("Dialogs thread: passing on message: {:?}", text);
-                                    addr.do_send(ClientMessage{ data: text });
-                                },
-                                Err(_) => {},
+                                    addr.do_send(ClientMessage { data: text });
+                                }
+                                Err(_) => {}
                             }
                             sleep(Duration::from_millis(100));
                         }
@@ -1219,9 +1336,9 @@ pub fn start_dialogs(plazma_server_port: Arc<usize>)
     }
 
     match client_handle.join() {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(e) => {
-            error!{"{:?}", e};
+            error! {"{:?}", e};
         }
     };
 
@@ -1230,54 +1347,62 @@ pub fn start_dialogs(plazma_server_port: Arc<usize>)
     Ok(())
 }
 
-fn dialogs_loop(client_receiver: mpsc::Receiver<String>,
-                server_sender: &mpsc::Sender<String>)
-    -> ()
-{
+fn dialogs_loop(
+    client_receiver: mpsc::Receiver<String>,
+    server_sender: &mpsc::Sender<String>,
+) -> () {
     info!("⚽ dialogs_loop() start");
     let mut is_running = true;
 
     while is_running {
-
         match client_receiver.try_recv() {
             Ok(text) => {
                 if text == "StopSystem" {
                     info!("render_loop() Received StopSystem.");
                     is_running = false;
                 } else {
-
                     let message: Receiving = match serde_json::from_str(&text) {
                         Ok(x) => x,
                         Err(e) => {
-                            error!{"🔥 dialogs_loop() Can't deserialize message: {:?}", e};
+                            error! {"🔥 dialogs_loop() Can't deserialize message: {:?}", e};
                             // Assign a NOOP instead of returning from the function.
-                            Receiving { data_type: NoOp, data: "".to_string() }
-                        },
+                            Receiving {
+                                data_type: NoOp,
+                                data: "".to_string(),
+                            }
+                        }
                     };
 
                     use crate::server_actor::MsgDataType::*;
                     match message.data_type {
-
-                        NoOp => {},
-                        FetchDmo => {},
-                        SetDmo => {},
-                        SetDmoTime => {},
-                        GetDmoTime => {},
-                        SetShader => {},
-                        SetSettings => {},
-                        SetMetadata => {},
-                        ShowErrorMessage => {},
-                        ShaderCompilationSuccess => {},
-                        ShaderCompilationFailed => {},
-                        StartPreview => {},
-                        StopPreview => {},
-                        PreviewOpened => {},
-                        PreviewClosed => {},
-                        StartDialogs => {},
+                        NoOp => {}
+                        FetchDmoFile => {}
+                        FetchDmoInline => {}
+                        SetDmoInline => {}
+                        SetDmoFile => {
+                            let path = serde_json::from_str::<PathBuf>(&message.data).unwrap();
+                            match fs::remove_file(&path) {
+                                Ok(_) => {}
+                                Err(e) => error! {"Can't remove file: {:?}", e},
+                            };
+                        }
+                        SetDmoTime => {}
+                        GetDmoTime => {}
+                        SetShader => {}
+                        SetSettings => {}
+                        SetMetadata => {}
+                        ShowErrorMessage => {}
+                        ShaderCompilationSuccess => {}
+                        ShaderCompilationFailed => {}
+                        StartPreview => {}
+                        StopPreview => {}
+                        PreviewOpened => {}
+                        PreviewClosed => {}
+                        StartDialogs => {}
 
                         OpenProjectFileDialog => {
-
-                            let res = nfd::open_file_dialog(None, None).expect("Failed to open a native file dialog.");
+                            let res = nfd::open_file_dialog(None, None)
+                                .expect("Failed to open a native file dialog.");
 
                             let mut path = String::new();
                             match res {
@@ -1285,38 +1410,43 @@ fn dialogs_loop(client_receiver: mpsc::Receiver<String>,
 
                                 NfdResponse::OkayMultiple(files) => path = files[0].to_string(),
 
-                                NfdResponse::Cancel => {},
+                                NfdResponse::Cancel => {}
                             }
 
                             if path.len() > 0 {
-                                let msg = serde_json::to_string(&Sending{
+                                let msg = serde_json::to_string(&Sending {
                                     data_type: MsgDataType::OpenProjectFilePath,
                                     data: serde_json::to_string(&path).unwrap(),
-                                }).unwrap();
+                                })
+                                .unwrap();
                                 match server_sender.send(msg) {
-                                    Ok(_) => {},
-                                    Err(e) => error!("🔥 Can't send OpenProjectFilePath on server_sender: {:?}", e),
+                                    Ok(_) => {}
+                                    Err(e) => error!(
+                                        "🔥 Can't send OpenProjectFilePath on server_sender: {:?}",
+                                        e
+                                    ),
                                 };
                             }
-                        },
+                        }
 
-                        OpenProjectFilePath => {},
-                        ReloadProject => {},
-                        SaveProject => {},
-                        NewProject => {},
+                        OpenProjectFilePath => {}
+                        ReloadProject => {}
+                        SaveProject => {}
+                        NewProject => {}
+                        DeleteMessageFile => {}
 
                         ExitApp => {
                             info!("dialogs_loop() Received ExitApp.");
                             is_running = false;
-                        },
+                        }
                     }
                 }
-            },
+            }
 
             Err(e) => match e {
-                TryRecvError::Empty => {},
+                TryRecvError::Empty => {}
                 _ => error!("dialogs_loop() can't receive: {:?}", e),
-            }
+            },
         }
 
         sleep(Duration::from_millis(100));
@@ -1324,7 +1454,10 @@ fn dialogs_loop(client_receiver: mpsc::Receiver<String>,
 
     match server_sender.send("StopSystem".to_owned()) {
         Ok(_) => info!("dialogs_loop() sent StopSystem"),
-        Err(e) => error!("🔥 dialogs_loop() Can't send StopSystem on server_sender: {:?}", e),
+        Err(e) => error!(
+            "🔥 dialogs_loop() Can't send StopSystem on server_sender: {:?}",
+            e
+        ),
     };
 
     info!("🏁 dialogs_loop() return");

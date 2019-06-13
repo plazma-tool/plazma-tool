@@ -3,9 +3,9 @@ use core::mem;
 use gl;
 use gl::types::*;
 
-use crate::types::{Image, PixelFormat};
 use crate::error::RuntimeError;
 use crate::error::RuntimeError::*;
+use crate::types::{Image, PixelFormat};
 
 #[derive(Clone)]
 pub struct Texture {
@@ -27,12 +27,12 @@ impl Texture {
         }
     }
 
-    pub fn create_texture(&mut self,
-                          width: i32,
-                          height: i32,
-                          image: Option<&Image>)
-                          -> Result<(), RuntimeError>
-    {
+    pub fn create_texture(
+        &mut self,
+        width: i32,
+        height: i32,
+        image: Option<&Image>,
+    ) -> Result<(), RuntimeError> {
         self.width = width;
         self.height = height;
 
@@ -55,13 +55,25 @@ impl Texture {
                 self.id = Some(tex_id);
                 gl::BindTexture(gl::TEXTURE_2D, tex_id);
 
-                gl::TexImage2D(gl::TEXTURE_2D, 0, format as i32,
-                               img.width as i32, img.height as i32, 0, format, data_type,
-                               mem::transmute( img.raw_pixels.as_ptr() ));
+                gl::TexImage2D(
+                    gl::TEXTURE_2D,
+                    0,
+                    format as i32,
+                    img.width as i32,
+                    img.height as i32,
+                    0,
+                    format,
+                    data_type,
+                    mem::transmute(img.raw_pixels.as_ptr()),
+                );
                 gl::GenerateMipmap(gl::TEXTURE_2D);
                 gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32);
                 gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as i32);
-                gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR_MIPMAP_LINEAR as i32);
+                gl::TexParameteri(
+                    gl::TEXTURE_2D,
+                    gl::TEXTURE_MIN_FILTER,
+                    gl::LINEAR_MIPMAP_LINEAR as i32,
+                );
                 gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
             }
         } else {
@@ -89,7 +101,11 @@ impl Texture {
     }
 
     pub fn gl_cleanup(&mut self) {
-        if let Some(n) = self.id { unsafe { gl::DeleteTextures(1, &n); } }
+        if let Some(n) = self.id {
+            unsafe {
+                gl::DeleteTextures(1, &n);
+            }
+        }
         self.id = None;
     }
 }

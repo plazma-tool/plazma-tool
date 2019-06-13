@@ -9,10 +9,7 @@ pub struct DataBlob {
 
 impl DataBlob {
     pub fn new(data: SmallVec<[u8; 0x8000]>) -> DataBlob {
-        DataBlob {
-            data: data,
-            idx: 0,
-        }
+        DataBlob { data: data, idx: 0 }
     }
 
     pub fn get_idx(&self) -> usize {
@@ -30,14 +27,11 @@ impl DataBlob {
     }
 
     pub fn read_u16(&mut self) -> u16 {
-        let bytes: &[u8] = &self.data[self.idx .. self.idx+2];
+        let bytes: &[u8] = &self.data[self.idx..self.idx + 2];
 
         let mut number: u16 = 0;
         unsafe {
-            ptr::copy_nonoverlapping(
-                bytes.as_ptr(),
-                &mut number as *mut u16 as *mut u8,
-                2);
+            ptr::copy_nonoverlapping(bytes.as_ptr(), &mut number as *mut u16 as *mut u8, 2);
         };
         number.to_le();
 
@@ -46,14 +40,11 @@ impl DataBlob {
     }
 
     pub fn read_u32(&mut self) -> u32 {
-        let bytes: &[u8] = &self.data[self.idx .. self.idx+4];
+        let bytes: &[u8] = &self.data[self.idx..self.idx + 4];
 
         let mut number: u32 = 0;
         unsafe {
-            ptr::copy_nonoverlapping(
-                bytes.as_ptr(),
-                &mut number as *mut u32 as *mut u8,
-                4);
+            ptr::copy_nonoverlapping(bytes.as_ptr(), &mut number as *mut u32 as *mut u8, 4);
         };
         number.to_le();
 
@@ -62,14 +53,11 @@ impl DataBlob {
     }
 
     pub fn read_u64(&mut self) -> u64 {
-        let bytes: &[u8] = &self.data[self.idx .. self.idx+8];
+        let bytes: &[u8] = &self.data[self.idx..self.idx + 8];
 
         let mut number: u64 = 0;
         unsafe {
-            ptr::copy_nonoverlapping(
-                bytes.as_ptr(),
-                &mut number as *mut u64 as *mut u8,
-                8);
+            ptr::copy_nonoverlapping(bytes.as_ptr(), &mut number as *mut u64 as *mut u8, 8);
         };
         number.to_le();
 
@@ -91,7 +79,7 @@ impl DataBlob {
         if str_len == 0 {
             return "";
         }
-        let text = str::from_utf8(&self.data[self.idx .. self.idx+str_len]).unwrap();
+        let text = str::from_utf8(&self.data[self.idx..self.idx + str_len]).unwrap();
         self.idx += str_len;
         text
     }
@@ -99,7 +87,7 @@ impl DataBlob {
     pub fn read_u8_vec(&mut self, len: usize) -> SmallVec<[u8; 1024]> {
         let mut ret: SmallVec<[u8; 1024]> = SmallVec::new();
 
-        ret.extend(self.data[self.idx .. self.idx+len].iter().cloned());
+        ret.extend(self.data[self.idx..self.idx + len].iter().cloned());
 
         self.idx += len;
         ret
@@ -108,7 +96,7 @@ impl DataBlob {
     pub fn read_f32_vec(&mut self, len: usize) -> SmallVec<[f32; 1024]> {
         let mut ret: SmallVec<[f32; 1024]> = SmallVec::new();
 
-        for _ in 0 .. len {
+        for _ in 0..len {
             ret.push(self.read_f32());
         }
 

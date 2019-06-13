@@ -1,14 +1,14 @@
-use std::error::Error;
 use std::collections::BTreeMap;
+use std::error::Error;
 use std::path::PathBuf;
 
-use crate::project_data::{get_template_asset_string, get_template_asset_bytes};
 use crate::dmo_data::context_data::{FrameBuffer, Image, PixelFormat};
-use crate::dmo_data::quad_scene::QuadScene;
-use crate::dmo_data::quad_scene::{DRAW_RESULT_VERT_SRC_PATH, DRAW_RESULT_FRAG_SRC_PATH};
-use crate::dmo_data::polygon_scene::PolygonScene;
 use crate::dmo_data::model::Model;
+use crate::dmo_data::polygon_scene::PolygonScene;
+use crate::dmo_data::quad_scene::QuadScene;
+use crate::dmo_data::quad_scene::{DRAW_RESULT_FRAG_SRC_PATH, DRAW_RESULT_VERT_SRC_PATH};
 use crate::error::ToolError;
+use crate::project_data::{get_template_asset_bytes, get_template_asset_string};
 use crate::utils::file_to_string;
 
 use image::{self, GenericImageView};
@@ -48,70 +48,96 @@ impl DataIndex {
         }
     }
 
-    pub fn add_quad_scene(&mut self,
-                          scene: &QuadScene,
-                          idx: usize,
-                          project_root: &Option<PathBuf>,
-                          read_shader_paths: bool,
-                          shader_sources: &mut Vec<String>,
-                          embedded: bool)
-        -> Result<(), Box<dyn Error>>
-    {
+    pub fn add_quad_scene(
+        &mut self,
+        scene: &QuadScene,
+        idx: usize,
+        project_root: &Option<PathBuf>,
+        read_shader_paths: bool,
+        shader_sources: &mut Vec<String>,
+        embedded: bool,
+    ) -> Result<(), Box<dyn Error>> {
         if self.quad_scene_name_to_idx.contains_key(&scene.name) {
             return Err(Box::new(ToolError::NameAlreadyExists));
         }
 
-        self.quad_scene_name_to_idx.insert(scene.name.to_string(), idx);
-        self.add_shader(&scene.vert_src_path, project_root, read_shader_paths, shader_sources, embedded)?;
-        self.add_shader(&scene.frag_src_path, project_root, read_shader_paths, shader_sources, embedded)?;
+        self.quad_scene_name_to_idx
+            .insert(scene.name.to_string(), idx);
+        self.add_shader(
+            &scene.vert_src_path,
+            project_root,
+            read_shader_paths,
+            shader_sources,
+            embedded,
+        )?;
+        self.add_shader(
+            &scene.frag_src_path,
+            project_root,
+            read_shader_paths,
+            shader_sources,
+            embedded,
+        )?;
 
         Ok(())
     }
 
-    pub fn add_polygon_scene(&mut self,
-                             scene: &PolygonScene,
-                             idx: usize)
-                             -> Result<(), Box<dyn Error>>
-    {
+    pub fn add_polygon_scene(
+        &mut self,
+        scene: &PolygonScene,
+        idx: usize,
+    ) -> Result<(), Box<dyn Error>> {
         if self.polygon_scene_name_to_idx.contains_key(&scene.name) {
             return Err(Box::new(ToolError::NameAlreadyExists));
         }
 
-        self.polygon_scene_name_to_idx.insert(scene.name.to_string(), idx);
+        self.polygon_scene_name_to_idx
+            .insert(scene.name.to_string(), idx);
 
         Ok(())
     }
 
-    pub fn add_model(&mut self,
-                     model: &Model,
-                     idx: usize,
-                     project_root: &Option<PathBuf>,
-                     read_shader_paths: bool,
-                     shader_sources: &mut Vec<String>,
-                     embedded: bool)
-        -> Result<(), Box<dyn Error>>
-    {
+    pub fn add_model(
+        &mut self,
+        model: &Model,
+        idx: usize,
+        project_root: &Option<PathBuf>,
+        read_shader_paths: bool,
+        shader_sources: &mut Vec<String>,
+        embedded: bool,
+    ) -> Result<(), Box<dyn Error>> {
         if self.model_name_to_idx.contains_key(&model.name) {
             return Err(Box::new(ToolError::NameAlreadyExists));
         }
 
         self.model_name_to_idx.insert(model.name.to_string(), idx);
 
-        self.add_shader(&model.vert_src_path, project_root, read_shader_paths, shader_sources, embedded)?;
-        self.add_shader(&model.frag_src_path, project_root, read_shader_paths, shader_sources, embedded)?;
+        self.add_shader(
+            &model.vert_src_path,
+            project_root,
+            read_shader_paths,
+            shader_sources,
+            embedded,
+        )?;
+        self.add_shader(
+            &model.frag_src_path,
+            project_root,
+            read_shader_paths,
+            shader_sources,
+            embedded,
+        )?;
 
         Ok(())
     }
 
-    pub fn add_shader(&mut self,
-                      path: &str,
-                      project_root: &Option<PathBuf>,
-                      read_shader_path: bool,
-                      shader_sources: &mut Vec<String>,
-                      embedded: bool)
-        -> Result<(), Box<dyn Error>>
-    {
-        info!{"add_shader() path: {}, embedded {}", path, embedded};
+    pub fn add_shader(
+        &mut self,
+        path: &str,
+        project_root: &Option<PathBuf>,
+        read_shader_path: bool,
+        shader_sources: &mut Vec<String>,
+        embedded: bool,
+    ) -> Result<(), Box<dyn Error>> {
+        info! {"add_shader() path: {}, embedded {}", path, embedded};
         // TODO send error (which can be ignored) when path length is zero.
         if path.len() == 0 {
             return Ok(());
@@ -143,16 +169,15 @@ impl DataIndex {
         return Ok(());
     }
 
-    pub fn add_frame_buffer(&mut self,
-                            buffer: &FrameBuffer,
-                            idx: usize,
-                            project_root: &Option<PathBuf>,
-                            read_image_path: bool,
-                            image_sources: &mut Vec<Image>,
-                            embedded: bool)
-        -> Result<(), Box<dyn Error>>
-        {
-
+    pub fn add_frame_buffer(
+        &mut self,
+        buffer: &FrameBuffer,
+        idx: usize,
+        project_root: &Option<PathBuf>,
+        read_image_path: bool,
+        image_sources: &mut Vec<Image>,
+        embedded: bool,
+    ) -> Result<(), Box<dyn Error>> {
         if self.buffer_name_to_idx.contains_key(&buffer.name) {
             return Err(Box::new(ToolError::NameAlreadyExists));
         }
@@ -176,7 +201,10 @@ impl DataIndex {
                 };
                 let (width, height) = image_data.dimensions();
 
-                let f = self.image_path_to_format.get(&buffer.image_path.clone()).ok_or("bad image path name")?;
+                let f = self
+                    .image_path_to_format
+                    .get(&buffer.image_path.clone())
+                    .ok_or("bad image path name")?;
                 let mut new_image = Image {
                     width: width,
                     height: height,
@@ -222,7 +250,10 @@ impl DataIndex {
     }
 
     pub fn get_shader_index(&self, path: &str) -> Result<usize, Box<dyn Error>> {
-        let idx = self.shader_path_to_idx.get(path).ok_or(format!{"no such shader path: {}", path})?;
+        let idx = self
+            .shader_path_to_idx
+            .get(path)
+            .ok_or(format! {"no such shader path: {}", path})?;
         Ok(*idx)
     }
 
@@ -231,27 +262,42 @@ impl DataIndex {
     }
 
     pub fn get_image_index(&self, path: &str) -> Result<usize, Box<dyn Error>> {
-        let idx = self.image_path_to_idx.get(path).ok_or(format!{"no such image path: {}", path})?;
+        let idx = self
+            .image_path_to_idx
+            .get(path)
+            .ok_or(format! {"no such image path: {}", path})?;
         Ok(*idx)
     }
 
     pub fn get_buffer_index(&self, name: &str) -> Result<usize, Box<dyn Error>> {
-        let idx = self.buffer_name_to_idx.get(name).ok_or(format!{"no such buffer name: {}", name})?;
+        let idx = self
+            .buffer_name_to_idx
+            .get(name)
+            .ok_or(format! {"no such buffer name: {}", name})?;
         Ok(*idx)
     }
 
     pub fn get_quad_scene_index(&self, name: &str) -> Result<usize, Box<dyn Error>> {
-        let idx = self.quad_scene_name_to_idx.get(name).ok_or(format!{"no such quad scene name: {}", name})?;
+        let idx = self
+            .quad_scene_name_to_idx
+            .get(name)
+            .ok_or(format! {"no such quad scene name: {}", name})?;
         Ok(*idx)
     }
 
     pub fn get_polygon_scene_index(&self, name: &str) -> Result<usize, Box<dyn Error>> {
-        let idx = self.polygon_scene_name_to_idx.get(name).ok_or(format!{"no such polygon scene name: {}", name})?;
+        let idx = self
+            .polygon_scene_name_to_idx
+            .get(name)
+            .ok_or(format! {"no such polygon scene name: {}", name})?;
         Ok(*idx)
     }
 
     pub fn get_model_index(&self, name: &str) -> Result<usize, Box<dyn Error>> {
-        let idx = self.model_name_to_idx.get(name).ok_or(format!{"no such model name: {}", name})?;
+        let idx = self
+            .model_name_to_idx
+            .get(name)
+            .ok_or(format! {"no such model name: {}", name})?;
         Ok(*idx)
     }
 

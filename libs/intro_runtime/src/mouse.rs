@@ -39,8 +39,8 @@ impl Mouse {
 
     pub fn update_mouse_moved(&mut self, mouse_x: i32, mouse_y: i32) {
         // x1.5 because a bit stronger sensitivity is better on the delta
-        self.delta_x = {mouse_x - self.last_x} as f32 * self.sensitivity * 1.5;
-        self.delta_y = {mouse_y - self.last_y} as f32 * self.sensitivity * 1.5 * -1.0;
+        self.delta_x = { mouse_x - self.last_x } as f32 * self.sensitivity * 1.5;
+        self.delta_y = { mouse_y - self.last_y } as f32 * self.sensitivity * 1.5 * -1.0;
         self.last_x = mouse_x;
         self.last_y = mouse_y;
         if self.pressed[0] {
@@ -66,7 +66,7 @@ impl Mouse {
             MouseButton::Left => self.pressed[0] = pressed,
             MouseButton::Right => self.pressed[1] = pressed,
             MouseButton::Middle => self.pressed[2] = pressed,
-            _ => ()
+            _ => (),
         }
     }
 }

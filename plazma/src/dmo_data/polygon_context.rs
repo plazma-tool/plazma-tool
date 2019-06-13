@@ -7,8 +7,6 @@ pub struct PolygonContext {
 
 impl Default for PolygonContext {
     fn default() -> PolygonContext {
-        PolygonContext {
-            models: vec![],
-        }
+        PolygonContext { models: vec![] }
     }
 }

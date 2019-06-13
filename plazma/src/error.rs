@@ -1,8 +1,8 @@
-use std::{fmt, error};
-use std::str;
-use std::error::Error;
-use std::string::FromUtf8Error;
 use intro_runtime::error::RuntimeError;
+use std::error::Error;
+use std::str;
+use std::string::FromUtf8Error;
+use std::{error, fmt};
 
 pub enum ToolError {
     Runtime(RuntimeError, String),
@@ -35,7 +35,6 @@ impl fmt::Display for ToolOk {
 
 impl fmt::Debug for ToolError {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-
         use intro_runtime::error::RuntimeError::*;
 
         let kind: &'static str = match *self {
@@ -56,12 +55,13 @@ impl fmt::Debug for ToolError {
                 NoFbo => "No FBO",
                 NoUbo => "No UBO",
                 NoQuad => "No Quad",
-                TextureBindingIdxIsOverTheHardwareLimit =>
-                    "Texture binding idx is over the hardware limit",
-                TexturePixelDataIsMissing =>
-                    "Texture pixel data is missing",
-                UniformBlockBindingIdxIsOverTheHardwareLimit =>
-                    "Uniform block binding idx is over the hardware limit",
+                TextureBindingIdxIsOverTheHardwareLimit => {
+                    "Texture binding idx is over the hardware limit"
+                }
+                TexturePixelDataIsMissing => "Texture pixel data is missing",
+                UniformBlockBindingIdxIsOverTheHardwareLimit => {
+                    "Uniform block binding idx is over the hardware limit"
+                }
                 TextureBindingIdxDoesntExist => "Texture binding idx doesn't exist",
                 TrackIdxIsOutOfBounds => "Track idx is out of bounds",
                 VarIdxIsOutOfBounds => "Var idx is out of bounds",
@@ -85,7 +85,6 @@ impl fmt::Debug for ToolError {
 
 impl fmt::Debug for ToolOk {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-
         let kind: &'static str = match *self {
             ToolOk::ShaderCompilationSuccess => "Shader compilation success",
             ToolOk::AssetCompilationSuccess => "Asset compilation success",
@@ -100,7 +99,7 @@ impl error::Error for ToolError {
         match *self {
             ToolError::Runtime(_, ref s) => s.trim(),
             ToolError::FromUtf8(_) => "Error converting byte buffer to utf8",
-            ToolError::AudioTrackDoesntExists(ref s) =>  s.trim(),
+            ToolError::AudioTrackDoesntExists(ref s) => s.trim(),
             ToolError::NoQuad => "No Quad",
             ToolError::UiError(ref s) => s.trim(),
             ToolError::NameAlreadyExists => "Name already exists",

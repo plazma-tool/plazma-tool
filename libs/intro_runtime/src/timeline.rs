@@ -38,7 +38,6 @@ impl Timeline {
     }
 
     pub fn draw_ops_at_time(&self, time: f64) -> SmallVec<[DrawOp; 64]> {
-
         use self::DrawOp::*;
 
         let mut ops: SmallVec<[DrawOp; 64]> = SmallVec::new();

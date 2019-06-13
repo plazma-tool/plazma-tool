@@ -1,6 +1,6 @@
 use smallvec::SmallVec;
 
-use intro_3d::{Vector3, Matrix4};
+use intro_3d::lib::{Matrix4, Vector3};
 
 use crate::error::RuntimeError;
 
@@ -53,10 +53,12 @@ impl Default for SceneObject {
             binding_to_buffers: SmallVec::new(),
 
             // identity matrix
-            model_matrix: [[1.0, 0.0, 0.0, 0.0],
-                           [0.0, 1.0, 0.0, 0.0],
-                           [0.0, 0.0, 1.0, 0.0],
-                           [0.0, 0.0, 0.0, 1.0]],
+            model_matrix: [
+                [1.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ],
         }
     }
 }
@@ -71,13 +73,15 @@ impl PolygonScene {
     pub fn draw(&self, context: &ContextGfx) -> Result<(), RuntimeError> {
         for o in self.scene_objects.iter() {
             if let Some(ref model) = context.polygon_context.models.get(o.model_idx) {
-                model.draw(context,
-                           &o.layout_to_vars,
-                           &o.binding_to_buffers,
-                           &o.model_matrix,
-                           &context.polygon_context.view_matrix,
-                           &context.polygon_context.projection_matrix,
-                           &context.polygon_context.view_position.as_slice())?;
+                model.draw(
+                    context,
+                    &o.layout_to_vars,
+                    &o.binding_to_buffers,
+                    &o.model_matrix,
+                    &context.polygon_context.view_matrix,
+                    &context.polygon_context.projection_matrix,
+                    &context.polygon_context.view_position.as_slice(),
+                )?;
             }
         }
         Ok(())
@@ -86,9 +90,7 @@ impl PolygonScene {
 
 impl SceneObject {
     pub fn update_model_matrix(&mut self) {
-        let a = Matrix4::new_homogeneous(&self.position,
-                                         &self.euler_rotation,
-                                         self.scale);
+        let a = Matrix4::new_homogeneous(&self.position, &self.euler_rotation, self.scale);
         self.model_matrix = a.as_column_slice();
     }
 }

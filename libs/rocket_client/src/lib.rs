@@ -4,13 +4,13 @@ extern crate env_logger;
 
 extern crate rocket_sync;
 
-use std::{fmt, str};
+use std::error::Error;
 use std::fmt::Display;
 use std::io::{Read, Write};
 use std::net::TcpStream;
-use std::error::Error;
+use std::{fmt, str};
 
-use rocket_sync::{TrackKey, SyncDevice, code_to_key};
+use rocket_sync::{code_to_key, SyncDevice, TrackKey};
 
 pub mod utils;
 use utils::*;
@@ -34,7 +34,6 @@ pub enum SyncCmd {
 }
 
 impl SyncClient {
-
     /// Connects to the Rocket Editor server and shakes hand with it
     pub fn new(address: &str) -> Result<SyncClient, Box<dyn Error>> {
         info!("Attempt to connect to Rocket");
@@ -42,11 +41,11 @@ impl SyncClient {
             Ok(x) => {
                 info!("Connected to Rocket");
                 x
-            },
+            }
             Err(e) => {
                 info!("Couldn't connect to Rocket");
                 return Err(Box::new(e));
-            },
+            }
         };
 
         // handshake
@@ -64,13 +63,13 @@ impl SyncClient {
                         if String::from(SERVER_GREET) != resp {
                             return Err(Box::new(SyncError::BadServerGreeting));
                         }
-                    },
+                    }
                     Err(_) => {
                         // invalid response, can't parse as utf8
                         return Err(Box::new(SyncError::CantParseGreeting));
                     }
                 }
-            },
+            }
 
             Err(_) => {
                 return Err(Box::new(SyncError::CouldNotReadFromServer));
@@ -79,7 +78,7 @@ impl SyncClient {
 
         info!("Handshake completed");
 
-        Ok(SyncClient{stream: stream})
+        Ok(SyncClient { stream: stream })
     }
 
     /// Read from the stream and process commands until the server runs out of
@@ -87,7 +86,6 @@ impl SyncClient {
     ///
     /// Returns an Ok(true) if there should be a redraw.
     pub fn update(&mut self, mut device: &mut SyncDevice) -> Result<bool, Box<dyn Error>> {
-
         let mut draw_anyway = false;
 
         // Use nonblocking when receiving commands, otherwise it stalls the
@@ -124,7 +122,7 @@ impl SyncClient {
                         GetTrack => {
                             info!("Received: CMD GetTrack");
                             info!("TODO handle GetTrack");
-                        },
+                        }
 
                         SetRow => self.handle_set_row_cmd(&mut device)?,
 
@@ -133,7 +131,7 @@ impl SyncClient {
                         SaveTracks => {
                             info!("Received: CMD SaveTracks");
                             info!("TODO handle SaveTracks");
-                        },
+                        }
                     }
 
                     draw_anyway = match code_to_cmd(cmd_buf[0]) {
@@ -145,7 +143,7 @@ impl SyncClient {
                         Pause => true,
                         SaveTracks => false,
                     };
-                },
+                }
 
                 // read error, probably nothing to read
                 Err(_) => is_sending = false,
@@ -327,7 +325,7 @@ impl Display for SyncError {
 }
 
 impl Error for SyncError {
-    fn description (&self) -> &str {
+    fn description(&self) -> &str {
         "tell me about it"
     }
 }

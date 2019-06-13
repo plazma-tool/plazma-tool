@@ -10,9 +10,10 @@ pub struct DmoSync {
 
 impl DmoSync {
     pub fn update_vars(&self, context: &mut ContextGfx) -> Result<(), RuntimeError> {
-
         // idx 0 is Time
-        context.sync_vars.set_builtin(Time, self.device.time as f64 / 1000.0);
+        context
+            .sync_vars
+            .set_builtin(Time, self.device.time as f64 / 1000.0);
 
         // Get the Rocket track index for a given sync var idx and calculate the track's value.
 
@@ -53,5 +54,3 @@ impl Default for DmoSync {
         }
     }
 }
-
-

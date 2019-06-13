@@ -1,19 +1,19 @@
 // TODO std::time is not very no_std
-use std::time::{Instant, Duration};
+use std::time::{Duration, Instant};
 
 use smallvec::SmallVec;
 
 use gl;
 
+use crate::camera::Camera;
+use crate::frame_buffer::FrameBuffer;
+use crate::mouse::Mouse;
 use crate::polygon_context::PolygonContext;
 use crate::polygon_scene::PolygonScene;
-use crate::camera::Camera;
-use crate::mouse::Mouse;
-use crate::types::{Image, BufferMapping, UniformMapping};
-use crate::sync_vars::SyncVars;
 use crate::quad_scene_gfx::QuadSceneGfx;
-use crate::frame_buffer::FrameBuffer;
 use crate::sync_vars::BuiltIn::*;
+use crate::sync_vars::SyncVars;
+use crate::types::{BufferMapping, Image, UniformMapping};
 
 pub const PROFILE_FRAMES: usize = 60;
 pub const PROFILE_EVENTS: usize = 10;
@@ -52,41 +52,43 @@ pub struct ContextGfx {
 }
 
 impl ContextGfx {
-    pub fn new_with_dimensions(window_width: f64,
-                               window_height: f64,
-                               screen_width: f64,
-                               screen_height: f64,
-                               camera: Option<Camera>)
-        -> ContextGfx
-    {
-        ContextGfx::new(0.0,// time
-                        window_width,
-                        window_height,
-                        screen_width,
-                        screen_height,
-                        SmallVec::new(),// shader sources
-                        SmallVec::new(),// images
-                        SmallVec::new(),// quad scenes
-                        SmallVec::new(),// polygon scenes
-                        PolygonContext::default(),// polygon context
-                        SmallVec::new(),// frame buffers
-                        camera)
+    pub fn new_with_dimensions(
+        window_width: f64,
+        window_height: f64,
+        screen_width: f64,
+        screen_height: f64,
+        camera: Option<Camera>,
+    ) -> ContextGfx {
+        ContextGfx::new(
+            0.0, // time
+            window_width,
+            window_height,
+            screen_width,
+            screen_height,
+            SmallVec::new(),           // shader sources
+            SmallVec::new(),           // images
+            SmallVec::new(),           // quad scenes
+            SmallVec::new(),           // polygon scenes
+            PolygonContext::default(), // polygon context
+            SmallVec::new(),           // frame buffers
+            camera,
+        )
     }
 
-    pub fn new(time: f64,
-               window_width: f64,
-               window_height: f64,
-               screen_width: f64,
-               screen_height: f64,
-               shader_sources: SmallVec<[SmallVec<[u8; 1024]>; 64]>,
-               images: SmallVec<[Image; 4]>,
-               quad_scenes: SmallVec<[QuadSceneGfx; 64]>,
-               polygon_scenes: SmallVec<[PolygonScene; 64]>,
-               polygon_context: PolygonContext,
-               frame_buffers: SmallVec<[FrameBuffer; 64]>,
-               camera: Option<Camera>)
-               -> ContextGfx
-    {
+    pub fn new(
+        time: f64,
+        window_width: f64,
+        window_height: f64,
+        screen_width: f64,
+        screen_height: f64,
+        shader_sources: SmallVec<[SmallVec<[u8; 1024]>; 64]>,
+        images: SmallVec<[Image; 4]>,
+        quad_scenes: SmallVec<[QuadSceneGfx; 64]>,
+        polygon_scenes: SmallVec<[PolygonScene; 64]>,
+        polygon_context: PolygonContext,
+        frame_buffers: SmallVec<[FrameBuffer; 64]>,
+        camera: Option<Camera>,
+    ) -> ContextGfx {
         let camera = if let Some(c) = camera {
             c
         } else {
@@ -108,7 +110,8 @@ impl ContextGfx {
         sync_vars.set_builtin(Screen_Width, screen_width);
         sync_vars.set_builtin(Screen_Height, screen_height);
 
-        let empty_profile: [[f32; PROFILE_EVENTS]; PROFILE_FRAMES] = [[0.0; PROFILE_EVENTS]; PROFILE_FRAMES];
+        let empty_profile: [[f32; PROFILE_EVENTS]; PROFILE_FRAMES] =
+            [[0.0; PROFILE_EVENTS]; PROFILE_FRAMES];
 
         ContextGfx {
             sync_vars: sync_vars,
@@ -160,8 +163,10 @@ impl ContextGfx {
     }
 
     pub fn get_window_resolution(&self) -> (f64, f64) {
-        (self.sync_vars.get_builtin(Window_Width),
-         self.sync_vars.get_builtin(Window_Height))
+        (
+            self.sync_vars.get_builtin(Window_Width),
+            self.sync_vars.get_builtin(Window_Height),
+        )
     }
 
     pub fn get_window_aspect(&self) -> f64 {
@@ -175,17 +180,25 @@ impl ContextGfx {
     }
 
     pub fn get_screen_resolution(&self) -> (f64, f64) {
-        (self.sync_vars.get_builtin(Screen_Width),
-         self.sync_vars.get_builtin(Screen_Height))
+        (
+            self.sync_vars.get_builtin(Screen_Width),
+            self.sync_vars.get_builtin(Screen_Height),
+        )
     }
 
     pub fn set_camera_sync(&mut self) {
-        self.sync_vars.set_builtin(Camera_Pos_X, self.camera.position.x as f64);
-        self.sync_vars.set_builtin(Camera_Pos_Y, self.camera.position.y as f64);
-        self.sync_vars.set_builtin(Camera_Pos_Z, self.camera.position.z as f64);
-        self.sync_vars.set_builtin(Camera_Front_X, self.camera.front.x as f64);
-        self.sync_vars.set_builtin(Camera_Front_Y, self.camera.front.y as f64);
-        self.sync_vars.set_builtin(Camera_Front_Z, self.camera.front.z as f64);
+        self.sync_vars
+            .set_builtin(Camera_Pos_X, self.camera.position.x as f64);
+        self.sync_vars
+            .set_builtin(Camera_Pos_Y, self.camera.position.y as f64);
+        self.sync_vars
+            .set_builtin(Camera_Pos_Z, self.camera.position.z as f64);
+        self.sync_vars
+            .set_builtin(Camera_Front_X, self.camera.front.x as f64);
+        self.sync_vars
+            .set_builtin(Camera_Front_Y, self.camera.front.y as f64);
+        self.sync_vars
+            .set_builtin(Camera_Front_Z, self.camera.front.z as f64);
     }
 
     pub fn get_last_work_buffer(&self) -> &FrameBuffer {
@@ -193,12 +206,13 @@ impl ContextGfx {
         &self.frame_buffers[n - 1]
     }
 
-    pub fn add_quad_scene(&mut self,
-                          vert_src_idx: usize,
-                          frag_src_idx: usize,
-                          layout_to_vars: SmallVec<[UniformMapping; 64]>,
-                          binding_to_buffers: SmallVec<[BufferMapping; 64]>)
-    {
+    pub fn add_quad_scene(
+        &mut self,
+        vert_src_idx: usize,
+        frag_src_idx: usize,
+        layout_to_vars: SmallVec<[UniformMapping; 64]>,
+        binding_to_buffers: SmallVec<[BufferMapping; 64]>,
+    ) {
         let n = self.quad_scenes.len();
         let quad_scene_id = if n > 0 { n - 1 } else { 0 };
 
@@ -221,7 +235,9 @@ impl ContextGfx {
     pub fn impl_target_buffer(&self, buffer_idx: usize) {
         if let Some(buffer) = self.frame_buffers.get(buffer_idx) {
             if let Some(fbo) = buffer.fbo {
-                unsafe { gl::BindFramebuffer(gl::FRAMEBUFFER, fbo); }
+                unsafe {
+                    gl::BindFramebuffer(gl::FRAMEBUFFER, fbo);
+                }
             } else {
                 panic!("This buffer hasn't been created: {}", buffer_idx);
             }
@@ -231,10 +247,12 @@ impl ContextGfx {
     }
 
     pub fn impl_clear(&self, red: u8, green: u8, blue: u8, alpha: u8) {
-        let (f_red, f_green, f_blue, f_alpha) = ((red   as f32 / 255.0),
-                                                 (green as f32 / 255.0),
-                                                 (blue  as f32 / 255.0),
-                                                 (alpha as f32 / 255.0));
+        let (f_red, f_green, f_blue, f_alpha) = (
+            (red as f32 / 255.0),
+            (green as f32 / 255.0),
+            (blue as f32 / 255.0),
+            (alpha as f32 / 255.0),
+        );
         unsafe {
             gl::ClearColor(f_red, f_green, f_blue, f_alpha);
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
@@ -242,7 +260,9 @@ impl ContextGfx {
     }
 
     pub fn impl_target_buffer_default(&self) {
-        unsafe { gl::BindFramebuffer(gl::FRAMEBUFFER, 0); }
+        unsafe {
+            gl::BindFramebuffer(gl::FRAMEBUFFER, 0);
+        }
     }
 
     pub fn impl_profile_event(&mut self, _label_idx: usize) {

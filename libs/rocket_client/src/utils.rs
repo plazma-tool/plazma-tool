@@ -5,13 +5,13 @@ use crate::SyncCmd;
 pub fn cmd_to_code(cmd: &SyncCmd) -> u8 {
     use self::SyncCmd::*;
     match *cmd {
-        SetKey     => 0,
-        DeleteKey  => 1,
-        GetTrack   => 2,
-        SetRow     => 3,
-        Pause      => 4,
+        SetKey => 0,
+        DeleteKey => 1,
+        GetTrack => 2,
+        SetRow => 3,
+        Pause => 4,
         SaveTracks => 5,
-        NOOP       => 255,
+        NOOP => 255,
     }
 }
 
@@ -52,8 +52,8 @@ pub fn u32_to_net(n: u32) -> [u8; 4] {
 
     bytes[0] = ((n >> 24) & 0xFF) as u8;
     bytes[1] = ((n >> 16) & 0xFF) as u8;
-    bytes[2] = ((n >>  8) & 0xFF) as u8;
-    bytes[3] = ((n >>  0) & 0xFF) as u8;
+    bytes[2] = ((n >> 8) & 0xFF) as u8;
+    bytes[3] = ((n >> 0) & 0xFF) as u8;
 
     bytes
 }
@@ -62,8 +62,8 @@ pub fn u32_to_net(n: u32) -> [u8; 4] {
 pub fn u32_to_le(n: u32) -> [u8; 4] {
     let mut bytes = [0; 4];
 
-    bytes[0] = ((n >>  0) & 0xFF) as u8;
-    bytes[1] = ((n >>  8) & 0xFF) as u8;
+    bytes[0] = ((n >> 0) & 0xFF) as u8;
+    bytes[1] = ((n >> 8) & 0xFF) as u8;
     bytes[2] = ((n >> 16) & 0xFF) as u8;
     bytes[3] = ((n >> 24) & 0xFF) as u8;
 

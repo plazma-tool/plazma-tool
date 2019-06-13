@@ -7,8 +7,8 @@ use gl::types::*;
 /// attributes.
 #[derive(Clone)]
 pub struct Vertex {
-    pub position:  [GLfloat; 3],
-    pub normal:    [GLfloat; 3],
+    pub position: [GLfloat; 3],
+    pub normal: [GLfloat; 3],
     pub texcoords: [GLfloat; 2],
     //pub tangent:   [GLfloat; 3],
     //pub bitangent: [GLfloat; 3],

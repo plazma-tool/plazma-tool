@@ -1,36 +1,36 @@
 #[macro_use]
 extern crate clap;
-extern crate web_view;
-extern crate nfd;
 extern crate actix;
 extern crate actix_web;
+extern crate nfd;
+extern crate web_view;
 
-extern crate serde_derive;
 extern crate serde;
+extern crate serde_derive;
 extern crate serde_json;
 
 #[macro_use]
 extern crate log;
 extern crate env_logger;
-extern crate kankyo;
 extern crate futures;
 extern crate glutin;
+extern crate kankyo;
 
+extern crate plazma;
 extern crate rocket_client;
 extern crate rocket_sync;
-extern crate plazma;
 
-use std::sync::{Arc, Mutex, mpsc};
 use std::path::PathBuf;
+use std::sync::{mpsc, Arc, Mutex};
 
 use clap::App;
 
-use plazma::server_actor::{Sending, MsgDataType};
 use plazma::app::{self, AppStartParams};
+use plazma::server_actor::{MsgDataType, Sending};
 
 fn main() {
     match kankyo::load() {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(e) => info!("Couldn't find a .env file: {:?}", e),
     };
     //std::env::set_var("RUST_LOG", "actix_web=info,plazma=info");
@@ -87,11 +87,14 @@ fn main() {
 
     let port_b = plazma_server_port.clone();
     let (server_handle, server_receiver_handle, client_receiver_handle) = if param_start_server {
-        let (a, b, c) = app::start_server(port_b,
-                                          app_info,
-                                          yml_path,
-                                          webview_sender_arc,
-                                          server_receiver).unwrap();
+        let (a, b, c) = app::start_server(
+            port_b,
+            app_info,
+            yml_path,
+            webview_sender_arc,
+            server_receiver,
+        )
+        .unwrap();
         (Some(a), Some(b), Some(c))
     } else {
         (None, None, None)
@@ -116,24 +119,22 @@ fn main() {
 
     let port_c = plazma_server_port.clone();
     if param_start_webview {
-        app::start_webview(port_c,
-                           webview_receiver,
-                           sender_a).unwrap();
+        app::start_webview(port_c, webview_receiver, sender_a).unwrap();
 
         // Send ExitApp to the server, in case it is still running. This can happen when the window
         // manager is used to close the window, not the close button in the web UI.
 
-        let msg = serde_json::to_string(&Sending{
+        let msg = serde_json::to_string(&Sending {
             data_type: MsgDataType::ExitApp,
             data: "".to_owned(),
-        }).unwrap();
+        })
+        .unwrap();
 
         let sender = sender_b.lock().expect("Can't lock server sender.");
         match sender.send(msg) {
-            Ok(_) => {},
+            Ok(_) => {}
             Err(e) => error!("🔥 Can't send on user_data.server_sender: {:?}", e),
         }
-
     }
 
     if let Some(h) = client_receiver_handle {

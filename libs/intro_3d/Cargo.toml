@@ -5,3 +5,6 @@ authors = ["Gambhiro <gambhiro.bhikkhu.85@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+
+[features]
+no_std = []

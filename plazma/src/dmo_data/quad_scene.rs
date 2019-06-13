@@ -1,4 +1,4 @@
-use crate::dmo_data::{UniformMapping, BufferMapping};
+use crate::dmo_data::{BufferMapping, UniformMapping};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct QuadScene {
@@ -46,9 +46,7 @@ impl QuadScene {
                 UniformMapping::Vec2(0, Window_Width, Window_Height),
                 UniformMapping::Vec2(1, Screen_Width, Screen_Height),
             ],
-            binding_to_buffers: vec![
-                BufferMapping::Sampler2D(0, "RESULT_IMAGE".to_string()),
-            ],
+            binding_to_buffers: vec![BufferMapping::Sampler2D(0, "RESULT_IMAGE".to_string())],
         }
     }
 }

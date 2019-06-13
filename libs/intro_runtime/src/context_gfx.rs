@@ -1,7 +1,4 @@
-// TODO std::time is not very no_std
 use std::time::{Duration, Instant};
-
-use smallvec::SmallVec;
 
 use gl;
 
@@ -22,15 +19,14 @@ pub struct ContextGfx {
     /// Variables such as "time".
     pub sync_vars: SyncVars,
 
-    /// 1kb x 64 shaders on the stack, larger shaders or more of them on the heap.
-    pub shader_sources: SmallVec<[SmallVec<[u8; 1024]>; 64]>,
+    pub shader_sources: Vec<Vec<u8>>,
     // TODO rename to image_sources
-    pub images: SmallVec<[Image; 4]>,
-    pub frame_buffers: SmallVec<[FrameBuffer; 64]>,
+    pub images: Vec<Image>,
+    pub frame_buffers: Vec<FrameBuffer>,
 
-    pub quad_scenes: SmallVec<[QuadSceneGfx; 64]>,
+    pub quad_scenes: Vec<QuadSceneGfx>,
 
-    pub polygon_scenes: SmallVec<[PolygonScene; 64]>,
+    pub polygon_scenes: Vec<PolygonScene>,
     pub polygon_context: PolygonContext,
 
     pub camera: Camera,
@@ -65,12 +61,12 @@ impl ContextGfx {
             window_height,
             screen_width,
             screen_height,
-            SmallVec::new(),           // shader sources
-            SmallVec::new(),           // images
-            SmallVec::new(),           // quad scenes
-            SmallVec::new(),           // polygon scenes
+            Vec::new(),                // shader sources
+            Vec::new(),                // images
+            Vec::new(),                // quad scenes
+            Vec::new(),                // polygon scenes
             PolygonContext::default(), // polygon context
-            SmallVec::new(),           // frame buffers
+            Vec::new(),                // frame buffers
             camera,
         )
     }
@@ -81,12 +77,12 @@ impl ContextGfx {
         window_height: f64,
         screen_width: f64,
         screen_height: f64,
-        shader_sources: SmallVec<[SmallVec<[u8; 1024]>; 64]>,
-        images: SmallVec<[Image; 4]>,
-        quad_scenes: SmallVec<[QuadSceneGfx; 64]>,
-        polygon_scenes: SmallVec<[PolygonScene; 64]>,
+        shader_sources: Vec<Vec<u8>>,
+        images: Vec<Image>,
+        quad_scenes: Vec<QuadSceneGfx>,
+        polygon_scenes: Vec<PolygonScene>,
         polygon_context: PolygonContext,
-        frame_buffers: SmallVec<[FrameBuffer; 64]>,
+        frame_buffers: Vec<FrameBuffer>,
         camera: Option<Camera>,
     ) -> ContextGfx {
         let camera = if let Some(c) = camera {
@@ -210,8 +206,8 @@ impl ContextGfx {
         &mut self,
         vert_src_idx: usize,
         frag_src_idx: usize,
-        layout_to_vars: SmallVec<[UniformMapping; 64]>,
-        binding_to_buffers: SmallVec<[BufferMapping; 64]>,
+        layout_to_vars: Vec<UniformMapping>,
+        binding_to_buffers: Vec<BufferMapping>,
     ) {
         let n = self.quad_scenes.len();
         let quad_scene_id = if n > 0 { n - 1 } else { 0 };

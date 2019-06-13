@@ -1,11 +1,6 @@
-#![no_std]
-
-extern crate smallvec;
-use smallvec::SmallVec;
-
 pub struct SyncDevice {
     /// sync tracks (the vertical columns in the editor)
-    pub tracks: SmallVec<[SyncTrack; 64]>,
+    pub tracks: Vec<SyncTrack>,
     /// rows per beat
     pub rpb: u8,
     /// beats per minute
@@ -22,7 +17,7 @@ pub struct SyncDevice {
 impl SyncDevice {
     pub fn new(bpm: f64, rpb: u8) -> SyncDevice {
         SyncDevice {
-            tracks: SmallVec::new(),
+            tracks: Vec::new(),
             rpb: rpb,
             bpm: bpm,
             rps: rps(bpm, rpb),
@@ -48,7 +43,7 @@ impl SyncDevice {
 
 pub struct SyncTrack {
     /// key frames, rows where values change
-    pub keys: SmallVec<[TrackKey; 64]>,
+    pub keys: Vec<TrackKey>,
 }
 
 pub enum SyncError {
@@ -84,7 +79,7 @@ pub enum ActiveKeyIdx {
 impl SyncTrack {
     pub fn new() -> SyncTrack {
         SyncTrack {
-            keys: SmallVec::new(),
+            keys: Vec::new(),
         }
     }
 

@@ -1,8 +1,5 @@
-use core::str;
-
+use std::str;
 use std::time::Instant;
-
-use smallvec::SmallVec;
 
 use intro_3d::lib::{to_radians, Vector3};
 
@@ -181,9 +178,9 @@ impl DmoGfx {
         self.sync.update_vars(&mut self.context)
     }
 
-    pub fn get_shader_src(&mut self, idx: usize) -> Result<SmallVec<[u8; 1024]>, RuntimeError> {
+    pub fn get_shader_src(&mut self, idx: usize) -> Result<Vec<u8>, RuntimeError> {
         if idx < self.context.shader_sources.len() {
-            let mut s = SmallVec::new();
+            let mut s = Vec::new();
             for i in self.context.shader_sources[idx].iter() {
                 s.push(*i);
             }
@@ -195,7 +192,7 @@ impl DmoGfx {
 
     pub fn update_shader_src(&mut self, idx: usize, frag_src: &str) -> Result<(), RuntimeError> {
         if idx < self.context.shader_sources.len() {
-            let mut s = SmallVec::new();
+            let mut s = Vec::new();
             for i in frag_src.as_bytes().iter() {
                 s.push(*i);
             }
@@ -209,10 +206,10 @@ impl DmoGfx {
     pub fn update_shader_src_from_vec(
         &mut self,
         idx: usize,
-        frag_src_vec: &SmallVec<[u8; 1024]>,
+        frag_src_vec: &Vec<u8>,
     ) -> Result<(), RuntimeError> {
         if idx < self.context.shader_sources.len() {
-            let mut s = SmallVec::new();
+            let mut s = Vec::new();
             for i in frag_src_vec.iter() {
                 s.push(*i);
             }
@@ -242,7 +239,7 @@ impl DmoGfx {
         err_msg_buf: &mut [u8; ERR_MSG_LEN],
     ) -> Result<(), RuntimeError> {
         for model in self.context.polygon_context.models.iter_mut() {
-            let mut new_meshes: SmallVec<[Mesh; 2]> = SmallVec::new();
+            let mut new_meshes: Vec<Mesh> = Vec::new();
 
             for mesh in model.meshes.iter_mut() {
                 let vert_src = match self.context.shader_sources.get(mesh.vert_src_idx) {

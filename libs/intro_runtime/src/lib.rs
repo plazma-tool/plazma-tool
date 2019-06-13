@@ -1,14 +1,8 @@
-//#![no_std]
-// Holding up no_std:
-// - std::time in context_gfx
-
 #![allow(non_camel_case_types)]
 #![cfg(all(
     any(target_os = "linux", target_os = "macos", target_os = "windows"),
     target_arch = "x86_64"
 ))]
-
-extern crate core; // NOTE only when testing without no_std
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 extern crate libc;
@@ -21,7 +15,6 @@ extern crate libc;
 extern crate gl;
 extern crate intro_3d;
 extern crate rocket_sync;
-extern crate smallvec;
 
 pub const VAR_NUM: usize = 2048;
 pub const ERR_MSG_LEN: usize = 1024;

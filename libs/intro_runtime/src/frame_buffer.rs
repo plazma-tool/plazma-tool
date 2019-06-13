@@ -1,4 +1,4 @@
-use core::{mem, ptr};
+use std::{mem, ptr};
 
 use gl;
 use gl::types::*;

@@ -1,9 +1,7 @@
-use core::{mem, ptr};
+use std::{mem, ptr};
 
 use gl;
 use gl::types::*;
-
-use smallvec::SmallVec;
 
 use crate::data_blob::push_f32;
 use crate::error::RuntimeError;
@@ -11,7 +9,7 @@ use crate::error::RuntimeError::*;
 
 pub struct UniformBuffer {
     ubo: Option<GLuint>,
-    data: SmallVec<[u8; 16]>,
+    data: Vec<u8>,
     byte_size: usize,
 }
 
@@ -19,7 +17,7 @@ impl UniformBuffer {
     pub fn new() -> UniformBuffer {
         UniformBuffer {
             ubo: None,
-            data: SmallVec::new(),
+            data: Vec::new(),
             byte_size: 0,
         }
     }
@@ -69,12 +67,12 @@ impl UniformBuffer {
     pub fn set_f32_array(
         &mut self,
         start_offset: usize,
-        data: &SmallVec<[f32; 16]>,
+        data: &Vec<f32>,
     ) -> Result<(), RuntimeError> {
         for (data_idx, n) in data.iter().enumerate() {
             // Convert n (f32) to a [u8; 4].
-            // Using a different size SmallVec to suit push_f32() argument.
-            let mut v: SmallVec<[u8; 64]> = SmallVec::new();
+            // Using a different size (Small)Vec to suit push_f32() argument.
+            let mut v: Vec<u8> = Vec::new();
             push_f32(&mut v, *n);
 
             // in layout std140, a float array is padded as vec4 (16 bytes) for each item

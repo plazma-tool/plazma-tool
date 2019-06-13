@@ -1,5 +1,3 @@
-use smallvec::SmallVec;
-
 use intro_3d::lib::{to_radians, Matrix4, Vector3};
 
 use crate::model::Model;
@@ -16,7 +14,7 @@ pub struct PolygonContext {
     pub znear: f32,
     pub zfar: f32,
 
-    pub models: SmallVec<[Model; 4]>,
+    pub models: Vec<Model>,
 }
 
 impl Default for PolygonContext {
@@ -59,7 +57,7 @@ impl PolygonContext {
             znear: znear,
             zfar: zfar,
 
-            models: SmallVec::new(),
+            models: Vec::new(),
         };
 
         p.update_view_matrix();

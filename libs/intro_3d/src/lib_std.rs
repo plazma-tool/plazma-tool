@@ -292,7 +292,7 @@ impl Matrix4 {
     /// Updates this perspective with a new y field of view of the view frustrum.
     pub fn set_fovy(&mut self, fovy: f32) {
         let old_m22 = self.data[1][1];
-        self.data[1][1] = 1.0 / tanf32(fovy);
+        self.data[1][1] = 1.0 / f32::tan(fovy);
         self.data[0][0] = self.data[0][0] * (self.data[1][1] / old_m22);
     }
 
@@ -603,12 +603,6 @@ impl Mul<f32> for Matrix4 {
 
 // === Helper functions ========================================================
 
-/// Calculates tangent from sin cos, no direct function in core::intrinsics.
-pub fn tanf32(a: f32) -> f32 {
-    let x: f64 = f64::sin(a as f64 / 2.0) / f64::cos(a as f64 / 2.0);
-    x as f32
-}
-
 pub fn to_radians(degree: f32) -> f32 {
-    ((degree as f64) * DEG_TO_RAD) as f32
+    degree.to_radians()
 }

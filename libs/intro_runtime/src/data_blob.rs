@@ -1,14 +1,12 @@
-use core::{mem, ptr, str};
-
-use smallvec::SmallVec;
+use std::{mem, ptr, str};
 
 pub struct DataBlob {
-    data: SmallVec<[u8; 0x8000]>,
+    data: Vec<u8>,
     idx: usize,
 }
 
 impl DataBlob {
-    pub fn new(data: SmallVec<[u8; 0x8000]>) -> DataBlob {
+    pub fn new(data: Vec<u8>) -> DataBlob {
         DataBlob { data: data, idx: 0 }
     }
 
@@ -84,8 +82,8 @@ impl DataBlob {
         text
     }
 
-    pub fn read_u8_vec(&mut self, len: usize) -> SmallVec<[u8; 1024]> {
-        let mut ret: SmallVec<[u8; 1024]> = SmallVec::new();
+    pub fn read_u8_vec(&mut self, len: usize) -> Vec<u8> {
+        let mut ret: Vec<u8> = Vec::new();
 
         ret.extend(self.data[self.idx..self.idx + len].iter().cloned());
 
@@ -93,8 +91,8 @@ impl DataBlob {
         ret
     }
 
-    pub fn read_f32_vec(&mut self, len: usize) -> SmallVec<[f32; 1024]> {
-        let mut ret: SmallVec<[f32; 1024]> = SmallVec::new();
+    pub fn read_f32_vec(&mut self, len: usize) -> Vec<f32> {
+        let mut ret: Vec<f32> = Vec::new();
 
         for _ in 0..len {
             ret.push(self.read_f32());
@@ -104,7 +102,7 @@ impl DataBlob {
     }
 }
 
-pub fn push_u32(v: &mut SmallVec<[u8; 64]>, n: u32) {
+pub fn push_u32(v: &mut Vec<u8>, n: u32) {
     let bytes = unsafe { mem::transmute::<_, [u8; 4]>(n.to_le()) };
     v.push(bytes[0]);
     v.push(bytes[1]);
@@ -112,7 +110,7 @@ pub fn push_u32(v: &mut SmallVec<[u8; 64]>, n: u32) {
     v.push(bytes[3]);
 }
 
-pub fn push_f32(v: &mut SmallVec<[u8; 64]>, n: f32) {
+pub fn push_f32(v: &mut Vec<u8>, n: f32) {
     let val_u32: u32 = unsafe { mem::transmute(n) };
     push_u32(v, val_u32);
 }

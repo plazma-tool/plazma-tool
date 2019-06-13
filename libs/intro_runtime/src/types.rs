@@ -1,5 +1,3 @@
-use smallvec::SmallVec;
-
 use gl::types::*;
 
 /// Order of attributes is significant, we want this to translate to a specific
@@ -18,7 +16,7 @@ pub struct Image {
     pub width: u32,
     pub height: u32,
     pub format: PixelFormat,
-    pub raw_pixels: SmallVec<[u8; 1024]>,
+    pub raw_pixels: Vec<u8>,
 }
 
 #[derive(Copy, Clone)]

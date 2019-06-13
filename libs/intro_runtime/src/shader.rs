@@ -1,5 +1,4 @@
-use core::{ptr, str};
-use smallvec::SmallVec;
+use std::{ptr, str};
 
 use gl;
 use gl::types::*;
@@ -37,7 +36,7 @@ pub fn compile_shader(
         if status != (gl::TRUE as GLint) {
             let mut len: GLint = 0;
             gl::GetShaderiv(shader, gl::INFO_LOG_LENGTH, &mut len);
-            let mut buf: SmallVec<[u8; 1024]> = SmallVec::new();
+            let mut buf: Vec<u8> = Vec::new();
             // Takes current size (i.e. 0) and grows the vec for additional items.
             buf.reserve((len as usize) - 1); // subtract 1 to skip the trailing null character
                                              // Sets the current size.
@@ -82,7 +81,7 @@ pub fn link_program(
         if status != (gl::TRUE as GLint) {
             let mut len: GLint = 0;
             gl::GetProgramiv(program, gl::INFO_LOG_LENGTH, &mut len);
-            let mut buf: SmallVec<[u8; 1024]> = SmallVec::new();
+            let mut buf: Vec<u8> = Vec::new();
             // Takes current size (i.e. 0) and grows the vec for additional items.
             buf.reserve((len as usize) - 1); // subtract 1 to skip the trailing null character
                                              // Sets the current size.

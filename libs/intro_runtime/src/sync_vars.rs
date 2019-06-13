@@ -1,12 +1,10 @@
-use smallvec::SmallVec;
-
 use crate::error::RuntimeError::{self, *};
-use crate::VAR_NUM;
+//use crate::VAR_NUM;
 
 /// `SyncVars` provide methods to query the `f64` array for reserverd and named
 /// tracks such as `"time"`, or by index such as `235`.
 pub struct SyncVars {
-    pub tracks: SmallVec<[SyncTrack; VAR_NUM]>,
+    pub tracks: Vec<SyncTrack>,
 }
 
 pub struct SyncTrack {
@@ -23,7 +21,7 @@ impl Default for SyncVars {
 
 impl SyncVars {
     pub fn new(tracks_count: usize) -> SyncVars {
-        let mut tracks: SmallVec<[SyncTrack; VAR_NUM]> = SmallVec::new();
+        let mut tracks: Vec<SyncTrack> = Vec::new();
 
         // FIXME set the name of builtin tracks
 

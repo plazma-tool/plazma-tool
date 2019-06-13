@@ -1,9 +1,7 @@
-use core::{mem, ptr, str};
+use std::{mem, ptr, str};
 
 use gl;
 use gl::types::*;
-
-use smallvec::SmallVec;
 
 use crate::context_gfx::ContextGfx;
 use crate::error::RuntimeError;
@@ -21,9 +19,9 @@ pub struct QuadSceneGfx {
     /// Load the fragment shader using this index from `Context.shader_sources[]`
     pub frag_src_idx: usize,
     /// Maps uniform layout index to sync var index
-    pub layout_to_vars: SmallVec<[UniformMapping; 64]>,
+    pub layout_to_vars: Vec<UniformMapping>,
     /// Maps uniform layout binding to frame buffer index
-    pub binding_to_buffers: SmallVec<[BufferMapping; 64]>,
+    pub binding_to_buffers: Vec<BufferMapping>,
     /// The OpenGL object.
     pub quad: Option<Quad>,
 }
@@ -40,8 +38,8 @@ impl QuadSceneGfx {
             idx: idx,
             vert_src_idx: vert_src_idx,
             frag_src_idx: frag_src_idx,
-            layout_to_vars: SmallVec::new(),
-            binding_to_buffers: SmallVec::new(),
+            layout_to_vars: Vec::new(),
+            binding_to_buffers: Vec::new(),
             quad: None,
         }
     }

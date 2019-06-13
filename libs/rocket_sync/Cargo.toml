@@ -7,9 +7,7 @@ license = "MIT"
 description = """
 A sync track library for the GNU Rocket Editor. See also rocket_client.
 """
-keywords = [ "no_std", ]
 repository = "https://github.com/plazma-tool/rocket_sync"
 readme = "README.md"
 
 [dependencies]
-smallvec = "0.4.2"

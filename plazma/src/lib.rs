@@ -26,7 +26,6 @@ extern crate tobj;
 
 extern crate intro_3d;
 extern crate intro_runtime;
-extern crate smallvec;
 
 pub mod app;
 pub mod dmo_data;

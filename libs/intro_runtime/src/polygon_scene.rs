@@ -1,5 +1,3 @@
-use smallvec::SmallVec;
-
 use intro_3d::lib::{Matrix4, Vector3};
 
 use crate::error::RuntimeError;
@@ -8,7 +6,7 @@ use crate::context_gfx::ContextGfx;
 use crate::types::{BufferMapping, UniformMapping, ValueFloat, ValueVec3};
 
 pub struct PolygonScene {
-    pub scene_objects: SmallVec<[SceneObject; 4]>,
+    pub scene_objects: Vec<SceneObject>,
 }
 
 pub struct SceneObject {
@@ -22,8 +20,8 @@ pub struct SceneObject {
     pub euler_rotation_var: ValueVec3,
     pub scale_var: ValueFloat,
 
-    pub layout_to_vars: SmallVec<[UniformMapping; 64]>,
-    pub binding_to_buffers: SmallVec<[BufferMapping; 64]>,
+    pub layout_to_vars: Vec<UniformMapping>,
+    pub binding_to_buffers: Vec<BufferMapping>,
 
     /// Model matrix to use when drawing the model retreived with `model_idx`
     /// from `PolygonContext.models`.
@@ -49,8 +47,8 @@ impl Default for SceneObject {
             euler_rotation_var: ValueVec3::Fixed(0.0, 0.0, 0.0),
             scale_var: ValueFloat::Fixed(1.0),
 
-            layout_to_vars: SmallVec::new(),
-            binding_to_buffers: SmallVec::new(),
+            layout_to_vars: Vec::new(),
+            binding_to_buffers: Vec::new(),
 
             // identity matrix
             model_matrix: [
@@ -66,7 +64,7 @@ impl Default for SceneObject {
 impl PolygonScene {
     pub fn empty() -> PolygonScene {
         PolygonScene {
-            scene_objects: SmallVec::new(),
+            scene_objects: Vec::new(),
         }
     }
 

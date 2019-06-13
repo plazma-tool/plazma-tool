@@ -1,16 +1,14 @@
-use smallvec::SmallVec;
-
 pub struct Timeline {
-    pub tracks: SmallVec<[TimeTrack; 4]>,
+    pub tracks: Vec<TimeTrack>,
 }
 
 impl Default for Timeline {
     fn default() -> Timeline {
         let mut track = TimeTrack {
-            scene_blocks: SmallVec::new(),
+            scene_blocks: Vec::new(),
         };
 
-        let mut draw_ops: SmallVec<[DrawOp; 32]> = SmallVec::new();
+        let mut draw_ops: Vec<DrawOp> = Vec::new();
         draw_ops.push(DrawOp::Target_Buffer_Default);
         // #4682B4, Steel Blue
         draw_ops.push(DrawOp::Clear(70, 130, 180, 0));
@@ -33,14 +31,14 @@ impl Default for Timeline {
 impl Timeline {
     pub fn new() -> Timeline {
         Timeline {
-            tracks: SmallVec::new(),
+            tracks: Vec::new(),
         }
     }
 
-    pub fn draw_ops_at_time(&self, time: f64) -> SmallVec<[DrawOp; 64]> {
+    pub fn draw_ops_at_time(&self, time: f64) -> Vec<DrawOp> {
         use self::DrawOp::*;
 
-        let mut ops: SmallVec<[DrawOp; 64]> = SmallVec::new();
+        let mut ops: Vec<DrawOp> = Vec::new();
 
         // Always start by clearing the "RESULT_IMAGE" buffer.
 
@@ -85,13 +83,13 @@ impl Timeline {
 }
 
 pub struct TimeTrack {
-    pub scene_blocks: SmallVec<[SceneBlock; 16]>,
+    pub scene_blocks: Vec<SceneBlock>,
 }
 
 pub struct SceneBlock {
     pub start: f64,
     pub end: f64,
-    pub draw_ops: SmallVec<[DrawOp; 32]>,
+    pub draw_ops: Vec<DrawOp>,
 }
 
 pub enum DrawOp {

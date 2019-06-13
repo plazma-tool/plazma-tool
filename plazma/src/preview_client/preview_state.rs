@@ -1,4 +1,4 @@
-use core::str;
+use std::str;
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::path::PathBuf;
@@ -7,8 +7,6 @@ use std::time::{Duration, Instant};
 use serde_xml::value::{Content, Element};
 
 use glutin::{ElementState, MouseButton, VirtualKeyCode};
-
-use smallvec::SmallVec;
 
 use intro_3d::lib::Vector3;
 use intro_runtime::camera::Camera;
@@ -250,12 +248,6 @@ impl PreviewState {
         self.build_dmo_gfx_from_dmo_data(&dmo_data, window_width, window_height, None, false)?;
         Ok(())
     }
-
-    // fn add_shader_src(&mut self, path: &PathBuf) -> usize {
-    //     let src = file_to_string(path).unwrap();
-    //     self.dmo_gfx.context.shader_sources.push(SmallVec::from_slice(src.as_bytes()));
-    //     return self.dmo_gfx.context.shader_sources.len() - 1;
-    // }
 
     pub fn recompile_dmo(&mut self) -> Result<(), Box<dyn Error>> {
         if !self.should_recompile {
@@ -967,7 +959,7 @@ fn build_shader_sources(dmo_gfx: &mut DmoGfx, dmo_data: &DmoData) {
         dmo_gfx
             .context
             .shader_sources
-            .push(SmallVec::from_slice(i.as_bytes()));
+            .push(i.as_bytes().to_vec());
     }
 }
 
@@ -987,7 +979,7 @@ fn build_image_sources(dmo_gfx: &mut DmoGfx, dmo_data: &DmoData) {
             width: i.width,
             height: i.height,
             format: format,
-            raw_pixels: SmallVec::new(),
+            raw_pixels: Vec::new(),
         };
 
         for x in i.raw_pixels.iter() {
@@ -1012,7 +1004,7 @@ fn build_settings(dmo_gfx: &mut DmoGfx, dmo_data: &DmoData) {
 fn build_frame_buffers(dmo_gfx: &mut DmoGfx, dmo_data: &DmoData) -> Result<(), Box<dyn Error>> {
     use crate::dmo_data::context_data as d;
 
-    let mut frame_buffers: SmallVec<[FrameBuffer; 64]> = SmallVec::new();
+    let mut frame_buffers: Vec<FrameBuffer> = Vec::new();
 
     for fb in dmo_data.context.frame_buffers.iter() {
         let mut has_image = false;
@@ -1058,11 +1050,11 @@ fn build_quad_scenes(
 ) -> Result<(), Box<dyn Error>> {
     use crate::dmo_data as d;
 
-    dmo_gfx.context.quad_scenes = SmallVec::new();
+    dmo_gfx.context.quad_scenes = Vec::new();
 
     for q in dmo_data.context.quad_scenes.iter() {
-        let mut layout_to_vars: SmallVec<[UniformMapping; 64]> = SmallVec::new();
-        let mut binding_to_buffers: SmallVec<[BufferMapping; 64]> = SmallVec::new();
+        let mut layout_to_vars: Vec<UniformMapping> = Vec::new();
+        let mut binding_to_buffers: Vec<BufferMapping> = Vec::new();
 
         for i in q.layout_to_vars.iter() {
             let a = match i {
@@ -1279,11 +1271,11 @@ fn build_timeline(dmo_gfx: &mut DmoGfx, dmo_data: &DmoData) -> Result<(), Box<dy
 
     for track in dmo_data.timeline.tracks.iter() {
         let mut track_gfx = TimeTrack {
-            scene_blocks: SmallVec::new(),
+            scene_blocks: Vec::new(),
         };
 
         for block in track.scene_blocks.iter() {
-            let mut ops: SmallVec<[G; 32]> = SmallVec::new();
+            let mut ops: Vec<G> = Vec::new();
 
             for i in block.draw_ops.iter() {
                 let o = match i {

@@ -1,9 +1,7 @@
-use core::{mem, ptr};
+use std::{mem, ptr};
 
 use gl;
 use gl::types::*;
-
-use smallvec::SmallVec;
 
 use crate::context_gfx::ContextGfx;
 use crate::error::RuntimeError;
@@ -18,9 +16,9 @@ pub struct Mesh {
     pub vert_src_idx: usize,
     pub frag_src_idx: usize,
 
-    pub vertices: SmallVec<[Vertex; 8]>,
-    pub indices: SmallVec<[u32; 8]>,
-    pub textures: SmallVec<[Texture; 2]>,
+    pub vertices: Vec<Vertex>,
+    pub indices: Vec<u32>,
+    pub textures: Vec<Texture>,
 
     program: GLuint,
     vao: GLuint,
@@ -34,9 +32,9 @@ impl Default for Mesh {
             vert_src_idx: 0,
             frag_src_idx: 0,
 
-            vertices: SmallVec::new(),
-            indices: SmallVec::new(),
-            textures: SmallVec::new(),
+            vertices: Vec::new(),
+            indices: Vec::new(),
+            textures: Vec::new(),
 
             program: 0,
 
@@ -49,9 +47,9 @@ impl Default for Mesh {
 
 impl Mesh {
     pub fn new(
-        vertices: &SmallVec<[Vertex; 8]>,
-        indices: &SmallVec<[u32; 8]>,
-        textures: &SmallVec<[Texture; 2]>,
+        vertices: &Vec<Vertex>,
+        indices: &Vec<u32>,
+        textures: &Vec<Texture>,
         vert_src: &str,
         frag_src: &str,
         err_msg_buf: &mut [u8; ERR_MSG_LEN],
@@ -65,7 +63,7 @@ impl Mesh {
             vert_src_idx: 0,
             frag_src_idx: 0,
             vertices: vertices.clone(),
-            indices: SmallVec::from_slice(indices),
+            indices: indices.clone(),
             textures: textures.clone(),
             program: 0,
             vao: 0,
@@ -160,7 +158,7 @@ impl Mesh {
         frag_src: &str,
         err_msg_buf: &mut [u8; ERR_MSG_LEN],
     ) -> Result<Mesh, RuntimeError> {
-        let mut vertices: SmallVec<[Vertex; 8]> = SmallVec::new();
+        let mut vertices: Vec<Vertex> = Vec::new();
 
         for v in CUBE_VERTICES.iter() {
             vertices.push(Vertex {
@@ -172,10 +170,10 @@ impl Mesh {
             });
         }
 
-        let mut indices: SmallVec<[u32; 8]> = SmallVec::new();
+        let mut indices: Vec<u32> = Vec::new();
         indices.extend_from_slice(&CUBE_ELEMENTS);
 
-        let textures: SmallVec<[Texture; 2]> = SmallVec::new();
+        let textures: Vec<Texture> = Vec::new();
 
         let cube = Mesh::new(
             &vertices,
@@ -203,8 +201,8 @@ impl Mesh {
     pub fn draw(
         &self,
         context: &ContextGfx,
-        layout_to_vars: &SmallVec<[UniformMapping; 64]>,
-        binding_to_buffers: &SmallVec<[BufferMapping; 64]>,
+        layout_to_vars: &Vec<UniformMapping>,
+        binding_to_buffers: &Vec<BufferMapping>,
         model: &[[f32; 4]; 4],
         view: &[[f32; 4]; 4],
         projection: &[[f32; 4]; 4],

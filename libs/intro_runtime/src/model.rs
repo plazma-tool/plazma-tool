@@ -1,5 +1,3 @@
-use smallvec::SmallVec;
-
 use crate::context_gfx::ContextGfx;
 use crate::error::RuntimeError;
 use crate::mesh::Mesh;
@@ -7,8 +5,8 @@ use crate::types::{BufferMapping, UniformMapping};
 
 pub struct Model {
     pub model_type: ModelType,
-    // pub textures_loaded: SmallVec<[Texture; 2]>, // is this needed?
-    pub meshes: SmallVec<[Mesh; 2]>,
+    // pub textures_loaded: Vec<Texture>, // is this needed?
+    pub meshes: Vec<Mesh>,
 }
 
 #[derive(Copy, Clone)]
@@ -28,14 +26,14 @@ impl Model {
     pub fn empty_cube() -> Model {
         Model {
             model_type: ModelType::Cube,
-            meshes: SmallVec::new(),
+            meshes: Vec::new(),
         }
     }
 
     pub fn empty_obj() -> Model {
         Model {
             model_type: ModelType::Obj,
-            meshes: SmallVec::new(),
+            meshes: Vec::new(),
         }
     }
 
@@ -48,7 +46,7 @@ impl Model {
     pub fn cube(vert_src_idx: usize, frag_src_idx: usize) -> Model {
         let mut model = Model {
             model_type: ModelType::Cube,
-            meshes: SmallVec::new(),
+            meshes: Vec::new(),
         };
 
         // Add a mesh but no vertices, which will be created from already stored shapes.
@@ -64,8 +62,8 @@ impl Model {
     pub fn draw(
         &self,
         context: &ContextGfx,
-        layout_to_vars: &SmallVec<[UniformMapping; 64]>,
-        binding_to_buffers: &SmallVec<[BufferMapping; 64]>,
+        layout_to_vars: &Vec<UniformMapping>,
+        binding_to_buffers: &Vec<BufferMapping>,
         model: &[[f32; 4]; 4],
         view: &[[f32; 4]; 4],
         projection: &[[f32; 4]; 4],

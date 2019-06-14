@@ -451,12 +451,12 @@ impl PreviewState {
     }
 
     pub fn update_rocket(&mut self, rocket: &mut Option<SyncClient>) -> Result<(), Box<dyn Error>> {
-        let mut do_rocket_none = false;
+        let mut set_rocket_none = false;
         if let &mut Some(ref mut r) = rocket {
             match r.update(self.get_sync_device_mut()) {
                 Ok(a) => self.draw_anyway = a,
                 Err(err) => {
-                    do_rocket_none = true;
+                    set_rocket_none = true;
                     // It's a Box<dyn Error>, so we can't restore the original type.
                     // Let's parse the debug string for now.
                     let msg: &str = &format!("{:?}", err);
@@ -469,11 +469,24 @@ impl PreviewState {
             }
         }
 
-        if do_rocket_none {
+        if set_rocket_none {
             *rocket = None;
         }
 
-        // Try to re-connect to Rocket. Good in the case when the Rocket Editor
+        if !self.get_is_paused() {
+            if let &mut Some(ref mut r) = rocket {
+                match r.send_row(self.get_sync_device_mut()) {
+                    Ok(_) => {}
+                    Err(e) => warn!("{:?}", e),
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn connect_to_rocket(&mut self, rocket: &mut Option<SyncClient>) {
+        // Try to connect to Rocket. Good in the case when the Rocket Editor
         // was started after the tool.
         if rocket.is_none()
             && self.t_rocket_last_connection_attempt.elapsed() > Duration::from_secs(1)
@@ -494,17 +507,6 @@ impl PreviewState {
 
             self.t_rocket_last_connection_attempt = Instant::now();
         }
-
-        if !self.get_is_paused() {
-            if let &mut Some(ref mut r) = rocket {
-                match r.send_row(self.get_sync_device_mut()) {
-                    Ok(_) => {}
-                    Err(e) => warn!("{:?}", e),
-                }
-            }
-        }
-
-        Ok(())
     }
 
     pub fn update_vars(&mut self) -> Result<(), Box<dyn Error>> {
@@ -517,6 +519,10 @@ impl PreviewState {
 
     pub fn callback_window_resized(&mut self, wx: f64, wy: f64) -> Result<(), Box<dyn Error>> {
         info! {"wx: {}, wy: {}", wx, wy};
+        if wx < 1.0 || wy < 1.0 {
+            info! {"Returning because width or height < 1.0."};
+            return Ok(());
+        }
 
         self.dmo_gfx.context.set_window_resolution(wx, wy);
         match self.dmo_gfx.recreate_framebuffers() {

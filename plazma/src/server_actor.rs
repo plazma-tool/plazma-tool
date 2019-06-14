@@ -876,7 +876,13 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
 fn run_preview_command(path_to_binary: &PathBuf) -> Option<Child> {
     // std::process::Command inherits the current process's working directory.
 
-    let bin_cmd = format!("{} preview", path_to_binary.to_str().unwrap());
+    let s = path_to_binary.to_str().unwrap();
+    let bin_cmd: String;
+    if cfg!(target_os = "windows") {
+        bin_cmd = format!("{} preview", s.trim_start_matches("\\\\?\\"));
+    } else {
+        bin_cmd = format!("{} preview", s);
+    }
 
     if cfg!(target_os = "windows") {
         match Command::new("cmd").arg("/C").arg(bin_cmd).spawn() {
@@ -909,7 +915,13 @@ fn run_preview_command(path_to_binary: &PathBuf) -> Option<Child> {
 fn run_dialogs_command(path_to_binary: &PathBuf) -> Option<Child> {
     // std::process::Command inherits the current process's working directory.
 
-    let bin_cmd = format!("{} dialogs", path_to_binary.to_str().unwrap());
+    let s = path_to_binary.to_str().unwrap();
+    let bin_cmd: String;
+    if cfg!(target_os = "windows") {
+        bin_cmd = format!("{} dialogs", s.trim_start_matches("\\\\?\\"));
+    } else {
+        bin_cmd = format!("{} dialogs", s);
+    }
 
     if cfg!(target_os = "windows") {
         match Command::new("cmd").arg("/C").arg(bin_cmd).spawn() {

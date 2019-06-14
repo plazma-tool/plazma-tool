@@ -39,8 +39,8 @@ fn main() {
 
     let app_info = app::app_info().unwrap();
 
-    info!("🔎 CWD: {:?}", &app_info.cwd);
-    info!("🔎 Path to binary: {:?}", &app_info.path_to_binary);
+    info!("🔎 CWD: {}", &app_info.cwd.to_str().unwrap());
+    info!("🔎 Path to binary: {}", &app_info.path_to_binary.to_str().unwrap());
 
     // --- CLI options ---
 

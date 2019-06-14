@@ -20,10 +20,12 @@ pub struct ProjectData {
 pub struct TemplateAsset;
 
 fn clean_asset_path(path: &PathBuf) -> String {
-    let a = path.to_str().unwrap().replace("/./", "/");
-    let a = a.replace("\\.\\", "\\");
+    // use only '/' in the path, even on Windows
+    let a = path.to_str().unwrap();
+    let a = a.replace("\\", "/");
+    let a = a.replace("/./", "/");
     let a = a.trim_start_matches("/");
-    a.trim_start_matches("\\").to_string()
+    a.to_string()
 }
 
 pub fn get_template_asset_string(path: &PathBuf) -> Result<String, Box<dyn Error>> {

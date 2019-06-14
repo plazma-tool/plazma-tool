@@ -942,7 +942,8 @@ fn render_loop(
 
             Err(e) => match e {
                 TryRecvError::Empty => {}
-                _ => error!("render_loop() can't receive: {:?}", e),
+                TryRecvError::Disconnected => {}
+                //_ => error!("render_loop() can't receive: {:?}", e),
             },
         }
 
@@ -969,6 +970,13 @@ fn render_loop(
             Ok(_) => {}
             Err(e) => error!("🔥 state.update_rocket() returned: {:?}", e),
         }
+
+        /* NOTE: this causes the frame update to stutter on Windows
+        match state.connect_to_rocket(&mut rocket) {
+            Ok(_) => {}
+            Err(e) => error!("🔥 state.reconnect_to_rocket() returned: {:?}", e),
+        }
+        */
 
         match state.update_vars() {
             Ok(_) => {}
@@ -1445,7 +1453,8 @@ fn dialogs_loop(
 
             Err(e) => match e {
                 TryRecvError::Empty => {}
-                _ => error!("dialogs_loop() can't receive: {:?}", e),
+                TryRecvError::Disconnected => {}
+                //_ => error!("dialogs_loop() can't receive: {:?}", e),
             },
         }
 

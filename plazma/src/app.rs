@@ -22,6 +22,7 @@ use actix_web::{middleware, server, ws, App, Body, HttpRequest, HttpResponse};
 use futures::Future;
 
 use glutin::{ElementState, Event, EventsLoop, GlContext, GlWindow, WindowEvent};
+use glutin::dpi::LogicalSize;
 
 use intro_3d::lib::Vector3;
 use rocket_client::SyncClient;
@@ -580,7 +581,9 @@ pub fn start_preview(
             .with_title("plazma preview")
             .with_fullscreen(Some(monitor))
     } else {
-        glutin::WindowBuilder::new().with_title("plazma preview")
+        glutin::WindowBuilder::new()
+            .with_title("plazma preview")
+            .with_dimensions(LogicalSize { width: 1366.0, height: 768.0 })
     };
 
     let context_builder = glutin::ContextBuilder::new();

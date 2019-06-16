@@ -390,7 +390,7 @@ impl DmoData {
             return Err(Box::new(ToolError::MissingProjectRoot));
         };
 
-        if model_data.obj_path.len() == 0 {
+        if model_data.obj_path.is_empty() {
             return Err(Box::new(ToolError::MissingObjectPath));
         }
 
@@ -445,8 +445,8 @@ impl DmoData {
                     ];
 
                     let vertex = Vertex {
-                        position: position,
-                        normal: normal,
+                        position,
+                        normal,
                         texcoords: [0.0; 2], // TODO UV texcoords
                     };
 

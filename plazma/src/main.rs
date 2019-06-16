@@ -40,7 +40,10 @@ fn main() {
     let app_info = app::app_info().unwrap();
 
     info!("🔎 CWD: {}", &app_info.cwd.to_str().unwrap());
-    info!("🔎 Path to binary: {}", &app_info.path_to_binary.to_str().unwrap());
+    info!(
+        "🔎 Path to binary: {}",
+        &app_info.path_to_binary.to_str().unwrap()
+    );
 
     // --- CLI options ---
 
@@ -51,12 +54,12 @@ fn main() {
 
     let AppStartParams {
         yml_path,
-        dmo_path: _,
         plazma_server_port,
         start_server: param_start_server,
         start_webview: param_start_webview,
         start_preview: param_start_preview,
         is_dialogs: param_is_dialogs,
+        ..
     } = app::process_cli_args(matches).unwrap();
 
     // --- OpenGL preview window ---

@@ -1,4 +1,4 @@
-use std::{mem, ptr};
+use std::ptr;
 
 use gl;
 use gl::types::*;
@@ -27,9 +27,9 @@ impl FrameBuffer {
         FrameBuffer {
             width: 0,
             height: 0,
-            kind: kind,
-            format: format,
-            image_data_idx: image_data_idx,
+            kind,
+            format,
+            image_data_idx,
             fbo: None,
             texture_buffer: None,
             render_buffer: None,
@@ -45,9 +45,8 @@ impl FrameBuffer {
         self.width = width;
         self.height = height;
 
-        match self.kind {
-            BufferKind::NOOP => return Ok(()),
-            _ => {}
+        if let BufferKind::NOOP = self.kind {
+            return Ok(());
         }
 
         // start creating the framebuffer
@@ -103,7 +102,7 @@ impl FrameBuffer {
                             0,
                             format,
                             data_type,
-                            mem::transmute(img.raw_pixels.as_ptr()),
+                            img.raw_pixels.as_ptr() as *const libc::c_void,
                         );
                     }
                 } else {
@@ -183,7 +182,7 @@ impl FrameBuffer {
         if binding_idx <= gl::MAX_COMBINED_TEXTURE_IMAGE_UNITS as u8 {
             if let Some(fbo) = self.fbo {
                 unsafe {
-                    gl::ActiveTexture(gl::TEXTURE0 + (binding_idx as GLuint));
+                    gl::ActiveTexture(gl::TEXTURE0 + u32::from(binding_idx));
                     gl::BindTexture(gl::TEXTURE_2D, fbo);
                 }
             } else {

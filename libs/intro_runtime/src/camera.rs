@@ -35,22 +35,22 @@ impl Camera {
         };
 
         let mut camera = Camera {
-            fovy_angle: fovy_angle,
-            aspect: aspect,
+            fovy_angle,
+            aspect,
             clip_near: 0.1,
             clip_far: 100.0,
             projection: [[0.0; 4]; 4],
             view: [[0.0; 4]; 4],
-            world_up: world_up,
-            position: position,
+            world_up,
+            position,
             front: v,
             up: Vector3::new(0.0, 0.0, 0.0),
             right: Vector3::new(0.0, 0.0, 0.0),
-            pitch: pitch,
-            yaw: yaw,
+            pitch,
+            yaw,
         };
 
-        if let Some(_) = front {
+        if front.is_some() {
             camera.calculate_right_and_up_from_front();
         } else {
             // pitch and yaw determines the front, right, up vector

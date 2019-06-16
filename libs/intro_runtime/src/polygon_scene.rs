@@ -3,6 +3,7 @@ use intro_3d::lib::{Matrix4, Vector3};
 use crate::error::RuntimeError;
 
 use crate::context_gfx::ContextGfx;
+use crate::model::ModelViewProjection;
 use crate::types::{BufferMapping, UniformMapping, ValueFloat, ValueVec3};
 
 pub struct PolygonScene {
@@ -75,9 +76,11 @@ impl PolygonScene {
                     context,
                     &o.layout_to_vars,
                     &o.binding_to_buffers,
-                    &o.model_matrix,
-                    &context.polygon_context.view_matrix,
-                    &context.polygon_context.projection_matrix,
+                    &ModelViewProjection {
+                        model: o.model_matrix,
+                        view: context.polygon_context.view_matrix,
+                        projection: context.polygon_context.projection_matrix,
+                    },
                     &context.polygon_context.view_position.as_slice(),
                 )?;
             }

@@ -139,7 +139,7 @@ impl DataIndex {
     ) -> Result<(), Box<dyn Error>> {
         info! {"add_shader() path: {}, embedded {}", path, embedded};
         // TODO send error (which can be ignored) when path length is zero.
-        if path.len() == 0 {
+        if path.is_empty() {
             return Ok(());
         }
 
@@ -166,7 +166,7 @@ impl DataIndex {
             shader_sources.push(src.to_owned());
         }
 
-        return Ok(());
+        Ok(())
     }
 
     pub fn add_frame_buffer(
@@ -185,8 +185,8 @@ impl DataIndex {
         self.buffer_name_to_idx.insert(buffer.name.to_string(), idx);
 
         // TODO should error if buffer is not Empty_Texture but path.len() == 0
-        if buffer.image_path.len() > 0 {
-            self.add_image_path_format_to_index(&buffer.image_path, buffer.format.clone());
+        if !buffer.image_path.is_empty() {
+            self.add_image_path_format_to_index(&buffer.image_path, buffer.format);
 
             if read_image_path {
                 let p: PathBuf = if let Some(project_root) = project_root {
@@ -206,8 +206,8 @@ impl DataIndex {
                     .get(&buffer.image_path.clone())
                     .ok_or("bad image path name")?;
                 let mut new_image = Image {
-                    width: width,
-                    height: height,
+                    width,
+                    height,
                     format: *f,
                     raw_pixels: vec![],
                 };
@@ -253,7 +253,7 @@ impl DataIndex {
         let idx = self
             .shader_path_to_idx
             .get(path)
-            .ok_or(format! {"no such shader path: {}", path})?;
+            .ok_or_else(|| format! {"no such shader path: {}", path})?;
         Ok(*idx)
     }
 
@@ -265,7 +265,7 @@ impl DataIndex {
         let idx = self
             .image_path_to_idx
             .get(path)
-            .ok_or(format! {"no such image path: {}", path})?;
+            .ok_or_else(|| format! {"no such image path: {}", path})?;
         Ok(*idx)
     }
 
@@ -273,7 +273,7 @@ impl DataIndex {
         let idx = self
             .buffer_name_to_idx
             .get(name)
-            .ok_or(format! {"no such buffer name: {}", name})?;
+            .ok_or_else(|| format! {"no such buffer name: {}", name})?;
         Ok(*idx)
     }
 
@@ -281,7 +281,7 @@ impl DataIndex {
         let idx = self
             .quad_scene_name_to_idx
             .get(name)
-            .ok_or(format! {"no such quad scene name: {}", name})?;
+            .ok_or_else(|| format! {"no such quad scene name: {}", name})?;
         Ok(*idx)
     }
 
@@ -289,7 +289,7 @@ impl DataIndex {
         let idx = self
             .polygon_scene_name_to_idx
             .get(name)
-            .ok_or(format! {"no such polygon scene name: {}", name})?;
+            .ok_or_else(|| format! {"no such polygon scene name: {}", name})?;
         Ok(*idx)
     }
 
@@ -297,7 +297,7 @@ impl DataIndex {
         let idx = self
             .model_name_to_idx
             .get(name)
-            .ok_or(format! {"no such model name: {}", name})?;
+            .ok_or_else(|| format! {"no such model name: {}", name})?;
         Ok(*idx)
     }
 

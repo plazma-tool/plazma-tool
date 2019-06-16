@@ -1,6 +1,6 @@
 extern crate intro_3d;
 
-use intro_3d::{to_radians, Matrix4, Vector3, Vector4};
+use intro_3d::lib::{to_radians, Matrix4, Vector3, Vector4};
 
 #[test]
 fn add_vector3_and_vector3() {

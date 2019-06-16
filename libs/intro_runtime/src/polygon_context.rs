@@ -46,16 +46,16 @@ impl PolygonContext {
         aspect: f32,
     ) -> PolygonContext {
         let mut p = PolygonContext {
-            view_position: view_position,
-            view_front: view_front,
-            view_up: view_up,
+            view_position,
+            view_front,
+            view_up,
 
             view_matrix: [[0.0; 4]; 4],
             projection_matrix: [[0.0; 4]; 4],
 
-            fovy: fovy,
-            znear: znear,
-            zfar: zfar,
+            fovy,
+            znear,
+            zfar,
 
             models: Vec::new(),
         };

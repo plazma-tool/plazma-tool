@@ -71,6 +71,7 @@ impl ContextGfx {
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         time: f64,
         window_width: f64,
@@ -110,19 +111,19 @@ impl ContextGfx {
             [[0.0; PROFILE_EVENTS]; PROFILE_FRAMES];
 
         ContextGfx {
-            sync_vars: sync_vars,
+            sync_vars,
 
-            shader_sources: shader_sources,
-            images: images,
-            quad_scenes: quad_scenes,
+            shader_sources,
+            images,
+            quad_scenes,
 
-            frame_buffers: frame_buffers,
+            frame_buffers,
 
-            polygon_scenes: polygon_scenes,
-            polygon_context: polygon_context,
+            polygon_scenes,
+            polygon_context,
 
-            camera: camera,
-            mouse: mouse,
+            camera,
+            mouse,
 
             profile_times: empty_profile,
             profile_frame_idx: 0,
@@ -167,7 +168,7 @@ impl ContextGfx {
 
     pub fn get_window_aspect(&self) -> f64 {
         let (wx, wy) = self.get_window_resolution();
-        return wx / wy;
+        wx / wy
     }
 
     pub fn set_screen_resolution(&mut self, width: f64, height: f64) {
@@ -184,17 +185,17 @@ impl ContextGfx {
 
     pub fn set_camera_sync(&mut self) {
         self.sync_vars
-            .set_builtin(Camera_Pos_X, self.camera.position.x as f64);
+            .set_builtin(Camera_Pos_X, f64::from(self.camera.position.x));
         self.sync_vars
-            .set_builtin(Camera_Pos_Y, self.camera.position.y as f64);
+            .set_builtin(Camera_Pos_Y, f64::from(self.camera.position.y));
         self.sync_vars
-            .set_builtin(Camera_Pos_Z, self.camera.position.z as f64);
+            .set_builtin(Camera_Pos_Z, f64::from(self.camera.position.z));
         self.sync_vars
-            .set_builtin(Camera_Front_X, self.camera.front.x as f64);
+            .set_builtin(Camera_Front_X, f64::from(self.camera.front.x));
         self.sync_vars
-            .set_builtin(Camera_Front_Y, self.camera.front.y as f64);
+            .set_builtin(Camera_Front_Y, f64::from(self.camera.front.y));
         self.sync_vars
-            .set_builtin(Camera_Front_Z, self.camera.front.z as f64);
+            .set_builtin(Camera_Front_Z, f64::from(self.camera.front.z));
     }
 
     pub fn get_last_work_buffer(&self) -> &FrameBuffer {
@@ -244,10 +245,10 @@ impl ContextGfx {
 
     pub fn impl_clear(&self, red: u8, green: u8, blue: u8, alpha: u8) {
         let (f_red, f_green, f_blue, f_alpha) = (
-            (red as f32 / 255.0),
-            (green as f32 / 255.0),
-            (blue as f32 / 255.0),
-            (alpha as f32 / 255.0),
+            (f32::from(red) / 255.0),
+            (f32::from(green) / 255.0),
+            (f32::from(blue) / 255.0),
+            (f32::from(alpha) / 255.0),
         );
         unsafe {
             gl::ClearColor(f_red, f_green, f_blue, f_alpha);
@@ -265,9 +266,10 @@ impl ContextGfx {
         if self.profile_frame_idx < PROFILE_FRAMES && self.profile_event_idx < PROFILE_EVENTS {
             let t_delta: Duration = self.t_frame_start.elapsed();
             // t_delta as nanosec
-            let nanos: u64 = (t_delta.as_secs() * 1_000_000_000) + (t_delta.subsec_nanos() as u64);
+            let nanos: u64 =
+                (t_delta.as_secs() * 1_000_000_000) + u64::from(t_delta.subsec_nanos());
             // as millisec
-            let millis: f32 = (nanos as f32) / (1_000_000 as f32);
+            let millis: f32 = (nanos as f32) / 1_000_000_f32;
 
             self.profile_times[self.profile_frame_idx][self.profile_event_idx] = millis;
             self.profile_event_idx += 1;

@@ -1,5 +1,3 @@
-use std::mem;
-
 use gl;
 use gl::types::*;
 
@@ -21,8 +19,8 @@ impl Texture {
         Texture {
             width: 0,
             height: 0,
-            format: format,
-            image_data_idx: image_data_idx,
+            format,
+            image_data_idx,
             id: None,
         }
     }
@@ -64,7 +62,7 @@ impl Texture {
                     0,
                     format,
                     data_type,
-                    mem::transmute(img.raw_pixels.as_ptr()),
+                    img.raw_pixels.as_ptr() as *const libc::c_void,
                 );
                 gl::GenerateMipmap(gl::TEXTURE_2D);
                 gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32);
@@ -88,7 +86,7 @@ impl Texture {
             if let Some(id) = self.id {
                 unsafe {
                     // activate texture unit and bind the texture
-                    gl::ActiveTexture(gl::TEXTURE0 + (binding_idx as GLuint));
+                    gl::ActiveTexture(gl::TEXTURE0 + u32::from(binding_idx));
                     gl::BindTexture(gl::TEXTURE_2D, id);
                 }
             } else {

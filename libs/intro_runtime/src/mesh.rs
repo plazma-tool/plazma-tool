@@ -6,6 +6,7 @@ use gl::types::*;
 use crate::context_gfx::ContextGfx;
 use crate::error::RuntimeError;
 use crate::error::RuntimeError::*;
+use crate::model::ModelViewProjection;
 use crate::shader::{compile_shader, link_program};
 use crate::shapes::{CUBE_ELEMENTS, CUBE_VERTICES};
 use crate::texture::Texture;
@@ -47,9 +48,9 @@ impl Default for Mesh {
 
 impl Mesh {
     pub fn new(
-        vertices: &Vec<Vertex>,
-        indices: &Vec<u32>,
-        textures: &Vec<Texture>,
+        vertices: &[Vertex],
+        indices: &[u32],
+        textures: &[Texture],
         vert_src: &str,
         frag_src: &str,
         err_msg_buf: &mut [u8; ERR_MSG_LEN],
@@ -62,9 +63,9 @@ impl Mesh {
         let mut mesh = Mesh {
             vert_src_idx: 0,
             frag_src_idx: 0,
-            vertices: vertices.clone(),
-            indices: indices.clone(),
-            textures: textures.clone(),
+            vertices: vertices.to_vec(),
+            indices: indices.to_vec(),
+            textures: textures.to_vec(),
             program: 0,
             vao: 0,
             vbo: 0,
@@ -86,7 +87,7 @@ impl Mesh {
             gl::BufferData(
                 gl::ARRAY_BUFFER,
                 (mesh.vertices.len() * mem::size_of::<Vertex>()) as isize,
-                mem::transmute(mesh.vertices.as_ptr()),
+                mesh.vertices.as_ptr() as *const libc::c_void,
                 gl::STATIC_DRAW,
             );
 
@@ -114,7 +115,7 @@ impl Mesh {
                 gl::FLOAT,
                 gl::FALSE,
                 mem::size_of::<Vertex>() as GLsizei,
-                mem::transmute(3 * mem::size_of::<GLfloat>()),
+                (3 * mem::size_of::<GLfloat>()) as *const libc::c_void,
             );
             // texture coord
             gl::EnableVertexAttribArray(2);
@@ -124,7 +125,7 @@ impl Mesh {
                 gl::FLOAT,
                 gl::FALSE,
                 mem::size_of::<Vertex>() as GLsizei,
-                mem::transmute((3 + 3) * mem::size_of::<GLfloat>()),
+                ((3 + 3) * mem::size_of::<GLfloat>()) as *const libc::c_void,
             );
             // // tangent
             // gl::EnableVertexAttribArray(3);
@@ -145,7 +146,7 @@ impl Mesh {
             gl::BufferData(
                 gl::ELEMENT_ARRAY_BUFFER,
                 (mesh.indices.len() * mem::size_of::<u32>()) as isize,
-                mem::transmute(mesh.indices.as_ptr()),
+                mesh.indices.as_ptr() as *const libc::c_void,
                 gl::STATIC_DRAW,
             );
         }
@@ -201,11 +202,9 @@ impl Mesh {
     pub fn draw(
         &self,
         context: &ContextGfx,
-        layout_to_vars: &Vec<UniformMapping>,
-        binding_to_buffers: &Vec<BufferMapping>,
-        model: &[[f32; 4]; 4],
-        view: &[[f32; 4]; 4],
-        projection: &[[f32; 4]; 4],
+        layout_to_vars: &[UniformMapping],
+        binding_to_buffers: &[BufferMapping],
+        mvp: &ModelViewProjection,
         camera_pos: &[f32; 3],
     ) -> Result<(), RuntimeError> {
         // bind vao, use shader
@@ -221,9 +220,9 @@ impl Mesh {
         // 3 = vec3 camera pos
 
         unsafe {
-            gl::UniformMatrix4fv(0, 1, gl::FALSE, model[0].as_ptr());
-            gl::UniformMatrix4fv(1, 1, gl::FALSE, view[0].as_ptr());
-            gl::UniformMatrix4fv(2, 1, gl::FALSE, projection[0].as_ptr());
+            gl::UniformMatrix4fv(0, 1, gl::FALSE, mvp.model[0].as_ptr());
+            gl::UniformMatrix4fv(1, 1, gl::FALSE, mvp.view[0].as_ptr());
+            gl::UniformMatrix4fv(2, 1, gl::FALSE, mvp.projection[0].as_ptr());
             gl::Uniform3f(3, camera_pos[0], camera_pos[1], camera_pos[2]);
         }
 
@@ -238,14 +237,14 @@ impl Mesh {
 
                     Float(layout_idx, var_idx) => {
                         gl::Uniform1f(
-                            layout_idx as i32,
+                            i32::from(layout_idx),
                             context.sync_vars.get_index(var_idx as usize)? as f32,
                         );
                     }
 
                     Vec2(layout_idx, var1, var2) => {
                         gl::Uniform2f(
-                            layout_idx as i32,
+                            i32::from(layout_idx),
                             context.sync_vars.get_index(var1 as usize)? as f32,
                             context.sync_vars.get_index(var2 as usize)? as f32,
                         );
@@ -253,7 +252,7 @@ impl Mesh {
 
                     Vec3(layout_idx, var1, var2, var3) => {
                         gl::Uniform3f(
-                            layout_idx as i32,
+                            i32::from(layout_idx),
                             context.sync_vars.get_index(var1 as usize)? as f32,
                             context.sync_vars.get_index(var2 as usize)? as f32,
                             context.sync_vars.get_index(var3 as usize)? as f32,
@@ -262,7 +261,7 @@ impl Mesh {
 
                     Vec4(layout_idx, var1, var2, var3, var4) => {
                         gl::Uniform4f(
-                            layout_idx as i32,
+                            i32::from(layout_idx),
                             context.sync_vars.get_index(var1 as usize)? as f32,
                             context.sync_vars.get_index(var2 as usize)? as f32,
                             context.sync_vars.get_index(var3 as usize)? as f32,
@@ -286,7 +285,7 @@ impl Mesh {
                         if (buffer_idx as usize) < context.frame_buffers.len() {
                             if binding_idx <= gl::MAX_COMBINED_TEXTURE_IMAGE_UNITS as u8 {
                                 if let Some(fbo) = context.frame_buffers[buffer_idx as usize].fbo {
-                                    gl::ActiveTexture(gl::TEXTURE0 + (binding_idx as GLuint));
+                                    gl::ActiveTexture(gl::TEXTURE0 + u32::from(binding_idx));
                                     gl::BindTexture(gl::TEXTURE_2D, fbo);
                                 } else {
                                     return Err(NoFbo);
@@ -311,7 +310,7 @@ impl Mesh {
         unsafe {
             // draw the mesh
 
-            if self.indices.len() > 0 {
+            if !self.indices.is_empty() {
                 // If the indices list is not empty, assume the vertices are EBO
                 // indexed array.
                 gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, self.ebo);

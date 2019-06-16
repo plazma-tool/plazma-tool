@@ -24,7 +24,7 @@ fn clean_asset_path(path: &PathBuf) -> String {
     let a = path.to_str().unwrap();
     let a = a.replace("\\", "/");
     let a = a.replace("/./", "/");
-    let a = a.trim_start_matches("/");
+    let a = a.trim_start_matches('/');
     a.to_string()
 }
 
@@ -40,7 +40,7 @@ pub fn get_template_asset_string(path: &PathBuf) -> Result<String, Box<dyn Error
         }
         None => {
             error! {"get_template_asset_string() missing path: {:?}", &path};
-            return Err(Box::new(ToolError::MissingTemplateAssetPath(p)));
+            Err(Box::new(ToolError::MissingTemplateAssetPath(p)))
         }
     }
 }
@@ -57,7 +57,7 @@ pub fn get_template_asset_bytes(path: &PathBuf) -> Result<Vec<u8>, Box<dyn Error
         }
         None => {
             error! {"get_template_asset_bytes() missing path: {:?}", &path};
-            return Err(Box::new(ToolError::MissingTemplateAssetPath(p)));
+            Err(Box::new(ToolError::MissingTemplateAssetPath(p)))
         }
     }
 }
@@ -96,8 +96,8 @@ impl ProjectData {
             Ok(ProjectData {
                 project_root: Some(project_root),
                 demo_yml_path: Some(yml_path.clone()),
-                dmo_data: dmo_data,
-                embedded: embedded,
+                dmo_data,
+                embedded,
             })
         } else {
             info!("plazma::ProjectData::new() return with DmoData::new_minimal()");

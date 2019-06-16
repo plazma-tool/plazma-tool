@@ -33,7 +33,7 @@ impl Mouse {
             drag_start_x: 0,
             drag_start_y: 0,
             pressed: [false, false, false],
-            sensitivity: sensitivity,
+            sensitivity,
         }
     }
 

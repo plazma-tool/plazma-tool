@@ -13,7 +13,7 @@ impl DmoSync {
         // idx 0 is Time
         context
             .sync_vars
-            .set_builtin(Time, self.device.time as f64 / 1000.0);
+            .set_builtin(Time, f64::from(self.device.time) / 1000.0);
 
         // Get the Rocket track index for a given sync var idx and calculate the track's value.
 

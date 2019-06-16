@@ -7,7 +7,7 @@ pub struct DataBlob {
 
 impl DataBlob {
     pub fn new(data: Vec<u8>) -> DataBlob {
-        DataBlob { data: data, idx: 0 }
+        DataBlob { data, idx: 0 }
     }
 
     pub fn get_idx(&self) -> usize {
@@ -64,12 +64,12 @@ impl DataBlob {
     }
 
     pub fn read_f32(&mut self) -> f32 {
-        let number: f32 = unsafe { mem::transmute(self.read_u32()) };
+        let number: f32 = f32::from_bits(self.read_u32());
         number
     }
 
     pub fn read_f64(&mut self) -> f64 {
-        let number: f64 = unsafe { mem::transmute(self.read_u64()) };
+        let number: f64 = f64::from_bits(self.read_u64());
         number
     }
 

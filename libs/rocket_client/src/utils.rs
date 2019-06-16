@@ -29,20 +29,20 @@ pub fn code_to_cmd(code: u8) -> SyncCmd {
 }
 
 /// Convert 4 bytes in network byte order (big-endian) to a little endian u32
-pub fn net_to_u32(bytes: &[u8; 4]) -> u32 {
+pub fn net_to_u32(bytes: [u8; 4]) -> u32 {
     let mut n: u32 = 0;
 
-    n += (bytes[0] as u32) << 24;
-    n += (bytes[1] as u32) << 16;
-    n += (bytes[2] as u32) << 8;
-    n += (bytes[3] as u32) << 0;
+    n += u32::from(bytes[0]) << 24;
+    n += u32::from(bytes[1]) << 16;
+    n += u32::from(bytes[2]) << 8;
+    n += u32::from(bytes[3]);
 
     n
 }
 
 /// Convert 4 bytes to f32
-pub fn net_to_f32(bytes: &[u8; 4]) -> f32 {
-    let number: f32 = unsafe { mem::transmute(net_to_u32(bytes)) };
+pub fn net_to_f32(bytes: [u8; 4]) -> f32 {
+    let number: f32 = f32::from_bits(net_to_u32(bytes));
     number
 }
 
@@ -53,7 +53,7 @@ pub fn u32_to_net(n: u32) -> [u8; 4] {
     bytes[0] = ((n >> 24) & 0xFF) as u8;
     bytes[1] = ((n >> 16) & 0xFF) as u8;
     bytes[2] = ((n >> 8) & 0xFF) as u8;
-    bytes[3] = ((n >> 0) & 0xFF) as u8;
+    bytes[3] = (n & 0xFF) as u8;
 
     bytes
 }
@@ -62,7 +62,7 @@ pub fn u32_to_net(n: u32) -> [u8; 4] {
 pub fn u32_to_le(n: u32) -> [u8; 4] {
     let mut bytes = [0; 4];
 
-    bytes[0] = ((n >> 0) & 0xFF) as u8;
+    bytes[0] = (n & 0xFF) as u8;
     bytes[1] = ((n >> 8) & 0xFF) as u8;
     bytes[2] = ((n >> 16) & 0xFF) as u8;
     bytes[3] = ((n >> 24) & 0xFF) as u8;
@@ -78,6 +78,6 @@ pub fn f32_to_le(n: f32) -> [u8; 4] {
 
 /// Returns the time in milliseconds based on the row and rps
 pub fn ms_from_row_rps(row: u32, rps: f64) -> u32 {
-    let t = ((row as f64) / rps) * 1000.0 + 0.5;
+    let t = (f64::from(row) / rps) * 1000.0 + 0.5;
     t as u32
 }

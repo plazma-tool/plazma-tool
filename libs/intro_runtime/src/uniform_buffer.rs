@@ -1,4 +1,4 @@
-use std::{mem, ptr};
+use std::ptr;
 
 use gl;
 use gl::types::*;
@@ -13,13 +13,19 @@ pub struct UniformBuffer {
     byte_size: usize,
 }
 
-impl UniformBuffer {
-    pub fn new() -> UniformBuffer {
+impl Default for UniformBuffer {
+    fn default() -> UniformBuffer {
         UniformBuffer {
             ubo: None,
             data: Vec::new(),
             byte_size: 0,
         }
+    }
+}
+
+impl UniformBuffer {
+    pub fn new() -> UniformBuffer {
+        UniformBuffer::default()
     }
 
     pub fn create_buffer(&mut self, byte_size: usize) -> Result<(), RuntimeError> {
@@ -54,7 +60,7 @@ impl UniformBuffer {
                     gl::UNIFORM_BUFFER,
                     0,
                     self.byte_size as isize,
-                    mem::transmute(self.data.as_ptr()),
+                    self.data.as_ptr() as *const libc::c_void,
                 );
                 gl::BindBuffer(gl::UNIFORM_BUFFER, 0);
             }
@@ -64,11 +70,7 @@ impl UniformBuffer {
         Ok(())
     }
 
-    pub fn set_f32_array(
-        &mut self,
-        start_offset: usize,
-        data: &Vec<f32>,
-    ) -> Result<(), RuntimeError> {
+    pub fn set_f32_array(&mut self, start_offset: usize, data: &[f32]) -> Result<(), RuntimeError> {
         for (data_idx, n) in data.iter().enumerate() {
             // Convert n (f32) to a [u8; 4].
             // Using a different size (Small)Vec to suit push_f32() argument.
@@ -78,9 +80,7 @@ impl UniformBuffer {
             // in layout std140, a float array is padded as vec4 (16 bytes) for each item
             let n_offset = start_offset + data_idx * 16;
             if (n_offset + 3) < self.data.len() {
-                for i in 0..4 {
-                    self.data[n_offset + i] = v[i];
-                }
+                self.data[n_offset..(4 + n_offset)].clone_from_slice(&v[..4])
             } else {
                 return Err(RuntimeError::DataIdxIsOutOfBounds);
             }
@@ -92,7 +92,7 @@ impl UniformBuffer {
         if binding_idx <= gl::MAX_UNIFORM_BUFFER_BINDINGS as u8 {
             if let Some(ubo) = self.ubo {
                 unsafe {
-                    gl::BindBufferBase(gl::UNIFORM_BUFFER, binding_idx as GLuint, ubo);
+                    gl::BindBufferBase(gl::UNIFORM_BUFFER, u32::from(binding_idx), ubo); // u32 = GLuint
                 }
             } else {
                 unsafe {

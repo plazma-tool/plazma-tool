@@ -126,9 +126,9 @@ impl DmoGfx {
         let frag_src_idx = self.context.quad_scenes[scene_idx].frag_src_idx;
 
         if let Some(ref mut quad) = self.context.quad_scenes[scene_idx].quad {
-            let ref s = self.context.shader_sources[vert_src_idx];
+            let s = &self.context.shader_sources[vert_src_idx];
             let vert_src = str::from_utf8(s).unwrap();
-            let ref s = self.context.shader_sources[frag_src_idx];
+            let s = &self.context.shader_sources[frag_src_idx];
             let frag_src = str::from_utf8(s).unwrap();
 
             quad.compile_program(vert_src, frag_src, err_msg_buf)?;
@@ -184,9 +184,9 @@ impl DmoGfx {
             for i in self.context.shader_sources[idx].iter() {
                 s.push(*i);
             }
-            return Ok(s);
+            Ok(s)
         } else {
-            return Err(ShaderSourceIdxIsOutOfBounds);
+            Err(ShaderSourceIdxIsOutOfBounds)
         }
     }
 
@@ -206,7 +206,7 @@ impl DmoGfx {
     pub fn update_shader_src_from_vec(
         &mut self,
         idx: usize,
-        frag_src_vec: &Vec<u8>,
+        frag_src_vec: &[u8],
     ) -> Result<(), RuntimeError> {
         if idx < self.context.shader_sources.len() {
             let mut s = Vec::new();
@@ -253,10 +253,10 @@ impl DmoGfx {
                 };
 
                 let model_type = &model.model_type;
-                match model_type {
-                    &ModelType::NOOP => {}
+                match *model_type {
+                    ModelType::NOOP => {}
 
-                    &ModelType::Cube => {
+                    ModelType::Cube => {
                         let mut m = Mesh::new_cube(&vert_src, &frag_src, err_msg_buf)?;
                         // Keep the idx values so that the asset manager can
                         // find the mesh that belongs to a path when the shader
@@ -266,7 +266,7 @@ impl DmoGfx {
                         new_meshes.push(m);
                     }
 
-                    &ModelType::Obj => {
+                    ModelType::Obj => {
                         let mut m = Mesh::new(
                             &mesh.vertices,
                             &mesh.indices,
@@ -297,9 +297,9 @@ impl DmoGfx {
             .meshes
             .iter_mut()
         {
-            let ref s = self.context.shader_sources[mesh.vert_src_idx];
+            let s = &self.context.shader_sources[mesh.vert_src_idx];
             let vert_src = str::from_utf8(s).unwrap();
-            let ref s = self.context.shader_sources[mesh.frag_src_idx];
+            let s = &self.context.shader_sources[mesh.frag_src_idx];
             let frag_src = str::from_utf8(s).unwrap();
             mesh.compile_program(vert_src, frag_src, err_msg_buf)?;
         }

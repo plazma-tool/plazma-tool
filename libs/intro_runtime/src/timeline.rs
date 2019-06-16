@@ -16,7 +16,7 @@ impl Default for Timeline {
         let scene = SceneBlock {
             start: 0.0,
             end: 60.0,
-            draw_ops: draw_ops,
+            draw_ops,
         };
 
         track.scene_blocks.push(scene);
@@ -30,9 +30,7 @@ impl Default for Timeline {
 
 impl Timeline {
     pub fn new() -> Timeline {
-        Timeline {
-            tracks: Vec::new(),
-        }
+        Timeline { tracks: Vec::new() }
     }
 
     pub fn draw_ops_at_time(&self, time: f64) -> Vec<DrawOp> {
@@ -45,7 +43,7 @@ impl Timeline {
         ops.push(DrawOp::Target_Buffer(0));
         ops.push(DrawOp::Clear(0, 0, 0, 0));
 
-        if self.tracks.len() > 0 {
+        if !self.tracks.is_empty() {
             for track in self.tracks.iter() {
                 for block in track.scene_blocks.iter() {
                     if block.start <= time && block.end > time {
@@ -78,7 +76,7 @@ impl Timeline {
         ops.push(DrawOp::Clear(0, 0, 0, 0));
         ops.push(DrawOp::Draw_Quad_Scene(0));
 
-        return ops;
+        ops
     }
 }
 

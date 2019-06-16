@@ -47,7 +47,7 @@ impl Handler<ClientMessage> for ClientActor {
             info!("🔎 🚔 Handler<ClientMessage> handle(): stopping the System");
             ctx.stop();
         } else {
-            let m = format!("{}", msg.data.trim());
+            let m = String::from(msg.data.trim());
             self.writer.text(m);
         }
     }
@@ -68,12 +68,11 @@ impl ClientActor {
 /// Handling incoming messages from the server.
 impl StreamHandler<Message, ProtocolError> for ClientActor {
     fn handle(&mut self, msg: Message, _: &mut Context<Self>) {
-        match msg {
-            Message::Text(text) => match self.channel_sender.send(text) {
+        if let Message::Text(text) = msg {
+            match self.channel_sender.send(text) {
                 Ok(x) => x,
                 Err(e) => error!("🔥 Can't send on ClientActor.channel_sender: {:?}", e),
-            },
-            _ => (),
+            }
         }
     }
 

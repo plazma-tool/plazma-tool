@@ -15,8 +15,8 @@ use rocket_sync::{code_to_key, SyncDevice, TrackKey};
 pub mod utils;
 use utils::*;
 
-const CLIENT_GREET: &'static str = "hello, synctracker!";
-const SERVER_GREET: &'static str = "hello, demo!";
+const CLIENT_GREET: &str = "hello, synctracker!";
+const SERVER_GREET: &str = "hello, demo!";
 const SERVER_GREET_LEN: usize = 12;
 
 pub struct SyncClient {
@@ -51,7 +51,7 @@ impl SyncClient {
         // handshake
 
         // send greeting
-        stream.write(CLIENT_GREET.as_bytes())?;
+        stream.write_all(CLIENT_GREET.as_bytes())?;
 
         // receive response
         let mut buf = [0; SERVER_GREET_LEN];
@@ -60,7 +60,7 @@ impl SyncClient {
                 match str::from_utf8(&buf) {
                     Ok(x) => {
                         let resp = String::from(x);
-                        if String::from(SERVER_GREET) != resp {
+                        if SERVER_GREET != resp {
                             return Err(Box::new(SyncError::BadServerGreeting));
                         }
                     }
@@ -78,7 +78,7 @@ impl SyncClient {
 
         info!("Handshake completed");
 
-        Ok(SyncClient { stream: stream })
+        Ok(SyncClient { stream })
     }
 
     /// Read from the stream and process commands until the server runs out of
@@ -157,18 +157,18 @@ impl SyncClient {
 
     pub fn send_row(&mut self, device: &SyncDevice) -> Result<(), Box<dyn Error>> {
         let buf = [cmd_to_code(&SyncCmd::SetRow)];
-        self.stream.write(&buf)?;
+        self.stream.write_all(&buf)?;
 
         let buf = u32_to_net(device.row);
 
         info!("Send row: {}, bytes: {:?}", device.row, buf);
-        self.stream.write(&buf)?;
+        self.stream.write_all(&buf)?;
 
         Ok(())
     }
 
     /// Send track names to Rocket, including group prefix
-    pub fn send_track_names(&mut self, track_names: &Vec<String>) -> Result<(), Box<dyn Error>> {
+    pub fn send_track_names(&mut self, track_names: &[String]) -> Result<(), Box<dyn Error>> {
         info!("Sending track names: {:#?}", track_names);
 
         for name in track_names.iter() {
@@ -176,15 +176,15 @@ impl SyncClient {
 
             // send get track command
             let buf = [cmd_to_code(&SyncCmd::GetTrack)];
-            self.stream.write(&buf)?;
+            self.stream.write_all(&buf)?;
 
             // send track name length
             let buf = u32_to_net(name.len() as u32);
-            self.stream.write(&buf)?;
+            self.stream.write_all(&buf)?;
 
             // send track name
             let buf = name.as_bytes();
-            self.stream.write(buf)?;
+            self.stream.write_all(buf)?;
         }
 
         Ok(())
@@ -201,17 +201,17 @@ impl SyncClient {
         // track index (to indetify in the Vec<SyncTrack>)
         let mut buf = [0; 4];
         self.stream.read_exact(&mut buf)?;
-        let track_idx: usize = net_to_u32(&buf) as usize;
+        let track_idx: usize = net_to_u32(buf) as usize;
 
         // row of the key
         let mut buf = [0; 4];
         self.stream.read_exact(&mut buf)?;
-        track_key.row = net_to_u32(&buf);
+        track_key.row = net_to_u32(buf);
 
         // value of the key
         let mut buf = [0; 4];
         self.stream.read_exact(&mut buf)?;
-        track_key.value = net_to_f32(&buf);
+        track_key.value = net_to_f32(buf);
 
         // interpolation type of the key
         let mut buf = [0; 1];
@@ -222,7 +222,7 @@ impl SyncClient {
 
         // add the key to the track if it exists
 
-        if device.tracks.len() == 0 {
+        if device.tracks.is_empty() {
             return Err(Box::new(SyncError::NoTracks));
         }
 
@@ -244,16 +244,16 @@ impl SyncClient {
         // track index (to indetify in the Vec<SyncTrack>)
         let mut buf = [0; 4];
         self.stream.read_exact(&mut buf)?;
-        let track_idx: usize = net_to_u32(&buf) as usize;
+        let track_idx: usize = net_to_u32(buf) as usize;
 
         // row of the key
         let mut buf = [0; 4];
         self.stream.read_exact(&mut buf)?;
-        let row: u32 = net_to_u32(&buf);
+        let row: u32 = net_to_u32(buf);
 
         self.stream.set_nonblocking(true)?;
 
-        if device.tracks.len() == 0 {
+        if device.tracks.is_empty() {
             return Err(Box::new(SyncError::NoTracks));
         }
 
@@ -279,7 +279,7 @@ impl SyncClient {
 
         self.stream.set_nonblocking(true)?;
 
-        device.row = net_to_u32(&buf);
+        device.row = net_to_u32(buf);
         device.time = ms_from_row_rps(device.row, device.rps);
         info!("bytes: {:?}", buf);
         info!("row: {}", device.row);

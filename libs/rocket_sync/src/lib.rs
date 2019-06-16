@@ -18,8 +18,8 @@ impl SyncDevice {
     pub fn new(bpm: f64, rpb: u8) -> SyncDevice {
         SyncDevice {
             tracks: Vec::new(),
-            rpb: rpb,
-            bpm: bpm,
+            rpb,
+            bpm,
             rps: rps(bpm, rpb),
             is_paused: true,
             row: 0,
@@ -28,15 +28,15 @@ impl SyncDevice {
     }
 
     pub fn set_row_from_time(&mut self) {
-        let r: f64 = (self.time as f64 / 1000.0) * self.rps + 0.5;
+        let r: f64 = (f64::from(self.time) / 1000.0) * self.rps + 0.5;
         self.row = r as u32;
     }
 
     pub fn get_track_value(&self, track_id: usize) -> Result<f64, SyncError> {
         if self.tracks.len() > track_id {
-            return Ok(self.tracks[track_id].value_at(self.row));
+            Ok(self.tracks[track_id].value_at(self.row))
         } else {
-            return Err(SyncError::TrackDoesntExist);
+            Err(SyncError::TrackDoesntExist)
         }
     }
 }
@@ -76,11 +76,15 @@ pub enum ActiveKeyIdx {
     AfterLastRow,
 }
 
+impl Default for SyncTrack {
+    fn default() -> SyncTrack {
+        SyncTrack { keys: Vec::new() }
+    }
+}
+
 impl SyncTrack {
     pub fn new() -> SyncTrack {
-        SyncTrack {
-            keys: Vec::new(),
-        }
+        SyncTrack::default()
     }
 
     /// Adds a key to the track, inserting sorted by row, replacing if one already exists on that row
@@ -129,14 +133,14 @@ impl SyncTrack {
         if let Some(hit) = self.find_active_key_idx_for_row(row) {
             use self::ActiveKeyIdx::*;
             match hit {
-                ExactRow(n) => return self.keys[n].value as f64,
+                ExactRow(n) => return f64::from(self.keys[n].value),
 
                 PrevRow(n) => hit_idx = n,
 
                 // hit is beyond the last key
-                AfterLastRow => return self.keys[self.keys.len() - 1].value as f64,
+                AfterLastRow => return f64::from(self.keys[self.keys.len() - 1].value),
 
-                BeforeFirstRow => return self.keys[0].value as f64,
+                BeforeFirstRow => return f64::from(self.keys[0].value),
             }
         } else {
             return 0.0;
@@ -146,27 +150,27 @@ impl SyncTrack {
         let cur_key = &self.keys[hit_idx];
         let next_key = &self.keys[hit_idx + 1];
 
-        let t: f64 = ((row - cur_key.row) as f64) / ((next_key.row - cur_key.row) as f64);
-        let a: f64 = cur_key.value as f64;
-        let b: f64 = (next_key.value - cur_key.value) as f64;
+        let t: f64 = f64::from(row - cur_key.row) / f64::from(next_key.row - cur_key.row);
+        let a: f64 = f64::from(cur_key.value);
+        let b: f64 = f64::from(next_key.value - cur_key.value);
 
         use self::KeyType::*;
         match cur_key.key_type {
-            Step => return a,
+            Step => a,
 
-            Linear => return a + b * t,
+            Linear => a + b * t,
 
-            Smooth => return a + b * (t * t * (3.0 - 2.0 * t)),
+            Smooth => a + b * (t * t * (3.0 - 2.0 * t)),
 
-            Ramp => return a + b * t * t,
+            Ramp => a + b * t * t,
 
-            NOOP => return 0.0,
+            NOOP => 0.0,
         }
     }
 
     /// Find the active key idx for a row
     pub fn find_active_key_idx_for_row(&self, row: u32) -> Option<ActiveKeyIdx> {
-        if self.keys.len() == 0 {
+        if self.keys.is_empty() {
             return None;
         }
 
@@ -196,8 +200,8 @@ impl SyncTrack {
     }
 }
 
-impl TrackKey {
-    pub fn new() -> TrackKey {
+impl Default for TrackKey {
+    fn default() -> TrackKey {
         TrackKey {
             row: 0,
             value: 0.0,
@@ -206,9 +210,15 @@ impl TrackKey {
     }
 }
 
+impl TrackKey {
+    pub fn new() -> TrackKey {
+        TrackKey::default()
+    }
+}
+
 /// Calculate rows per second
 pub fn rps(bpm: f64, rpb: u8) -> f64 {
-    (bpm / 60.0) * (rpb as f64)
+    (bpm / 60.0) * f64::from(rpb)
 }
 
 pub fn key_to_code(key: &KeyType) -> u8 {

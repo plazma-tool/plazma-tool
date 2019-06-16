@@ -21,8 +21,8 @@ use actix_web::{middleware, server, ws, App, Body, HttpRequest, HttpResponse};
 
 use futures::Future;
 
-use glutin::{ElementState, Event, EventsLoop, GlContext, GlWindow, WindowEvent};
 use glutin::dpi::LogicalSize;
+use glutin::{ElementState, Event, EventsLoop, GlContext, GlWindow, WindowEvent};
 
 use intro_3d::lib::Vector3;
 use rocket_client::SyncClient;
@@ -67,7 +67,7 @@ fn static_assets(req: HttpRequest<ServerStateWrap>) -> HttpResponse {
 }
 
 fn fonts_assets(req: HttpRequest<ServerStateWrap>) -> HttpResponse {
-    let path = &req.path().trim_start_matches("/");
+    let path = &req.path().trim_start_matches('/');
     handle_embedded_file(path)
 }
 
@@ -111,17 +111,15 @@ impl AppStartParams {
 }
 
 pub fn app_info() -> Result<AppInfo, Box<dyn Error>> {
-    let cwd = PathBuf::from(std::env::current_dir()?).canonicalize()?;
-    let mut path_to_binary = PathBuf::from(cwd.clone());
+    let cwd = std::env::current_dir()?.canonicalize()?;
+    let mut path_to_binary = cwd.clone();
 
     if let Some(a) = std::env::args().nth(0) {
         path_to_binary = path_to_binary.join(PathBuf::from(a));
+    } else if cfg!(target_os = "windows") {
+        path_to_binary = path_to_binary.join(PathBuf::from("plazma.exe".to_owned()));
     } else {
-        if cfg!(target_os = "windows") {
-            path_to_binary = path_to_binary.join(PathBuf::from("plazma.exe".to_owned()));
-        } else {
-            path_to_binary = path_to_binary.join(PathBuf::from("plazma".to_owned()));
-        }
+        path_to_binary = path_to_binary.join(PathBuf::from("plazma".to_owned()));
     }
     path_to_binary = path_to_binary.canonicalize()?;
 
@@ -133,8 +131,8 @@ pub fn app_info() -> Result<AppInfo, Box<dyn Error>> {
     }
 
     Ok(AppInfo {
-        cwd: cwd,
-        path_to_binary: path_to_binary,
+        cwd,
+        path_to_binary,
         pid: std::process::id(),
     })
 }
@@ -186,15 +184,15 @@ pub fn process_cli_args(matches: clap::ArgMatches) -> Result<AppStartParams, Box
         };
     }
 
-    if let Some(_) = matches.subcommand_matches("server") {
+    if matches.subcommand_matches("server").is_some() {
         params.start_server = true;
         params.start_webview = false;
         params.start_preview = false;
-    } else if let Some(_) = matches.subcommand_matches("preview") {
+    } else if matches.subcommand_matches("preview").is_some() {
         params.start_server = false;
         params.start_webview = false;
         params.start_preview = true;
-    } else if let Some(_) = matches.subcommand_matches("dialogs") {
+    } else if matches.subcommand_matches("dialogs").is_some() {
         params.start_server = false;
         params.start_webview = false;
         params.start_preview = false;
@@ -204,6 +202,7 @@ pub fn process_cli_args(matches: clap::ArgMatches) -> Result<AppStartParams, Box
     Ok(params)
 }
 
+#[allow(clippy::type_complexity)]
 pub fn start_server(
     port: Arc<usize>,
     app_info: AppInfo,
@@ -270,13 +269,12 @@ pub fn start_server(
                     error!("🔥 ⚔️  Can not connect to server: {}", e);
                     // FIXME wait and keep trying to connect in a loop
                     //return; // this return is probably not necessary
-                    ()
                 })
                 .map(|(reader, writer)| {
                     let addr = ClientActor::create(|ctx| {
                         ClientActor::add_stream(reader, ctx);
                         ClientActor {
-                            writer: writer,
+                            writer,
                             channel_sender: client_sender,
                         }
                     });
@@ -284,18 +282,13 @@ pub fn start_server(
                     thread::spawn(move || {
                         info!("🧵 new thread: server receiver from webview");
                         loop {
-                            match server_receiver.try_recv() {
-                                Ok(text) => {
-                                    info!("Webview thread: passing on message: {:?}", text);
-                                    addr.do_send(ClientMessage { data: text });
-                                }
-                                Err(_) => {}
+                            if let Ok(text) = server_receiver.try_recv() {
+                                info!("Webview thread: passing on message: {:?}", text);
+                                addr.do_send(ClientMessage { data: text });
                             }
                             sleep(Duration::from_millis(100));
                         }
                     });
-
-                    ()
                 }),
         );
 
@@ -306,21 +299,18 @@ pub fn start_server(
     let client_receiver_handle = thread::spawn(move || {
         info!("🧵 new thread: client receiver");
         loop {
-            match client_receiver.try_recv() {
-                Ok(text) => {
-                    if text == "StopSystem" {
-                        info!("client_receiver: {:?}", text);
+            if let Ok(text) = client_receiver.try_recv() {
+                if text == "StopSystem" {
+                    info!("client_receiver: {:?}", text);
 
-                        let webview_sender = a.lock().expect("Can't lock webview sender.");
-                        match webview_sender.send("WebviewExit".to_owned()) {
-                            Ok(_) => {}
-                            Err(e) => error!("Can't send on webview_sender: {:?}", e),
-                        };
+                    let webview_sender = a.lock().expect("Can't lock webview sender.");
+                    match webview_sender.send("WebviewExit".to_owned()) {
+                        Ok(_) => {}
+                        Err(e) => error!("Can't send on webview_sender: {:?}", e),
+                    };
 
-                        break;
-                    }
+                    break;
                 }
-                Err(_) => {}
             }
             sleep(Duration::from_millis(100));
         }
@@ -390,9 +380,7 @@ pub fn start_webview(
             .size(1366, 768)
             .resizable(true)
             .debug(true)
-            .user_data(UserData {
-                webview_receiver: webview_receiver,
-            })
+            .user_data(UserData { webview_receiver })
             .invoke_handler(|_webview, _arg| Ok(()))
             .build()
             .unwrap();
@@ -420,21 +408,12 @@ pub fn start_webview(
                 let res = webview_handle.dispatch(move |webview| {
                     let UserData { webview_receiver } = webview.user_data();
 
-                    match webview_receiver.try_recv() {
-                        Ok(text) => {
-                            match text.as_ref() {
-                                "WebviewExit" => {
-                                    info!(
-                                        "💬 webview dispatch: WebviewExit received from server."
-                                    );
-                                    info!("Terminating the webview.");
-                                    webview.terminate();
-                                }
-
-                                _ => {}
-                            };
+                    if let Ok(text) = webview_receiver.try_recv() {
+                        if let "WebviewExit" = text.as_ref() {
+                            info!("💬 webview dispatch: WebviewExit received from server.");
+                            info!("Terminating the webview.");
+                            webview.terminate();
                         }
-                        Err(_) => {}
                     }
 
                     Ok(())
@@ -499,28 +478,22 @@ pub fn start_preview(
                     thread::spawn(move || {
                         info!("🧵 new thread: app receiver");
                         loop {
-                            match app_receiver.try_recv() {
-                                Ok(text) => {
-                                    if text == "StopSystem" {
-                                        info!("🔎 app_receiver StopSystem: exiting");
-                                        // FIXME stop the arbiter instead
-                                        exit(0);
-                                    }
+                            if let Ok(text) = app_receiver.try_recv() {
+                                if text == "StopSystem" {
+                                    info!("🔎 app_receiver StopSystem: exiting");
+                                    // FIXME stop the arbiter instead
+                                    exit(0);
                                 }
-                                Err(_) => {}
                             }
-
                             sleep(Duration::from_millis(100));
                         }
                     });
-
-                    ()
                 })
                 .map(|(reader, writer)| {
                     let addr = ClientActor::create(|ctx| {
                         ClientActor::add_stream(reader, ctx);
                         ClientActor {
-                            writer: writer,
+                            writer,
                             channel_sender: client_sender,
                         }
                     });
@@ -528,19 +501,14 @@ pub fn start_preview(
                     thread::spawn(move || {
                         info!("🧵 new thread: server receiver from render_loop()");
                         loop {
-                            match server_receiver.try_recv() {
-                                Ok(text) => {
-                                    // A bit noisy because of the frequent SetDmoTime messages.
-                                    //info!("Preview thread: passing on message: {:?}", text);
-                                    addr.do_send(ClientMessage { data: text });
-                                }
-                                Err(_) => {}
+                            if let Ok(text) = server_receiver.try_recv() {
+                                // A bit noisy because of the frequent SetDmoTime messages.
+                                //info!("Preview thread: passing on message: {:?}", text);
+                                addr.do_send(ClientMessage { data: text });
                             }
                             sleep(Duration::from_millis(100));
                         }
                     });
-
-                    ()
                 }),
         );
 
@@ -583,7 +551,10 @@ pub fn start_preview(
     } else {
         glutin::WindowBuilder::new()
             .with_title("plazma preview")
-            .with_dimensions(LogicalSize { width: 1366.0, height: 768.0 })
+            .with_dimensions(LogicalSize {
+                width: 1366.0,
+                height: 768.0,
+            })
     };
 
     let context_builder = glutin::ContextBuilder::new();
@@ -672,6 +643,7 @@ pub fn start_preview(
     Ok(())
 }
 
+#[allow(clippy::cognitive_complexity)]
 fn render_loop(
     window: &GlWindow,
     events_loop: &mut EventsLoop,
@@ -679,7 +651,7 @@ fn render_loop(
     mut rocket: &mut Option<SyncClient>,
     client_receiver: mpsc::Receiver<String>,
     server_sender: &mpsc::Sender<String>,
-) -> () {
+) {
     info!("⚽ render_loop() start");
 
     let mut dpi_factor = window.window().get_hidpi_factor();
@@ -830,10 +802,7 @@ fn render_loop(
                                 data: format! {"{}", state.get_time()},
                             })
                             .unwrap();
-                            match server_sender.send(msg) {
-                                Ok(_) => {}
-                                Err(_) => {}
-                            };
+                            if server_sender.send(msg).is_ok() {}
                         }
 
                         SetShader => {
@@ -996,16 +965,13 @@ fn render_loop(
         // 2. deal with events
 
         events_loop.poll_events(|event| {
-            match event {
-                Event::WindowEvent { event, .. } => match event {
+            if let Event::WindowEvent { event, .. } = event {
+                match event {
                     WindowEvent::CloseRequested => {
                         state.set_is_running(false);
                     }
 
-                    WindowEvent::KeyboardInput {
-                        device_id: _,
-                        input,
-                    } => {
+                    WindowEvent::KeyboardInput { input, .. } => {
                         use glutin::VirtualKeyCode::*;
 
                         if let Some(vcode) = input.virtual_keycode {
@@ -1049,26 +1015,22 @@ fn render_loop(
 
                                 // move time backwards 2s
                                 Left => {
-                                    if !pressed {
-                                        if rocket.is_none() {
-                                            state.move_time_ms(-2000);
-                                            match state.update_vars() {
-                                                Ok(_) => {}
-                                                Err(e) => error!("🔥 update_vars() {:?}", e),
-                                            }
+                                    if !pressed && rocket.is_none() {
+                                        state.move_time_ms(-2000);
+                                        match state.update_vars() {
+                                            Ok(_) => {}
+                                            Err(e) => error!("🔥 update_vars() {:?}", e),
                                         }
                                     }
                                 }
 
                                 // move time forward 2s
                                 Right => {
-                                    if !pressed {
-                                        if rocket.is_none() {
-                                            state.move_time_ms(2000);
-                                            match state.update_vars() {
-                                                Ok(_) => {}
-                                                Err(e) => error!("🔥 update_vars() {:?}", e),
-                                            }
+                                    if !pressed && rocket.is_none() {
+                                        state.move_time_ms(2000);
+                                        match state.update_vars() {
+                                            Ok(_) => {}
+                                            Err(e) => error!("🔥 update_vars() {:?}", e),
                                         }
                                     }
                                 }
@@ -1077,7 +1039,7 @@ fn render_loop(
                                 C => {
                                     if pressed {
                                         println!("------------------------------");
-                                        println!("");
+                                        println!();
                                         println!("--- dmo_gfx.context.camera ---");
                                         let a: &Vector3 =
                                             state.dmo_gfx.context.camera.get_position();
@@ -1086,7 +1048,7 @@ fn render_loop(
                                         println!(".front: {}, {}, {}", a.x, a.y, a.z);
                                         println!(".pitch: {}", state.dmo_gfx.context.camera.pitch);
                                         println!(".yaw: {}", state.dmo_gfx.context.camera.yaw);
-                                        println!("");
+                                        println!();
                                         println!("--- dmo_gfx.context.polygon_context ---");
                                         let a: &Vector3 = state
                                             .dmo_gfx
@@ -1097,7 +1059,7 @@ fn render_loop(
                                         let a: &Vector3 =
                                             state.dmo_gfx.context.polygon_context.get_view_front();
                                         println!(".view_front: {}, {}, {}", a.x, a.y, a.z);
-                                        println!("");
+                                        println!();
                                     }
                                 }
 
@@ -1106,21 +1068,12 @@ fn render_loop(
                         }
                     }
 
-                    WindowEvent::CursorMoved {
-                        device_id: _,
-                        position,
-                        modifiers: _,
-                    } => {
+                    WindowEvent::CursorMoved { position, .. } => {
                         let (mx, my) = position.into();
                         state.callback_mouse_moved(mx, my);
                     }
 
-                    WindowEvent::MouseWheel {
-                        device_id: _,
-                        delta,
-                        phase: _,
-                        modifiers: _,
-                    } => match delta {
+                    WindowEvent::MouseWheel { delta, .. } => match delta {
                         glutin::MouseScrollDelta::LineDelta(_, dy) => {
                             state.callback_mouse_wheel(dy);
                         }
@@ -1131,16 +1084,15 @@ fn render_loop(
                     },
 
                     WindowEvent::MouseInput {
-                        device_id: _,
                         state: pressed_state,
                         button,
-                        modifiers: _,
+                        ..
                     } => {
                         state.callback_mouse_input(pressed_state, button);
                     }
 
-                    WindowEvent::CursorEntered { device_id: _ } => {}
-                    WindowEvent::CursorLeft { device_id: _ } => {}
+                    WindowEvent::CursorEntered { .. } => {}
+                    WindowEvent::CursorLeft { .. } => {}
 
                     WindowEvent::HiDpiFactorChanged(dpi) => {
                         dpi_factor = dpi;
@@ -1162,8 +1114,7 @@ fn render_loop(
                         }
                     }
                     _ => (),
-                },
-                _ => (),
+                }
             }
         });
 
@@ -1201,28 +1152,26 @@ fn render_loop(
                 //info!("sleep: {}ms", t_sleep.subsec_nanos() / 1000 / 1000);
                 sleep(t_sleep);
             }
-        } else if state.t_delta > state.t_frame_target {
-            if !state.get_is_paused() {
-                let a = state.get_t_frame_target_as_nanos();
-                let b = state.get_t_delta_as_nanos() - a;
+        } else if state.t_delta > state.t_frame_target && !state.get_is_paused() {
+            let a = state.get_t_frame_target_as_nanos();
+            let b = state.get_t_delta_as_nanos() - a;
 
-                // Remainder after last whole frame time in milliseconds.
-                let rem_millis: u32 = ((b % a) / 1_000_000) as u32;
+            // Remainder after last whole frame time in milliseconds.
+            let rem_millis: u32 = ((b % a) / 1_000_000) as u32;
 
-                // The delta frame time up to the last whole frame. The next
-                // loop will increase the time with the target frame time.
-                //
-                // Should be 0 when adding the target frame time will be over
-                // the current delta frame time, so the next draw will use a
-                // time after the current delta, but at whole frame time
-                // intervals.
-                let c = ((b / 1_000_000) as u32) - rem_millis;
+            // The delta frame time up to the last whole frame. The next
+            // loop will increase the time with the target frame time.
+            //
+            // Should be 0 when adding the target frame time will be over
+            // the current delta frame time, so the next draw will use a
+            // time after the current delta, but at whole frame time
+            // intervals.
+            let c = ((b / 1_000_000) as u32) - rem_millis;
 
-                let sync = state.get_sync_device_mut();
+            let sync = state.get_sync_device_mut();
 
-                sync.time += c;
-                sync.set_row_from_time();
-            }
+            sync.time += c;
+            sync.set_row_from_time();
         }
     }
 
@@ -1285,28 +1234,23 @@ pub fn start_dialogs(plazma_server_port: Arc<usize>) -> Result<(), Box<dyn Error
                     thread::spawn(move || {
                         info!("🧵 new thread: app receiver");
                         loop {
-                            match app_receiver.try_recv() {
-                                Ok(text) => {
-                                    if text == "StopSystem" {
-                                        info!("🔎 app_receiver StopSystem: exiting");
-                                        // FIXME stop the arbiter instead
-                                        exit(0);
-                                    }
+                            if let Ok(text) = app_receiver.try_recv() {
+                                if text == "StopSystem" {
+                                    info!("🔎 app_receiver StopSystem: exiting");
+                                    // FIXME stop the arbiter instead
+                                    exit(0);
                                 }
-                                Err(_) => {}
                             }
 
                             sleep(Duration::from_millis(100));
                         }
                     });
-
-                    ()
                 })
                 .map(|(reader, writer)| {
                     let addr = ClientActor::create(|ctx| {
                         ClientActor::add_stream(reader, ctx);
                         ClientActor {
-                            writer: writer,
+                            writer,
                             channel_sender: client_sender,
                         }
                     });
@@ -1314,18 +1258,13 @@ pub fn start_dialogs(plazma_server_port: Arc<usize>) -> Result<(), Box<dyn Error
                     thread::spawn(move || {
                         info!("🧵 new thread: server receiver from dialogs_loop()");
                         loop {
-                            match server_receiver.try_recv() {
-                                Ok(text) => {
-                                    info!("Dialogs thread: passing on message: {:?}", text);
-                                    addr.do_send(ClientMessage { data: text });
-                                }
-                                Err(_) => {}
+                            if let Ok(text) = server_receiver.try_recv() {
+                                info!("Dialogs thread: passing on message: {:?}", text);
+                                addr.do_send(ClientMessage { data: text });
                             }
                             sleep(Duration::from_millis(100));
                         }
                     });
-
-                    ()
                 }),
         );
 
@@ -1358,10 +1297,7 @@ pub fn start_dialogs(plazma_server_port: Arc<usize>) -> Result<(), Box<dyn Error
     Ok(())
 }
 
-fn dialogs_loop(
-    client_receiver: mpsc::Receiver<String>,
-    server_sender: &mpsc::Sender<String>,
-) -> () {
+fn dialogs_loop(client_receiver: mpsc::Receiver<String>, server_sender: &mpsc::Sender<String>) {
     info!("⚽ dialogs_loop() start");
     let mut is_running = true;
 
@@ -1424,7 +1360,7 @@ fn dialogs_loop(
                                 NfdResponse::Cancel => {}
                             }
 
-                            if path.len() > 0 {
+                            if !path.is_empty() {
                                 let msg = serde_json::to_string(&Sending {
                                     data_type: MsgDataType::OpenProjectFilePath,
                                     data: serde_json::to_string(&path).unwrap(),

@@ -1,7 +1,7 @@
-use std::str;
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::path::PathBuf;
+use std::str;
 use std::time::{Duration, Instant};
 
 use serde_xml::value::{Content, Element};
@@ -131,7 +131,7 @@ impl PreviewState {
         // NOTE There is no way to send Rocket the keys. The keys have to be loaded from the XML
         // file using the Rocket editor, and the editor is going to send us the SetKey cmd.
 
-        if let &mut Some(ref mut r) = rocket {
+        if let Some(ref mut r) = *rocket {
             r.send_track_names(self.get_track_names()).unwrap();
         }
 
@@ -191,6 +191,7 @@ impl PreviewState {
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn build_dmo_gfx_from_yml_str(
         &mut self,
         yml_str: &str,
@@ -317,11 +318,11 @@ impl PreviewState {
             .enumerate()
             .filter(|i| {
                 let (_, scene) = i;
-                return scene.vert_src_idx == shader_idx || scene.frag_src_idx == shader_idx;
+                scene.vert_src_idx == shader_idx || scene.frag_src_idx == shader_idx
             })
             .map(|i| {
                 let (idx, _) = i;
-                return idx;
+                idx
             })
             .collect::<Vec<usize>>();
 
@@ -375,7 +376,7 @@ impl PreviewState {
             })
             .map(|i| {
                 let (idx, _) = i;
-                return idx;
+                idx
             })
             .collect::<Vec<usize>>();
 
@@ -442,8 +443,8 @@ impl PreviewState {
         let d = self.get_sync_device_mut();
         if ms > 0 {
             d.time += ms as u32;
-        } else if d.time > ((ms * -1) as u32) {
-            d.time -= (ms * -1) as u32;
+        } else if d.time > ms.abs() as u32 {
+            d.time -= ms.abs() as u32;
         } else {
             d.time = 0;
         }
@@ -452,7 +453,7 @@ impl PreviewState {
 
     pub fn update_rocket(&mut self, rocket: &mut Option<SyncClient>) -> Result<(), Box<dyn Error>> {
         let mut set_rocket_none = false;
-        if let &mut Some(ref mut r) = rocket {
+        if let Some(ref mut r) = *rocket {
             match r.update(self.get_sync_device_mut()) {
                 Ok(a) => self.draw_anyway = a,
                 Err(err) => {
@@ -474,7 +475,7 @@ impl PreviewState {
         }
 
         if !self.get_is_paused() {
-            if let &mut Some(ref mut r) = rocket {
+            if let Some(ref mut r) = *rocket {
                 match r.send_row(self.get_sync_device_mut()) {
                     Ok(_) => {}
                     Err(e) => warn!("{:?}", e),
@@ -497,7 +498,7 @@ impl PreviewState {
             };
 
             // If Rocket is on, send the track names.
-            if let &mut Some(ref mut r) = rocket {
+            if let Some(ref mut r) = *rocket {
                 r.send_track_names(self.get_track_names()).unwrap();
             }
 
@@ -610,7 +611,7 @@ impl PreviewState {
     }
 
     pub fn get_time(&self) -> f64 {
-        self.dmo_gfx.sync.device.time as f64 / 1000.0
+        f64::from(self.dmo_gfx.sync.device.time) / 1000.0
     }
 
     pub fn get_sync_time(&self) -> u32 {
@@ -658,12 +659,12 @@ impl PreviewState {
     }
 
     pub fn get_t_delta_as_nanos(&self) -> u64 {
-        (self.t_delta.as_secs() * 1_000_000_000) + (self.t_delta.subsec_nanos() as u64)
+        (self.t_delta.as_secs() * 1_000_000_000) + u64::from(self.t_delta.subsec_nanos())
     }
 
     pub fn get_t_frame_target_as_nanos(&self) -> u64 {
         (self.t_frame_target.as_secs() * 1_000_000_000)
-            + (self.t_frame_target.subsec_nanos() as u64)
+            + u64::from(self.t_frame_target.subsec_nanos())
     }
 
     pub fn set_key_pressed(&mut self, vcode: VirtualKeyCode, pressed: bool) {
@@ -791,6 +792,7 @@ fn builtin_to_idx(
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn build_track_names(
     dmo_gfx: &mut DmoGfx,
     dmo_data: &DmoData,
@@ -849,7 +851,7 @@ fn build_track_names(
 
     // Read the Rocket XML and add tracks.
 
-    let text = if dmo_data.context.sync_tracks_path.len() > 0 {
+    let text = if !dmo_data.context.sync_tracks_path.is_empty() {
         if let Some(p) = project_root {
             let p = p.join(PathBuf::from(&dmo_data.context.sync_tracks_path));
             if embedded {
@@ -872,7 +874,7 @@ fn build_track_names(
     match tracks_data.members {
         Content::Members(ref x) => {
             let tt = x.get("tracks").ok_or("missing 'tracks'")?;
-            let ref e: Element = tt[0];
+            let e: &Element = &tt[0];
 
             let tt = e
                 .attributes
@@ -906,33 +908,30 @@ fn build_track_names(
     for t in tracks.iter() {
         let mut sync_track: SyncTrack = SyncTrack::new();
 
-        match t.members {
-            Content::Members(ref track) => {
-                let keys = track.get("key").ok_or("missing 'key'")?;
+        if let Content::Members(ref track) = t.members {
+            let keys = track.get("key").ok_or("missing 'key'")?;
 
-                for k in keys.iter() {
-                    let a = k.attributes.get("row").ok_or("missing 'row'")?;
-                    let row: u32 = a[0].parse()?;
+            for k in keys.iter() {
+                let a = k.attributes.get("row").ok_or("missing 'row'")?;
+                let row: u32 = a[0].parse()?;
 
-                    let a = k.attributes.get("value").ok_or("missing 'value'")?;
-                    let value: f32 = a[0].parse()?;
+                let a = k.attributes.get("value").ok_or("missing 'value'")?;
+                let value: f32 = a[0].parse()?;
 
-                    let a = k
-                        .attributes
-                        .get("interpolation")
-                        .ok_or("missing 'interpolation'")?;
-                    let key_type: u8 = a[0].parse()?;
+                let a = k
+                    .attributes
+                    .get("interpolation")
+                    .ok_or("missing 'interpolation'")?;
+                let key_type: u8 = a[0].parse()?;
 
-                    let key = TrackKey {
-                        row: row,
-                        value: value,
-                        key_type: code_to_key(key_type),
-                    };
+                let key = TrackKey {
+                    row,
+                    value,
+                    key_type: code_to_key(key_type),
+                };
 
-                    sync_track.add_key(key);
-                }
+                sync_track.add_key(key);
             }
-            _ => {}
         }
 
         sync_device.tracks.push(sync_track);
@@ -962,10 +961,7 @@ fn build_track_names(
 
 fn build_shader_sources(dmo_gfx: &mut DmoGfx, dmo_data: &DmoData) {
     for i in dmo_data.context.shader_sources.iter() {
-        dmo_gfx
-            .context
-            .shader_sources
-            .push(i.as_bytes().to_vec());
+        dmo_gfx.context.shader_sources.push(i.as_bytes().to_vec());
     }
 }
 
@@ -984,7 +980,7 @@ fn build_image_sources(dmo_gfx: &mut DmoGfx, dmo_data: &DmoData) {
         let mut image_gfx = r::Image {
             width: i.width,
             height: i.height,
-            format: format,
+            format,
             raw_pixels: Vec::new(),
         };
 
@@ -1227,12 +1223,12 @@ fn build_polygon_context_and_scenes(
                         builtin_to_idx(track_name_to_idx, &c)? as u8,
                     ),
 
-                    d::UniformMapping::Vec4(x, a, b, c, d) => UniformMapping::Vec4(
-                        *x,
-                        builtin_to_idx(track_name_to_idx, &a)? as u8,
-                        builtin_to_idx(track_name_to_idx, &b)? as u8,
-                        builtin_to_idx(track_name_to_idx, &c)? as u8,
-                        builtin_to_idx(track_name_to_idx, &d)? as u8,
+                    d::UniformMapping::Vec4(v_x, v_a, v_b, v_c, v_d) => UniformMapping::Vec4(
+                        *v_x,
+                        builtin_to_idx(track_name_to_idx, &v_a)? as u8,
+                        builtin_to_idx(track_name_to_idx, &v_b)? as u8,
+                        builtin_to_idx(track_name_to_idx, &v_c)? as u8,
+                        builtin_to_idx(track_name_to_idx, &v_d)? as u8,
                     ),
                 };
 
@@ -1330,7 +1326,7 @@ fn build_timeline(dmo_gfx: &mut DmoGfx, dmo_data: &DmoData) -> Result<(), Box<dy
     Ok(())
 }
 
-const EMPTY_ROCKET: &'static str = r#"
+const EMPTY_ROCKET: &str = r#"
 <?xml version="1.0" encoding="utf-8"?>
 <rootElement>
 <tracks rows="10000" startRow="0" endRow="10000" rowsPerBeat="8" beatsPerMin="125">

@@ -32,12 +32,12 @@ impl SyncVars {
             });
         }
 
-        SyncVars { tracks: tracks }
+        SyncVars { tracks }
     }
 
     pub fn add_tracks_up_to(&mut self, tracks_count: usize) {
         let n = tracks_count - self.tracks.len();
-        if n <= 0 {
+        if n == 0 {
             return;
         }
         for _ in 0..=n {

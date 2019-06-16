@@ -29,11 +29,11 @@ pub fn compile_shader(
         gl::CompileShader(shader);
 
         // Get the compile status
-        let mut status = gl::FALSE as GLint;
+        let mut status = i32::from(gl::FALSE); // i32 = GLint
         gl::GetShaderiv(shader, gl::COMPILE_STATUS, &mut status);
 
         // Fail on error
-        if status != (gl::TRUE as GLint) {
+        if status != i32::from(gl::TRUE) {
             let mut len: GLint = 0;
             gl::GetShaderiv(shader, gl::INFO_LOG_LENGTH, &mut len);
             let mut buf: Vec<u8> = Vec::new();
@@ -48,12 +48,10 @@ pub fn compile_shader(
                 buf.as_mut_ptr() as *mut GLchar,
             );
 
-            let mut n = 0;
-            for i in buf.iter() {
+            for (n, i) in buf.iter().enumerate() {
                 if n < err_msg_buf.len() {
                     err_msg_buf[n] = *i;
                 }
-                n += 1;
             }
 
             return Err(ShaderCompilationFailed);
@@ -74,11 +72,11 @@ pub fn link_program(
         gl::AttachShader(program, fs);
         gl::LinkProgram(program);
         // Get the link status
-        let mut status = gl::FALSE as GLint;
+        let mut status = i32::from(gl::FALSE); // i32 = GLint
         gl::GetProgramiv(program, gl::LINK_STATUS, &mut status);
 
         // Fail on error
-        if status != (gl::TRUE as GLint) {
+        if status != i32::from(gl::TRUE) {
             let mut len: GLint = 0;
             gl::GetProgramiv(program, gl::INFO_LOG_LENGTH, &mut len);
             let mut buf: Vec<u8> = Vec::new();
@@ -93,12 +91,10 @@ pub fn link_program(
                 buf.as_mut_ptr() as *mut GLchar,
             );
 
-            let mut n = 0;
-            for i in buf.iter() {
+            for (n, i) in buf.iter().enumerate() {
                 if n < err_msg_buf.len() {
                     err_msg_buf[n] = *i;
                 }
-                n += 1;
             }
 
             return Err(ShaderLinkingFailed);

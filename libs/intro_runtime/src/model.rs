@@ -9,6 +9,12 @@ pub struct Model {
     pub meshes: Vec<Mesh>,
 }
 
+pub struct ModelViewProjection {
+    pub model: [[f32; 4]; 4],
+    pub view: [[f32; 4]; 4],
+    pub projection: [[f32; 4]; 4],
+}
+
 #[derive(Copy, Clone)]
 pub enum ModelType {
     NOOP,
@@ -62,23 +68,13 @@ impl Model {
     pub fn draw(
         &self,
         context: &ContextGfx,
-        layout_to_vars: &Vec<UniformMapping>,
-        binding_to_buffers: &Vec<BufferMapping>,
-        model: &[[f32; 4]; 4],
-        view: &[[f32; 4]; 4],
-        projection: &[[f32; 4]; 4],
+        layout_to_vars: &[UniformMapping],
+        binding_to_buffers: &[BufferMapping],
+        mvp: &ModelViewProjection,
         camera_pos: &[f32; 3],
     ) -> Result<(), RuntimeError> {
         for m in self.meshes.iter() {
-            m.draw(
-                context,
-                layout_to_vars,
-                binding_to_buffers,
-                model,
-                view,
-                projection,
-                camera_pos,
-            )?;
+            m.draw(context, layout_to_vars, binding_to_buffers, mvp, camera_pos)?;
         }
         Ok(())
     }

@@ -35,9 +35,9 @@ pub struct Quad {
 impl QuadSceneGfx {
     pub fn new(idx: u8, vert_src_idx: usize, frag_src_idx: usize) -> QuadSceneGfx {
         QuadSceneGfx {
-            idx: idx,
-            vert_src_idx: vert_src_idx,
-            frag_src_idx: frag_src_idx,
+            idx,
+            vert_src_idx,
+            frag_src_idx,
             layout_to_vars: Vec::new(),
             binding_to_buffers: Vec::new(),
             quad: None,
@@ -69,14 +69,14 @@ impl QuadSceneGfx {
 
                             Float(layout_idx, var_idx) => {
                                 gl::Uniform1f(
-                                    layout_idx as i32,
+                                    i32::from(layout_idx),
                                     context.sync_vars.get_index(var_idx as usize)? as f32,
                                 );
                             }
 
                             Vec2(layout_idx, var1, var2) => {
                                 gl::Uniform2f(
-                                    layout_idx as i32,
+                                    i32::from(layout_idx),
                                     context.sync_vars.get_index(var1 as usize)? as f32,
                                     context.sync_vars.get_index(var2 as usize)? as f32,
                                 );
@@ -84,7 +84,7 @@ impl QuadSceneGfx {
 
                             Vec3(layout_idx, var1, var2, var3) => {
                                 gl::Uniform3f(
-                                    layout_idx as i32,
+                                    i32::from(layout_idx),
                                     context.sync_vars.get_index(var1 as usize)? as f32,
                                     context.sync_vars.get_index(var2 as usize)? as f32,
                                     context.sync_vars.get_index(var3 as usize)? as f32,
@@ -93,7 +93,7 @@ impl QuadSceneGfx {
 
                             Vec4(layout_idx, var1, var2, var3, var4) => {
                                 gl::Uniform4f(
-                                    layout_idx as i32,
+                                    i32::from(layout_idx),
                                     context.sync_vars.get_index(var1 as usize)? as f32,
                                     context.sync_vars.get_index(var2 as usize)? as f32,
                                     context.sync_vars.get_index(var3 as usize)? as f32,
@@ -116,7 +116,7 @@ impl QuadSceneGfx {
                                             context.frame_buffers[buffer_idx as usize].fbo
                                         {
                                             gl::ActiveTexture(
-                                                gl::TEXTURE0 + (binding_idx as GLuint),
+                                                gl::TEXTURE0 + u32::from(binding_idx),
                                             );
                                             gl::BindTexture(gl::TEXTURE_2D, fbo);
                                         } else {
@@ -177,7 +177,7 @@ impl Quad {
             gl::BufferData(
                 gl::ARRAY_BUFFER,
                 (QUAD_VERTICES.len() * mem::size_of::<GLfloat>()) as GLsizeiptr,
-                mem::transmute(&QUAD_VERTICES[0]),
+                &QUAD_VERTICES[0] as *const f32 as *const libc::c_void,
                 gl::STATIC_DRAW,
             );
 
@@ -204,7 +204,7 @@ impl Quad {
                 gl::FLOAT,
                 gl::FALSE,
                 4 * mem::size_of::<GLfloat>() as GLsizei,
-                mem::transmute(2 * mem::size_of::<GLfloat>()),
+                (2 * mem::size_of::<GLfloat>()) as *const libc::c_void,
             );
 
             gl::BindVertexArray(0);

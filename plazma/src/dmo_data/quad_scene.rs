@@ -51,5 +51,5 @@ impl QuadScene {
     }
 }
 
-pub const DRAW_RESULT_VERT_SRC_PATH: &'static str = "data_builtin_screen_quad.vert";
-pub const DRAW_RESULT_FRAG_SRC_PATH: &'static str = "data_builtin_draw_result.frag";
+pub const DRAW_RESULT_VERT_SRC_PATH: &str = "data_builtin_screen_quad.vert";
+pub const DRAW_RESULT_FRAG_SRC_PATH: &str = "data_builtin_draw_result.frag";

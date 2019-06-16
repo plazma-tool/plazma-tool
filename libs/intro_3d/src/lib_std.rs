@@ -7,11 +7,9 @@
 
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
-pub const PI: f64 = 3.14159265358979323846;
-pub const DEG_TO_RAD: f64 = 0.01745329251994329577;
-
 // === Vector3 =================================================================
 
+#[derive(Clone)]
 pub struct Vector3 {
     pub x: f32,
     pub y: f32,
@@ -20,7 +18,7 @@ pub struct Vector3 {
 
 impl Vector3 {
     pub fn new(x: f32, y: f32, z: f32) -> Vector3 {
-        Vector3 { x: x, y: y, z: z }
+        Vector3 { x, y, z }
     }
 
     pub fn from_slice(d: &[f32; 3]) -> Vector3 {
@@ -41,10 +39,6 @@ impl Vector3 {
 
     pub fn as_slice(&self) -> [f32; 3] {
         [self.x, self.y, self.z]
-    }
-
-    pub fn clone(&self) -> Vector3 {
-        Vector3::new(self.x, self.y, self.z)
     }
 
     /// Length.
@@ -81,12 +75,7 @@ pub struct Vector4 {
 
 impl Vector4 {
     pub fn new(x: f32, y: f32, z: f32, w: f32) -> Vector4 {
-        Vector4 {
-            x: x,
-            y: y,
-            z: z,
-            w: w,
-        }
+        Vector4 { x, y, z, w }
     }
 
     pub fn from_slice(d: &[f32; 4]) -> Vector4 {
@@ -109,10 +98,16 @@ pub struct Matrix4 {
     data: [[f32; 4]; 4],
 }
 
+impl Default for Matrix4 {
+    fn default() -> Matrix4 {
+        Matrix4::identity()
+    }
+}
+
 impl Matrix4 {
     /// Returns an identity matrix.
     pub fn new() -> Matrix4 {
-        Matrix4::identity()
+        Matrix4::default()
     }
 
     pub fn identity() -> Matrix4 {
@@ -133,7 +128,7 @@ impl Matrix4 {
     }
 
     pub fn from_row_slice(data: [[f32; 4]; 4]) -> Matrix4 {
-        Matrix4 { data: data }
+        Matrix4 { data }
     }
 
     pub fn as_slice(&self) -> [[f32; 4]; 4] {
@@ -144,6 +139,7 @@ impl Matrix4 {
         self.data
     }
 
+    #[allow(clippy::needless_range_loop)]
     pub fn as_column_slice(&self) -> [[f32; 4]; 4] {
         let mut columns: [[f32; 4]; 4] = [[0.0; 4]; 4];
 
@@ -218,6 +214,7 @@ impl Matrix4 {
         self.transpose()
     }
 
+    #[allow(clippy::needless_range_loop)]
     pub fn transpose(&self) -> Matrix4 {
         let mut data: [[f32; 4]; 4] = [[0.0; 4]; 4];
 
@@ -293,7 +290,7 @@ impl Matrix4 {
     pub fn set_fovy(&mut self, fovy: f32) {
         let old_m22 = self.data[1][1];
         self.data[1][1] = 1.0 / f32::tan(fovy);
-        self.data[0][0] = self.data[0][0] * (self.data[1][1] / old_m22);
+        self.data[0][0] *= self.data[1][1] / old_m22;
     }
 
     /// Updates this perspective matrix with a new `width / height` aspect ratio of the view
@@ -510,6 +507,8 @@ impl Add<Matrix4> for Matrix4 {
 
 impl Mul<Matrix4> for Matrix4 {
     type Output = Matrix4;
+
+    #[allow(clippy::needless_range_loop)]
     fn mul(self, rhs: Matrix4) -> Matrix4 {
         let a = self.data;
         let b = rhs.data;
@@ -530,6 +529,8 @@ impl Mul<Matrix4> for Matrix4 {
 
 impl<'a> Mul<&'a Matrix4> for &'a Matrix4 {
     type Output = Matrix4;
+
+    #[allow(clippy::needless_range_loop)]
     fn mul(self, rhs: &Matrix4) -> Matrix4 {
         let a = self.data;
         let b = rhs.data;
@@ -550,6 +551,8 @@ impl<'a> Mul<&'a Matrix4> for &'a Matrix4 {
 
 impl Mul<Vector4> for Matrix4 {
     type Output = Vector4;
+
+    #[allow(clippy::needless_range_loop)]
     fn mul(self, rhs: Vector4) -> Vector4 {
         let a = self.as_slice();
         let b = rhs.as_slice();

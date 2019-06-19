@@ -1,3 +1,9 @@
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+use libc::c_void;
+
+#[cfg(target_os = "windows")]
+use winapi::c_void;
+
 use std::ptr;
 
 use gl;
@@ -102,7 +108,7 @@ impl FrameBuffer {
                             0,
                             format,
                             data_type,
-                            img.raw_pixels.as_ptr() as *const libc::c_void,
+                            img.raw_pixels.as_ptr() as *const c_void,
                         );
                     }
                 } else {

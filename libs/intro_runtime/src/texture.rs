@@ -1,3 +1,9 @@
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+use libc::c_void;
+
+#[cfg(target_os = "windows")]
+use winapi::c_void;
+
 use gl;
 use gl::types::*;
 
@@ -62,7 +68,7 @@ impl Texture {
                     0,
                     format,
                     data_type,
-                    img.raw_pixels.as_ptr() as *const libc::c_void,
+                    img.raw_pixels.as_ptr() as *const c_void,
                 );
                 gl::GenerateMipmap(gl::TEXTURE_2D);
                 gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32);

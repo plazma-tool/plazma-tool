@@ -1,3 +1,9 @@
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+use libc::c_void;
+
+#[cfg(target_os = "windows")]
+use winapi::c_void;
+
 use std::{mem, ptr};
 
 use gl;
@@ -87,7 +93,7 @@ impl Mesh {
             gl::BufferData(
                 gl::ARRAY_BUFFER,
                 (mesh.vertices.len() * mem::size_of::<Vertex>()) as isize,
-                mesh.vertices.as_ptr() as *const libc::c_void,
+                mesh.vertices.as_ptr() as *const c_void,
                 gl::STATIC_DRAW,
             );
 
@@ -115,7 +121,7 @@ impl Mesh {
                 gl::FLOAT,
                 gl::FALSE,
                 mem::size_of::<Vertex>() as GLsizei,
-                (3 * mem::size_of::<GLfloat>()) as *const libc::c_void,
+                (3 * mem::size_of::<GLfloat>()) as *const c_void,
             );
             // texture coord
             gl::EnableVertexAttribArray(2);
@@ -125,7 +131,7 @@ impl Mesh {
                 gl::FLOAT,
                 gl::FALSE,
                 mem::size_of::<Vertex>() as GLsizei,
-                ((3 + 3) * mem::size_of::<GLfloat>()) as *const libc::c_void,
+                ((3 + 3) * mem::size_of::<GLfloat>()) as *const c_void,
             );
             // // tangent
             // gl::EnableVertexAttribArray(3);
@@ -146,7 +152,7 @@ impl Mesh {
             gl::BufferData(
                 gl::ELEMENT_ARRAY_BUFFER,
                 (mesh.indices.len() * mem::size_of::<u32>()) as isize,
-                mesh.indices.as_ptr() as *const libc::c_void,
+                mesh.indices.as_ptr() as *const c_void,
                 gl::STATIC_DRAW,
             );
         }

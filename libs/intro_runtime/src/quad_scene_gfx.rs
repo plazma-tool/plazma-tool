@@ -1,3 +1,9 @@
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+use libc::c_void;
+
+#[cfg(target_os = "windows")]
+use winapi::c_void;
+
 use std::{mem, ptr, str};
 
 use gl;
@@ -177,7 +183,7 @@ impl Quad {
             gl::BufferData(
                 gl::ARRAY_BUFFER,
                 (QUAD_VERTICES.len() * mem::size_of::<GLfloat>()) as GLsizeiptr,
-                &QUAD_VERTICES[0] as *const f32 as *const libc::c_void,
+                &QUAD_VERTICES[0] as *const f32 as *const c_void,
                 gl::STATIC_DRAW,
             );
 
@@ -204,7 +210,7 @@ impl Quad {
                 gl::FLOAT,
                 gl::FALSE,
                 4 * mem::size_of::<GLfloat>() as GLsizei,
-                (2 * mem::size_of::<GLfloat>()) as *const libc::c_void,
+                (2 * mem::size_of::<GLfloat>()) as *const c_void,
             );
 
             gl::BindVertexArray(0);

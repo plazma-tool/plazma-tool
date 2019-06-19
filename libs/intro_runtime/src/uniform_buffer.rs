@@ -1,3 +1,9 @@
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+use libc::c_void;
+
+#[cfg(target_os = "windows")]
+use winapi::c_void;
+
 use std::ptr;
 
 use gl;
@@ -60,7 +66,7 @@ impl UniformBuffer {
                     gl::UNIFORM_BUFFER,
                     0,
                     self.byte_size as isize,
-                    self.data.as_ptr() as *const libc::c_void,
+                    self.data.as_ptr() as *const c_void,
                 );
                 gl::BindBuffer(gl::UNIFORM_BUFFER, 0);
             }

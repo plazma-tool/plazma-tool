@@ -2,7 +2,7 @@
 use libc::c_void;
 
 #[cfg(target_os = "windows")]
-use winapi::c_void;
+use winapi::ctypes::c_void;
 
 use gl;
 use gl::types::*;

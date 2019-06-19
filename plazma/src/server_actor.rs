@@ -4,7 +4,7 @@ use std::fs::{self, DirEntry, File};
 use std::io::prelude::*;
 use std::path::PathBuf;
 use std::process::{Child, Command};
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use rand::Rng;
@@ -12,8 +12,9 @@ use rand::Rng;
 use actix_web::actix::*;
 use actix_web::ws;
 
-use crate::app::AppInfo;
+use crate::app::{AppInfo, AppStartParams};
 use crate::project_data::{NewProjectTemplate, ProjectData};
+use crate::utils::clean_windows_str_path;
 
 /// How often heartbeat pings are sent
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
@@ -40,9 +41,11 @@ const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
 /// PreviewClient, which rebuilds OpenGL objects if necessary.
 pub struct ServerState {
     pub app_info: AppInfo,
-    pub webview_sender_arc: Arc<Mutex<mpsc::Sender<String>>>,
+    pub app_params: AppStartParams,
     pub project_data: ProjectData,
     pub clients: HashMap<usize, Addr<ServerActor>>,
+    pub webview_child: Option<Child>,
+    pub nwjs_child: Option<Child>,
     pub preview_child: Option<Child>,
     pub dialogs_child: Option<Child>,
 }
@@ -52,14 +55,16 @@ pub type ServerStateWrap = Arc<Mutex<ServerState>>;
 impl ServerState {
     pub fn new(
         app_info: AppInfo,
-        webview_sender_arc: Arc<Mutex<mpsc::Sender<String>>>,
+        app_params: AppStartParams,
         demo_yml_path: Option<PathBuf>,
     ) -> Result<ServerState, Box<dyn Error>> {
         let state = ServerState {
             app_info,
-            webview_sender_arc,
+            app_params,
             project_data: ProjectData::new(demo_yml_path, false)?,
             clients: HashMap::new(),
+            webview_child: None,
+            nwjs_child: None,
             preview_child: None,
             dialogs_child: None,
         };
@@ -384,6 +389,70 @@ impl ServerActor {
         }
     }
 
+    fn start_webview(&self, ctx: &<ServerActor as Actor>::Context) {
+        let mut state = ctx.state().lock().expect("Can't lock ServerState.");
+
+        if let Some(ref mut child) = state.webview_child {
+            match child.try_wait() {
+                Ok(Some(_)) => {
+                    info!("🔎 Spawn a new process for webview.");
+                    let new_child: Option<Child> =
+                        run_subcommand(&state.app_info.path_to_binary, "webview");
+
+                    if new_child.is_some() {
+                        state.webview_child = new_child;
+                    }
+                }
+
+                Ok(None) => warn!("⚡ Webview process is still running."),
+
+                Err(e) => error!("🔥 Can't wait for webview child process: {:?}", e),
+            }
+
+            return;
+        } else {
+            info!("🔎 Spawn a new process for webview.");
+            let new_child: Option<Child> = run_subcommand(&state.app_info.path_to_binary, "webview");
+
+            if new_child.is_some() {
+                state.dialogs_child = new_child;
+            }
+        }
+    }
+
+    fn start_nwjs(&self, ctx: &<ServerActor as Actor>::Context) {
+        let mut state = ctx.state().lock().expect("Can't lock ServerState.");
+
+        let cmd = format!{"--nwjs_path {} nwjs", state.app_params.nwjs_path.to_str().unwrap()};
+        if let Some(ref mut child) = state.nwjs_child {
+            match child.try_wait() {
+                Ok(Some(_)) => {
+                    info!("🔎 Spawn a new process for NWJS.");
+                    let new_child: Option<Child> =
+                        run_subcommand(&state.app_info.path_to_binary, &cmd);
+
+                    if new_child.is_some() {
+                        state.nwjs_child = new_child;
+                    }
+                }
+
+                Ok(None) => warn!("⚡ NWJS process is still running."),
+
+                Err(e) => error!("🔥 Can't wait for NWJS child process: {:?}", e),
+            }
+
+            return;
+        } else {
+            info!("🔎 Spawn a new process for NWJS.");
+            let new_child: Option<Child> =
+                run_subcommand(&state.app_info.path_to_binary, &cmd);
+
+            if new_child.is_some() {
+                state.dialogs_child = new_child;
+            }
+        }
+    }
+
     fn open_project_file_path(
         &self,
         ctx: &<ServerActor as Actor>::Context,
@@ -588,22 +657,6 @@ impl ServerActor {
             // Repeat the message for other websocket clients (such as dialogs process and
             // preview window) to respond to it.
             self.repeat_message_to_others(&ctx, &message);
-
-            // The webview is controlled with a channel, not via websocket.
-            let state = ctx.state().lock().expect("👿 Can't lock ServerState.");
-
-            // Send WebviewExit to the webview window.
-            let webview_sender = state
-                .webview_sender_arc
-                .lock()
-                .expect("Can't lock webview sender.");
-            match webview_sender.send("WebviewExit".to_owned()) {
-                Ok(x) => x,
-                Err(e) => error!(
-                    "🔥 Can't send WebviewExit on state.webview_sender: {:?}",
-                    e
-                ),
-            };
         }
 
         // Stop the Actor, stop the System.
@@ -710,6 +763,8 @@ pub enum MsgDataType {
     PreviewOpened,
     PreviewClosed,
     StartDialogs,
+    StartWebview,
+    StartNwjs,
     OpenProjectFileDialog,
     OpenProjectFilePath,
     ReloadProject,
@@ -860,6 +915,10 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
 
                     StartDialogs => self.start_dialogs(&ctx),
 
+                    StartWebview => self.start_webview(&ctx),
+
+                    StartNwjs => self.start_nwjs(&ctx),
+
                     OpenProjectFileDialog => self.repeat_message_to_others(&ctx, &message),
 
                     OpenProjectFilePath => self.open_project_file_path(&ctx, &message, pid),
@@ -885,11 +944,9 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for ServerActor {
 }
 
 fn run_preview_command(path_to_binary: &PathBuf) -> Option<Child> {
-    // std::process::Command inherits the current process's working directory.
-
     let s = path_to_binary.to_str().unwrap();
     let bin_cmd = if cfg!(target_os = "windows") {
-        format!("{} preview", s.trim_start_matches("\\\\?\\"))
+        format!("{} preview", clean_windows_str_path(s))
     } else {
         format!("{} preview", s)
     };
@@ -923,11 +980,9 @@ fn run_preview_command(path_to_binary: &PathBuf) -> Option<Child> {
 }
 
 fn run_dialogs_command(path_to_binary: &PathBuf) -> Option<Child> {
-    // std::process::Command inherits the current process's working directory.
-
     let s = path_to_binary.to_str().unwrap();
     let bin_cmd = if cfg!(target_os = "windows") {
-        format!("{} dialogs", s.trim_start_matches("\\\\?\\"))
+        format!("{} dialogs", clean_windows_str_path(s))
     } else {
         format!("{} dialogs", s)
     };
@@ -944,9 +999,6 @@ fn run_dialogs_command(path_to_binary: &PathBuf) -> Option<Child> {
             }
         }
     } else {
-        // Not testing for `cfg!(target_os = "linux") || cfg!(target_os =
-        // "macos")`, try to run some command in any case.
-
         match Command::new("sh").arg("-c").arg(bin_cmd).spawn() {
             Ok(child) => {
                 info!("🔎 spawned dialogs");
@@ -954,6 +1006,39 @@ fn run_dialogs_command(path_to_binary: &PathBuf) -> Option<Child> {
             }
             Err(e) => {
                 error!("🔥 failed to spawn dialogs: {:?}", e);
+                None
+            }
+        }
+    }
+}
+
+fn run_subcommand(path_to_binary: &PathBuf, subcommand: &str) -> Option<Child> {
+    let s = path_to_binary.to_str().unwrap();
+    let bin_cmd = if cfg!(target_os = "windows") {
+        format!("{} {}", clean_windows_str_path(s), subcommand)
+    } else {
+        format!("{} {}", s, subcommand)
+    };
+
+    if cfg!(target_os = "windows") {
+        match Command::new("cmd").arg("/C").arg(bin_cmd).spawn() {
+            Ok(child) => {
+                info!("🔎 spawned {}", subcommand);
+                Some(child)
+            }
+            Err(e) => {
+                error!("🔥 failed to spawn {}: {:?}", subcommand, e);
+                None
+            }
+        }
+    } else {
+        match Command::new("sh").arg("-c").arg(bin_cmd).spawn() {
+            Ok(child) => {
+                info!("🔎 spawned {}", subcommand);
+                Some(child)
+            }
+            Err(e) => {
+                error!("🔥 failed to spawn {}: {:?}", subcommand, e);
                 None
             }
         }

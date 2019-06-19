@@ -21,12 +21,10 @@ extern crate rocket_client;
 extern crate rocket_sync;
 
 use std::path::PathBuf;
-use std::sync::{mpsc, Arc, Mutex};
 
 use clap::App;
 
-use plazma::app::{self, AppStartParams};
-use plazma::server_actor::{MsgDataType, Sending};
+use plazma::app;
 
 fn main() {
     match kankyo::load() {
@@ -49,107 +47,57 @@ fn main() {
 
     let cli_yaml = load_yaml!("cli.yml");
     let matches = App::from_yaml(cli_yaml).get_matches();
-
-    // Process the cli args and destructure the members to separate owned variables.
-
-    let AppStartParams {
-        yml_path,
-        plazma_server_port,
-        start_server: param_start_server,
-        start_webview: param_start_webview,
-        start_preview: param_start_preview,
-        is_dialogs: param_is_dialogs,
-        ..
-    } = app::process_cli_args(matches).unwrap();
+    let app_params = app::process_cli_args(matches).unwrap();
 
     // --- OpenGL preview window ---
 
     // Starts on the main thread. The render loop is blocking until it exits.
 
-    let port_a = plazma_server_port.clone();
-    if param_start_preview {
-        let p = if let Some(ref path) = yml_path {
+    let port = app_params.plazma_server_port.clone();
+    if app_params.is_preview {
+        let p = if let Some(ref path) = app_params.yml_path.clone() {
             Some(PathBuf::from(&path))
         } else {
             None
         };
-        app::start_preview(port_a, p).unwrap();
+        app::start_preview(port, p).unwrap();
     };
 
     // --- HTTP and WebSocket server ---
 
-    // Starts on a spawned thread. It allows to start the server before the webview window starts
-    // blocking.
+    // Starts on the main thread and blocking until exits. It will start a dialogs process, a
+    // webview or NWJS window according to params.
 
-    // Channel to pass messages from the server to the webview window.
-    let (webview_sender, webview_receiver) = mpsc::channel();
-    let webview_sender_arc = Arc::new(Mutex::new(webview_sender));
-
-    // Channel to pass messages from the webview to the server.
-    let (server_sender, server_receiver) = mpsc::channel();
-
-    let port_b = plazma_server_port.clone();
-    let (server_handle, server_receiver_handle, client_receiver_handle) = if param_start_server {
-        let (a, b, c) = app::start_server(
-            port_b,
-            app_info,
-            yml_path,
-            webview_sender_arc,
-            server_receiver,
-        )
-        .unwrap();
-        (Some(a), Some(b), Some(c))
-    } else {
-        (None, None, None)
-    };
+    let port = app_params.plazma_server_port.clone();
+    if app_params.is_server {
+        app::start_server(port, app_info, app_params.clone()).unwrap();
+    }
 
     // --- Dialogs ---
 
     // Start a separate process where dialogs can block the main thread.
 
-    let port_b = plazma_server_port.clone();
-    if param_is_dialogs {
-        app::start_dialogs(port_b).unwrap();
+    let port = app_params.plazma_server_port.clone();
+    if app_params.is_dialogs {
+        app::start_dialogs(port).unwrap();
     };
 
     // --- WebView ---
 
     // Starts on the main thread. The webview window is blocking until it is closed.
 
-    let server_sender_arc = Arc::new(Mutex::new(server_sender));
-    let sender_a = server_sender_arc.clone();
-    let sender_b = server_sender_arc.clone();
-
-    let port_c = plazma_server_port.clone();
-    if param_start_webview {
-        app::start_webview(port_c, webview_receiver, sender_a).unwrap();
-
-        // Send ExitApp to the server, in case it is still running. This can happen when the window
-        // manager is used to close the window, not the close button in the web UI.
-
-        let msg = serde_json::to_string(&Sending {
-            data_type: MsgDataType::ExitApp,
-            data: "".to_owned(),
-        })
-        .unwrap();
-
-        let sender = sender_b.lock().expect("Can't lock server sender.");
-        match sender.send(msg) {
-            Ok(_) => {}
-            Err(e) => error!("🔥 Can't send on user_data.server_sender: {:?}", e),
-        }
+    let port = app_params.plazma_server_port.clone();
+    if app_params.is_webview {
+        app::start_webview(port).unwrap();
     }
 
-    if let Some(h) = client_receiver_handle {
-        h.join().unwrap();
-    }
+    // --- NWJS ---
 
-    if let Some(h) = server_receiver_handle {
-        h.join().unwrap();
-    }
+    // Starts on the main thread.
 
-    if let Some(h) = server_handle {
-        h.join().unwrap();
+    let port = app_params.plazma_server_port.clone();
+    if app_params.is_nwjs {
+        app::start_nwjs(port, &app_params.nwjs_path).unwrap();
     }
 
     info!("🍉 gg thx! 😎");

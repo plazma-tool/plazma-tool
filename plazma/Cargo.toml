@@ -36,6 +36,7 @@ web-view = "0.4"
 
 actix = "0.7.7"
 actix-web = "0.7.14"
+reqwest = "0.9"
 
 image = "0.21"
 tobj = "0.1"

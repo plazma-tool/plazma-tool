@@ -3,6 +3,7 @@
 extern crate rand;
 
 extern crate actix_web;
+extern crate reqwest;
 
 #[macro_use]
 extern crate rust_embed;
@@ -33,4 +34,7 @@ pub mod error;
 pub mod preview_client;
 pub mod project_data;
 pub mod server_actor;
+pub mod server_init_actor;
+pub mod webview_actor;
+pub mod nwjs_actor;
 pub mod utils;

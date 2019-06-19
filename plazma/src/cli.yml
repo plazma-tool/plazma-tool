@@ -19,12 +19,33 @@ args:
       required: false
       takes_value: true
 
-  - dmo:
-      help: "DMO project file, an all-in-one binary format."
-      long: dmo
-      value_name: FILE
+  - url:
+      help: "Url to load in the webview or NWJS window."
+      long: url
+      value_name: URL
+      default_value: "http://localhost:8080/static/"
       required: false
       takes_value: true
+
+  - nwjs_path:
+      help: "Path to the nwjs(.exe) binary."
+      long: nwjs_path
+      value_name: PATH
+      default_value: "./nwjs/nwjs.exe"
+      required: false
+      takes_value: true
+
+  - with_webview:
+      help: "Open the app in a Webview. This is the default on Linux and Max OS."
+      long: with_webview
+      required: false
+      takes_value: false
+
+  - with_nwjs:
+      help: "Open the app in NWJS. This is the default on Windows."
+      long: with_nwjs
+      required: false
+      takes_value: false
 
 subcommands:
 
@@ -34,8 +55,11 @@ subcommands:
   - preview:
       about: "Open a demo project in an OpenGL preview window. Use the flag options to specify the path to the demo project. If no project path is given, a minimal example demo will start."
 
-  - yml-to-dmo:
-      about: "Read in a project from its YAML file and write an all-in-one DMO format file."
+  - webview:
+      about: "Starts a webview window."
+
+  - nwjs:
+      about: "Starts an NWJS window."
 
   - dialogs:
       about: "Starts a process for opening dialogs."

@@ -22,3 +22,8 @@ pub fn file_to_string(path: &PathBuf) -> Result<String, Box<dyn Error>> {
 
     Ok(content)
 }
+
+pub fn clean_windows_str_path(p: &str) -> &str {
+    p.trim_start_matches("\\\\?\\")
+}
+

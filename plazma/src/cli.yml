@@ -31,7 +31,7 @@ args:
       help: "Path to the nwjs(.exe) binary."
       long: nwjs_path
       value_name: PATH
-      default_value: "./nwjs/nwjs.exe"
+      default_value: "nwjs\\nw.exe"
       required: false
       takes_value: true
 

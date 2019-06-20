@@ -107,7 +107,7 @@ impl Default for AppStartParams {
                 yml_path: None,
                 plazma_server_port: Arc::new(8080),
                 url: "http://localhost:8080/static/".to_owned(),
-                nwjs_path: PathBuf::from(".").join(PathBuf::from("nwjs").join(PathBuf::from("nwjs.exe"))),
+                nwjs_path: PathBuf::from(".").join(PathBuf::from("nwjs").join(PathBuf::from("nw.exe"))),
                 start_dialogs: true,
                 start_webview: false,
                 start_nwjs: true,
@@ -122,7 +122,7 @@ impl Default for AppStartParams {
                 yml_path: None,
                 plazma_server_port: Arc::new(8080),
                 url: "http://localhost:8080/static/".to_owned(),
-                nwjs_path: PathBuf::from(".").join(PathBuf::from("nwjs").join(PathBuf::from("nwjs"))),
+                nwjs_path: PathBuf::from(".").join(PathBuf::from("nwjs").join(PathBuf::from("nw"))),
                 start_dialogs: true,
                 start_webview: true,
                 start_nwjs: false,
@@ -540,9 +540,9 @@ pub fn start_nwjs(plazma_server_port: Arc<usize>, path_to_nwjs: &PathBuf) -> Res
 
     let s = path_to_nwjs.to_str().unwrap();
     let bin_cmd = if cfg!(target_os = "windows") {
-        format!{"{} --url='{}'", clean_windows_str_path(s), content_url}
+        format!{"{} --url={}", clean_windows_str_path(s), content_url}
     } else {
-        format!{"{} --url='{}'", s, content_url}
+        format!{"{} --url={}", s, content_url}
     };
 
     let mut nwjs_child = if cfg!(target_os = "windows") {

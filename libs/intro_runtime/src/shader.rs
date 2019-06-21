@@ -1,4 +1,4 @@
-use std::{ptr, str};
+use std::{ptr, str, ffi};
 
 use gl;
 use gl::types::*;
@@ -15,15 +15,16 @@ pub fn compile_shader(
     let shader;
     unsafe {
         shader = gl::CreateShader(ty);
+
         // Attempt to compile the shader
 
-        // have to take the length so that we don't have to pass it as a null-terminated c-string
-        let len = src.len() as i32;
+        let shader_source = ffi::CString::new(src.as_bytes()).unwrap();
+
         gl::ShaderSource(
             shader,
             1,
-            [src.as_ptr() as *const i8].as_ptr(),
-            [len].as_ptr(),
+            [shader_source.as_ptr()].as_ptr(),
+            ptr::null(),
         );
 
         gl::CompileShader(shader);

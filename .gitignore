@@ -8,6 +8,6 @@ TAGS
 **/target
 **/*.rs.bk
 plazma/.env
-# exclude only libs' Cargo.lock
+plazma/Cargo.lock
 libs/intro_3d/Cargo.lock
 libs/intro_runtime/Cargo.lock

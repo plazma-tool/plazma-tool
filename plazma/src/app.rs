@@ -9,6 +9,7 @@ use std::sync::mpsc::TryRecvError;
 use std::sync::{mpsc, Arc, Mutex};
 use std::thread::{self, sleep};
 use std::time::Duration;
+use std::ffi::CStr;
 
 use nfd::Response as NfdResponse;
 use web_view::Content;
@@ -765,13 +766,21 @@ pub fn start_preview(
             })
     };
 
-    let context_builder = glutin::ContextBuilder::new();
+    let context_builder = glutin::ContextBuilder::new()
+            .with_gl(glutin::GlRequest::Latest)
+            .with_gl_profile(glutin::GlProfile::Core);
     let window = glutin::GlWindow::new(window_builder, context_builder, &events_loop).unwrap();
 
     unsafe { window.make_current() }.unwrap();
 
     // load the OpenGL context
     gl::load_with(|ptr| window.context().get_proc_address(ptr) as *const _);
+
+    info!("OpenGL info:");
+    info!("GL_VENDOR: {:?}", unsafe { CStr::from_ptr(gl::GetString(gl::VENDOR) as *const i8) });
+    info!("GL_RENDERER: {:?}", unsafe { CStr::from_ptr(gl::GetString(gl::RENDERER) as *const i8) });
+    info!("GL_VERSION: {:?}", unsafe { CStr::from_ptr(gl::GetString(gl::VERSION) as *const i8) });
+    info!("GLSL version: {:?}", unsafe { CStr::from_ptr(gl::GetString(gl::SHADING_LANGUAGE_VERSION) as *const i8) });
 
     // the polygon scenes need depth desting
     unsafe {

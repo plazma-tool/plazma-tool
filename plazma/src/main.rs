@@ -27,11 +27,22 @@ use clap::App;
 use plazma::app;
 
 fn main() {
+    // --- CLI options ---
+
+    let cli_yaml = load_yaml!("cli.yml");
+    let matches = App::from_yaml(cli_yaml).get_matches();
+    let app_params = app::process_cli_args(matches).unwrap();
+
+    if app_params.show_logs {
+        std::env::set_var("RUST_LOG", "actix_web=info,plazma=info,preview_client=info");
+    }
+
+    // .env should override the above
     match kankyo::load() {
         Ok(_) => {}
         Err(e) => info!("Couldn't find a .env file: {:?}", e),
-    };
-    //std::env::set_var("RUST_LOG", "actix_web=info,plazma=info");
+    }
+
     env_logger::init();
     info!("🚀 Launched");
 
@@ -42,12 +53,6 @@ fn main() {
         "🔎 Path to binary: {}",
         &app_info.path_to_binary.to_str().unwrap()
     );
-
-    // --- CLI options ---
-
-    let cli_yaml = load_yaml!("cli.yml");
-    let matches = App::from_yaml(cli_yaml).get_matches();
-    let app_params = app::process_cli_args(matches).unwrap();
 
     // --- OpenGL preview window ---
 

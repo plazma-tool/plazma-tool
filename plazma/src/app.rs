@@ -93,6 +93,7 @@ pub struct AppStartParams {
     pub is_webview: bool,
     pub is_nwjs: bool,
     pub is_dialogs: bool,
+    pub show_logs: bool,
 }
 
 pub struct AppInfo {
@@ -117,6 +118,7 @@ impl Default for AppStartParams {
                 is_webview: false,
                 is_nwjs: false,
                 is_dialogs: false,
+                show_logs: false,
             }
         } else {
             AppStartParams {
@@ -132,6 +134,7 @@ impl Default for AppStartParams {
                 is_webview: false,
                 is_nwjs: false,
                 is_dialogs: false,
+                show_logs: false,
             }
         }
     }
@@ -265,6 +268,10 @@ pub fn process_cli_args(matches: clap::ArgMatches) -> Result<AppStartParams, Box
         params.start_nwjs = false;
     }
 
+    if matches.is_present("show_logs") {
+        params.show_logs = true;
+    }
+
     Ok(params)
 }
 
@@ -319,8 +326,8 @@ pub fn start_server(
 
         // Start a WebSocket client and connect to the server.
 
-        // Check if server is up.
         loop {
+            info!("start_server() Check if server is up.");
             if let Ok(resp) = reqwest::get(&format!{"http://localhost:{}/static/", port_clone_b}) {
                 if resp.status().is_success() {
                     break;
@@ -446,8 +453,8 @@ pub fn start_webview(plazma_server_port: Arc<usize>) -> Result<(), Box<dyn Error
             // It's purpose is to receive messages and terminate the webview when the server
             // disconnects.
 
-            // Check if server is up.
             loop {
+                info!("start_webview() Check if server is up.");
                 if let Ok(resp) = reqwest::get(&content_url) {
                     if resp.status().is_success() {
                         break;
@@ -582,8 +589,8 @@ pub fn start_nwjs(plazma_server_port: Arc<usize>, path_to_nwjs: &PathBuf) -> Res
         // It's purpose is to receive messages and terminate the NWJS process when the server
         // disconnects.
 
-        // Check if server is up.
         loop {
+            info!("start_nwjs() Check if server is up.");
             if let Ok(resp) = reqwest::get(&content_url) {
                 if resp.status().is_success() {
                     break;
@@ -674,15 +681,15 @@ pub fn start_preview(
 
         // Start a WebSocket client and connect to the server.
 
-        // Check if server is up.
-        loop {
-            if let Ok(resp) = reqwest::get(&format!{"http://localhost:{}/static/", plazma_server_port_clone}) {
-                if resp.status().is_success() {
-                    break;
-                }
-            }
-            sleep(Duration::from_millis(100));
-        }
+        //loop {
+        //    info!("start_preview() Check if server is up.");
+        //    if let Ok(resp) = reqwest::get(&format!{"http://localhost:{}/static/", plazma_server_port_clone}) {
+        //        if resp.status().is_success() {
+        //            break;
+        //        }
+        //    }
+        //    sleep(Duration::from_millis(100));
+        //}
 
         Arbiter::spawn(
             ws::Client::new(format! {"http://127.0.0.1:{}/ws/", plazma_server_port_clone})
@@ -788,7 +795,7 @@ pub fn start_preview(
     info!("GL_VENDOR: {:?}", unsafe { CStr::from_ptr(gl::GetString(gl::VENDOR) as *const i8) });
     info!("GL_RENDERER: {:?}", unsafe { CStr::from_ptr(gl::GetString(gl::RENDERER) as *const i8) });
     info!("GL_VERSION: {:?}", unsafe { CStr::from_ptr(gl::GetString(gl::VERSION) as *const i8) });
-    info!("GLSL version: {:?}", unsafe { CStr::from_ptr(gl::GetString(gl::SHADING_LANGUAGE_VERSION) as *const i8) });
+    info!("GL_SHADING_LANGUAGE_VERSION: {:?}", unsafe { CStr::from_ptr(gl::GetString(gl::SHADING_LANGUAGE_VERSION) as *const i8) });
 
     // the polygon scenes need depth desting
     unsafe {
@@ -1448,8 +1455,8 @@ pub fn start_dialogs(plazma_server_port: Arc<usize>) -> Result<(), Box<dyn Error
 
         // Start a WebSocket client and connect to the server.
 
-        // Check if server is up.
         loop {
+            info!("start_dialogs() Check if server is up.");
             if let Ok(resp) = reqwest::get(&format!{"http://localhost:{}/static/", plazma_server_port_clone}) {
                 if resp.status().is_success() {
                     break;

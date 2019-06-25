@@ -674,7 +674,15 @@ pub fn start_preview(
 
         // Start a WebSocket client and connect to the server.
 
-        // FIXME check if server is up
+        // Check if server is up.
+        loop {
+            if let Ok(resp) = reqwest::get(&format!{"http://localhost:{}/static/", plazma_server_port_clone}) {
+                if resp.status().is_success() {
+                    break;
+                }
+            }
+            sleep(Duration::from_millis(100));
+        }
 
         Arbiter::spawn(
             ws::Client::new(format! {"http://127.0.0.1:{}/ws/", plazma_server_port_clone})
@@ -1440,7 +1448,15 @@ pub fn start_dialogs(plazma_server_port: Arc<usize>) -> Result<(), Box<dyn Error
 
         // Start a WebSocket client and connect to the server.
 
-        // FIXME check if server is up
+        // Check if server is up.
+        loop {
+            if let Ok(resp) = reqwest::get(&format!{"http://localhost:{}/static/", plazma_server_port_clone}) {
+                if resp.status().is_success() {
+                    break;
+                }
+            }
+            sleep(Duration::from_millis(100));
+        }
 
         Arbiter::spawn(
             ws::Client::new(format! {"http://127.0.0.1:{}/ws/", plazma_server_port_clone})

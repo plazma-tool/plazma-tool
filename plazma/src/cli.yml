@@ -47,6 +47,12 @@ args:
       required: false
       takes_value: false
 
+  - show_logs:
+      help: "Print log messages in the terminal."
+      long: show_logs
+      required: false
+      takes_value: false
+
 subcommands:
 
   - server:
